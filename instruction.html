@@ -22,14 +22,19 @@
             margin-bottom: 16px;
         }
         .theme-toggle {
-            position: absolute;
+            position: fixed;
             top: 16px;
             right: 16px;
             cursor: pointer;
+            z-index: 1000;
         }
         .tab-active {
             background-color: #3b82f6;
             color: #fff;
+        }
+        .bg-dark {
+            background-color: #1a202c;
+            color: #cbd5e0;
         }
     </style>
 </head>
@@ -169,9 +174,9 @@
                 toggleTheme() {
                     this.isDarkTheme = !this.isDarkTheme;
                     if (this.isDarkTheme) {
-                        document.body.classList.add('bg-gray-900', 'text-white');
+                        document.body.classList.add('bg-dark');
                     } else {
-                        document.body.classList.remove('bg-gray-900', 'text-white');
+                        document.body.classList.remove('bg-dark');
                     }
                 }
             }
