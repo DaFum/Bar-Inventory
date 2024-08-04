@@ -4,76 +4,235 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bar Inventory</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" onerror="this.onerror=null;this.href='daisyui.css';">
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.35/dist/vue.global.js" onerror="this.onerror=null;this.src='vue.global.js';"></script>
     <script src="https://cdn.jsdelivr.net/npm/vuex@4.0.2/dist/vuex.global.js" onerror="this.onerror=null;this.src='vuex.global.js';"></script>
     <noscript>
-        <link href="vue.global.js" rel="stylesheet" type="text/css" />
+        <link href="daisyui.css" rel="stylesheet" type="text/css" />
+        <script src="vue.global.js"></script>
         <script src="vuex.global.js"></script>
     </noscript>
 </head>
 <body class="bg-base-200">
-    <nav class="container-fluid">
-        <ul><li><strong>Bar Inventory</strong></li></ul>
-        <ul>
-            <li><a href="#">Home</a></li>
-            <li><a href="#">Inventory</a></li>
-            <li><a href="#" role="button">Contact</a></li>
-        </ul>
-    </nav>
-    <main class="container">
-        <div class="grid">
-            <section>
-                <hgroup>
-                    <h2>Welcome to the Bar Inventory</h2>
-                    <h3>Manage your bar stock effectively</h3>
-                </hgroup>
-                <p>Keep track of your bar inventory with ease. Manage categories, areas, and items seamlessly.</p>
-                <figure>
-                    <img src="https://files.oaiusercontent.com/file-ptrhMsm5abKFIKgtKUSYG2w6?se=2024-08-04T12%3A56%3A22Z&sp=r&sv=2023-11-03&sr=b&rscc=max-age%3D604800%2C%20immutable%2C%20private&rscd=attachment%3B%20filename%3D38a4d66d-e9e1-41ef-8104-cc987b87061c.webp&sig=S2e0/bebYUaOS7ckyax7cq4tnAk4X4XQ03iwBh2H/4A%3D" alt="Stylish bar counter" />
-                    <figcaption><a href="https://files.oaiusercontent.com/file-ptrhMsm5abKFIKgtKUSYG2w6?se=2024-08-04T12%3A56%3A22Z&sp=r&sv=2023-11-03&sr=b&rscc=max-age%3D604800%2C%20immutable%2C%20private&rscd=attachment%3B%20filename%3D38a4d66d-e9e1-41ef-8104-cc987b87061c.webp&sig=S2e0/bebYUaOS7ckyax7cq4tnAk4X4XQ03iwBh2H/4A%3D" target="_blank">View Full Image</a></figcaption>
-                </figure>
-                <h3>Features</h3>
-                <p>Track inventory in different phases: Start, End, and Difference.</p>
-                <h3>Manage</h3>
-                <p>Add, edit, and delete items, categories, and areas easily.</p>
-            </section>
+    <div id="app" class="container mx-auto my-8">
+        <h1 class="text-3xl font-bold mb-4 text-center">Bar Inventory</h1>
+        <div class="tabs mb-4">
+            <button @click="currentView = 'list'" :class="{'tab-active': currentView === 'list'}" class="tab tab-bordered">List View</button>
+            <button @click="currentView = 'manage'" :class="{'tab-active': currentView === 'manage'}" class="tab tab-bordered">Manage View</button>
         </div>
-    </main>
-    <section aria-label="Subscribe example">
-        <div class="container">
-            <article>
-                <hgroup>
-                    <h2>Stay Updated</h2>
-                    <h3>Subscribe to our newsletter</h3>
-                </hgroup>
-                <form class="grid">
-                    <input type="text" id="firstname" name="firstname" placeholder="First Name" aria-label="First Name" required />
-                    <input type="email" id="email" name="email" placeholder="Email" aria-label="Email" required />
-                    <button type="submit" onclick="event.preventDefault()">Subscribe</button>
-                </form>
-            </article>
+        
+        <div v-if="currentView === 'list'" class="my-8">
+            <inventory-list></inventory-list>
         </div>
-    </section>
-    <footer class="container">
-        <small><a href="#">Privacy Policy</a> • <a href="#">Terms of Service</a></small>
-    </footer>
+
+        <div v-if="currentView === 'manage'" class="my-8">
+            <inventory-manage></inventory-manage>
+        </div>
+
+        <toast-message v-if="toastMessage" :message="toastMessage"></toast-message>
+        <edit-category-modal v-if="showCategoryModal"></edit-category-modal>
+        <edit-area-modal v-if="showAreaModal"></edit-area-modal>
+    </div>
+
+    <template id="inventory-list">
+    <div>
+        <div class="flex justify-between mb-4">
+            <h2 class="text-2xl font-bold">{{ currentPhase === 'start' ? 'Start Inventory' : (currentPhase === 'end' ? 'End Inventory' : 'Difference') }}</h2>
+            <div>
+                <button @click="switchToStartPhase" :class="{'btn-active': currentPhase === 'start'}" class="btn btn-primary">Start</button>
+                <button @click="switchToEndPhase" :class="{'btn-active': currentPhase === 'end'}" class="btn btn-primary ml-2">End</button>
+                <button @click="switchToDifferencePhase" :class="{'btn-active': currentPhase === 'difference'}" class="btn btn-primary ml-2">Difference</button>
+            </div>
+        </div>
+        <div class="flex justify-between mb-4" v-if="currentPhase !== 'difference'">
+            <button @click="toggleView" class="btn btn-secondary">{{ showFormula ? 'Show Sum' : 'Show Formula' }}</button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-zebra w-full">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th v-for="area in areas" :key="area">{{ area }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in items" :key="index">
+                        <td>{{ item.name }}</td>
+                        <td v-for="area in areas" :key="area">
+                            <div v-if="currentPhase === 'difference'">
+                                <input type="text" :value="item.difference[area]" class="input input-bordered w-full" disabled>
+                            </div>
+                            <div v-else>
+                                <div v-if="showFormula">
+                                    <input type="text" v-model="item[currentPhase][area]" @input="updateFormula(item, area)" @blur="finalizeInput(item, area)" @keypress.enter="finalizeFormula(item, area)" class="input input-bordered w-full">
+                                </div>
+                                <div v-else>
+                                    <input type="text" :value="calculateSum(item[currentPhase][area])" class="input input-bordered w-full" disabled>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div v-if="currentPhase === 'difference'" class="mt-4">
+            <h3 class="text-xl font-bold mb-2">Notes</h3>
+            <textarea v-model="notes" class="textarea textarea-bordered w-full"></textarea>
+        </div>
+        <div class="flex justify-end mt-4">
+            <button @click="saveData" class="btn btn-primary mr-2">Save</button>
+            <button @click="exportToCSV" class="btn btn-secondary mr-2">Export to CSV</button>
+            <button @click="exportInventory" class="btn btn-secondary mr-2">Export Inventory</button>
+            <input type="file" @change="importInventory" class="btn btn-secondary mr-2">
+        </div>
+    </div>
+</template>
+
+    <template id="inventory-manage">
+        <div>
+            <h2 class="text-2xl font-bold mb-2">Manage Categories, Areas, and Items</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h3 class="text-xl font-bold mb-2">Categories</h3>
+                    <div class="form-control mb-4">
+                        <label class="label">Add New Category</label>
+                        <input type="text" v-model="newCategory" class="input input-bordered" @input="validateCategoryInput">
+                        <button @click="addCategory" :disabled="!isCategoryValid" class="btn btn-primary mt-2">Add Category</button>
+                    </div>
+                    <ul class="list-disc ml-6">
+                        <li v-for="(category, index) in categories" :key="index">
+                            {{ category }} <button @click="removeCategory(index)" class="btn btn-sm btn-error ml-2">Remove</button>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold mb-2">Areas</h3>
+                    <div class="form-control mb-4">
+                        <label class="label">Add New Area</label>
+                        <input type="text" v-model="newArea" class="input input-bordered" @input="validateAreaInput">
+                        <button @click="addArea" :disabled="!isAreaValid" class="btn btn-primary mt-2">Add Area</button>
+                    </div>
+                    <ul class="list-disc ml-6">
+                        <li v-for="(area, index) in areas" :key="index">
+                            {{ area }} <button @click="removeArea(index)" class="btn btn-sm btn-error ml-2">Remove</button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                <div>
+                    <h3 class="text-xl font-bold mb-2">Add Item</h3>
+                    <div class="form-control mb-4">
+                        <label class="label">Name</label>
+                        <input type="text" v-model="newItem.name" class="input input-bordered" @input="validateInput">
+                    </div>
+                    <div class="form-control mb-4">
+                        <label class="label">Category</label>
+                        <select v-model="newItem.category" class="select select-bordered" @change="validateInput">
+                            <option value="">Select a Category</option>
+                            <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
+                        </select>
+                    </div>
+                    <button @click="addItem" :disabled="!isValid" class="btn btn-primary">Add Item</button>
+                    <div v-if="error" class="alert alert-error mt-2" role="alert">
+                        <div class="alert-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-6 h-6 stroke-current">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.543-3.35L13.857 7.353c-.866-1.687-3.066-1.687-3.93 0L6.939 10.707c-.975 1.688-.004 3.35.975 3.35H6.938z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="font-bold">Error</div>
+                            {{ error }}
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold mb-2">Inventory Items</h3>
+                    <div class="overflow-x-auto">
+                            <table class="table table-zebra w-full">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Category</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(item, index) in items" :key="index">
+                                        <td>{{ item.name }}</td>
+                                        <td>{{ item.category }}</td>
+                                        <td>
+                                            <button @click="editItem(index)" class="btn btn-sm btn-primary mr-2">Edit</button>
+                                            <button @click="confirmDeleteItem(index)" class="btn btn-sm btn-error">Delete</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="toast-message">
+        <div class="toast toast-top toast-center">
+            <div class="alert alert-success">
+                <div>
+                    <span>{{ message }}</span>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="edit-category-modal">
+        <div class="modal">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg">Edit Category</h3>
+                <input type="text" v-model="modalCategory" class="input input-bordered w-full my-4">
+                <div class="modal-action">
+                    <button @click="updateCategory" class="btn btn-primary">Save</button>
+                    <button @click="closeCategoryModal" class="btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="edit-area-modal">
+        <div class="modal">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg">Edit Area</h3>
+                <input type="text" v-model="modalArea" class="input input-bordered w-full my-4">
+                <div class="modal-action">
+                    <button @click="updateArea" class="btn btn-primary">Save</button>
+                    <button @click="closeAreaModal" class="btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
     <script>
         let db;
+
         const dbRequest = window.indexedDB.open('bar-inventory', 1);
+
         dbRequest.onupgradeneeded = event => {
             db = event.target.result;
             if (!db.objectStoreNames.contains('items')) {
                 db.createObjectStore('items', { keyPath: 'id', autoIncrement: true });
             }
         };
+
         dbRequest.onsuccess = event => {
             db = event.target.result;
             store.dispatch('loadItems');
         };
+
         dbRequest.onerror = () => {
             store.commit('setError', 'Failed to open database.');
         };
+
         const store = Vuex.createStore({
             state: {
                 items: [],
@@ -193,6 +352,7 @@
                 }
             }
         });
+
         const app = Vue.createApp({
             data() {
                 return {
@@ -274,7 +434,7 @@
                             start: {},
                             end: {},
                             difference: {}
-                        };
+                                      };
                     }
                 },
                 editItem(index) {
@@ -421,129 +581,132 @@
                 };
             }
         });
+
         app.component('inventory-list', {
-            template: '#inventory-list',
-            data() {
-                return {
-                    showFormula: true,
-                };
-            },
-            computed: {
-                ...Vuex.mapState(['items', 'areas', 'currentPhase', 'notes']),
-            },
-            methods: {
-                ...Vuex.mapMutations(['setCurrentPhase']),
-                ...Vuex.mapActions(['saveItems']),
-                toggleView() {
-                    this.showFormula = !this.showFormula;
-                    if (!this.showFormula) {
-                        this.finalizeAllFormulas();
-                    }
-                },
-                switchToStartPhase() {
-                    this.setCurrentPhase('start');
-                    this.saveItems();
-                },
-                switchToEndPhase() {
-                    this.setCurrentPhase('end');
-                    this.items.forEach(item => {
-                        this.areas.forEach(area => {
-                            if (item.end[area] === 0) item.end[area] = item.start[area];
-                        });
-                    });
-                    this.saveItems();
-                },
-                switchToDifferencePhase() {
-                    this.setCurrentPhase('difference');
-                    this.items.forEach(item => {
-                        this.areas.forEach(area => {
-                            const startValue = this.evaluateFormula(item.start[area] || '0');
-                            const endValue = this.evaluateFormula(item.end[area] || '0');
-                            item.difference[area] = endValue - startValue;
-                        });
-                    });
-                    this.saveItems();
-                },
-                saveData() {
-                    this.saveItems();
-                },
-                exportToCSV() {
-                    const csvContent = 'data:text/csv;charset=utf-8,'
-                        + 'Name,Category,' + this.areas.map(area => `${area} Start,${area} End,${area} Difference`).join(',') + '\n'
-                        + this.items.map(item => `${item.name},${item.category},` + this.areas.map(area => `${item.start[area]},${item.end[area]},${item.difference[area]}`).join(',')).join('\n');
-                    const encodedUri = encodeURI(csvContent);
-                    const link = document.createElement('a');
-                    link.setAttribute('href', encodedUri);
-                    link.setAttribute('download', 'inventory.csv');
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                },
-                exportInventory() {
-                    const data = {
-                        items: this.items,
-                        categories: this.categories,
-                        areas: this.areas,
-                        notes: this.notes
-                    };
-                    const jsonContent = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data));
-                    const link = document.createElement('a');
-                    link.setAttribute('href', jsonContent);
-                    link.setAttribute('download', 'inventory.json');
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);},
-                importInventory(event) {
-                    const file = event.target.files[0];
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        const data = JSON.parse(e.target.result);
-                        this.$store.commit('setItems', data.items || []);
-                        this.$store.state.categories = data.categories || [];
-                        this.$store.state.areas = data.areas || [];
-                        this.$store.commit('setNotes', data.notes || '');
-                        this.saveItems();
-                    };
-                    reader.readAsText(file);
-                },
-                updateFormula(item, area) {
-                    let formula = item[this.currentPhase][area];
-                    formula = formula.replace(/[^0-9+\-*/().]/g, ''); // Remove invalid characters
-                    item[this.currentPhase][area] = formula;
-                },
-                finalizeInput(item, area) {
-                    let formula = item[this.currentPhase][area];
-                    if (formula.length > 0 && !/[+\-*/()]$/.test(formula.slice(-1))) {
-                        formula += '+'; // Append "+" if the formula does not end with an operator or parentheses
-                    }
-                    item[this.currentPhase][area] = formula;
-                },
-                finalizeFormula(item, area) {
-                    let formula = item[this.currentPhase][area];
-                    if (formula.endsWith('+')) {
-                        formula = formula.slice(0, -1); // Remove the trailing "+"
-                    }
-                    item[this.currentPhase][area] = formula;
-                },
-                finalizeAllFormulas() {
-                    this.items.forEach(item => {
-                        this.areas.forEach(area => {
-                            this.finalizeFormula(item, area);
-                        });
-                    });
-                },
-                calculateSum(formula) {
-                    return this.evaluateFormula(formula);
-                },
-                evaluateFormula(formula) {
-                    try {
-                        return eval(formula.replace(/[^0-9+\-*/().]/g, '')) || 0;
-                    } catch {
-                        return 0;
-                    }
-                }
+    template: '#inventory-list',
+    data() {
+        return {
+            showFormula: true,
+        };
+    },
+    computed: {
+        ...Vuex.mapState(['items', 'areas', 'currentPhase', 'notes']),
+    },
+    methods: {
+        ...Vuex.mapMutations(['setCurrentPhase']),
+        ...Vuex.mapActions(['saveItems']),
+        toggleView() {
+            this.showFormula = !this.showFormula;
+            if (!this.showFormula) {
+                this.finalizeAllFormulas();
             }
-        });
+        },
+        switchToStartPhase() {
+            this.setCurrentPhase('start');
+            this.saveItems();
+        },
+        switchToEndPhase() {
+            this.setCurrentPhase('end');
+            this.items.forEach(item => {
+                this.areas.forEach(area => {
+                    if (item.end[area] === 0) item.end[area] = item.start[area];
+                });
+            });
+            this.saveItems();
+        },
+        switchToDifferencePhase() {
+            this.setCurrentPhase('difference');
+            this.items.forEach(item => {
+                this.areas.forEach(area => {
+                    const startValue = this.evaluateFormula(item.start[area] || '0');
+                    const endValue = this.evaluateFormula(item.end[area] || '0');
+                    item.difference[area] = endValue - startValue;
+                });
+            });
+            this.saveItems();
+        },
+        saveData() {
+            this.saveItems();
+        },
+        exportToCSV() {
+            const csvContent = 'data:text/csv;charset=utf-8,'
+                + 'Name,Category,' + this.areas.map(area => `${area} Start,${area} End,${area} Difference`).join(',') + '\n'
+                + this.items.map(item => `${item.name},${item.category},` + this.areas.map(area => `${item.start[area]},${item.end[area]},${item.difference[area]}`).join(',')).join('\n');
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', 'inventory.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        },
+        exportInventory() {
+            const data = {
+                items: this.items,
+                categories: this.categories,
+                areas: this.areas,
+                notes: this.notes
+            };
+            const jsonContent = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data));
+            const link = document.createElement('a');
+            link.setAttribute('href', jsonContent);
+            link.setAttribute('download', 'inventory.json');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        },
+        importInventory(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = JSON.parse(e.target.result);
+                this.$store.commit('setItems', data.items || []);
+                this.$store.state.categories = data.categories || [];
+                this.$store.state.areas = data.areas || [];
+                this.$store.commit('setNotes', data.notes || '');
+                this.saveItems();
+            };
+            reader.readAsText(file);
+        },
+        updateFormula(item, area) {
+            let formula = item[this.currentPhase][area];
+            formula = formula.replace(/[^0-9+\-*/().]/g, ''); // Remove invalid characters
+            item[this.currentPhase][area] = formula;
+        },
+        finalizeInput(item, area) {
+            let formula = item[this.currentPhase][area];
+            if (formula.length > 0 && !/[+\-*/()]$/.test(formula.slice(-1))) {
+                formula += '+'; // Append "+" if the formula does not end with an operator or parentheses
+            }
+            item[this.currentPhase][area] = formula;
+        },
+        finalizeFormula(item, area) {
+            let formula = item[this.currentPhase][area];
+            if (formula.endsWith('+')) {
+                formula = formula.slice(0, -1); // Remove the trailing "+"
+            }
+            item[this.currentPhase][area] = formula;
+        },
+        finalizeAllFormulas() {
+            this.items.forEach(item => {
+                this.areas.forEach(area => {
+                    this.finalizeFormula(item, area);
+                });
+            });
+        },
+        calculateSum(formula) {
+            return this.evaluateFormula(formula);
+        },
+        evaluateFormula(formula) {
+            try {
+                return eval(formula.replace(/[^0-9+\-*/().]/g, '')) || 0;
+            } catch {
+                return 0;
+            }
+        }
+    }
+});
+
         app.component('inventory-manage', {
             template: '#inventory-manage',
             computed: {
@@ -611,7 +774,7 @@
                         };
                     }
                 },
-                editItem(index) {
+              editItem(index) {
                     const item = this.items[index];
                     this.$store.commit('editItem', { index, item });
                     this.saveItems();
@@ -631,10 +794,12 @@
                 }
             }
         });
+
         app.component('toast-message', {
             template: '#toast-message',
             props: ['message']
         });
+
         app.component('edit-category-modal', {
             template: '#edit-category-modal',
             computed: {
@@ -653,6 +818,7 @@
                 }
             }
         });
+
         app.component('edit-area-modal', {
             template: '#edit-area-modal',
             computed: {
@@ -671,6 +837,7 @@
                 }
             }
         });
+
         app.use(store);
         app.mount('#app');
     </script>
