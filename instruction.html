@@ -5,21 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Instructions - Bar Inventory Management</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.35/dist/vue.global.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            max-width: 800px;
+        }
+        .card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .theme-toggle {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            cursor: pointer;
+        }
+        .tab-active {
+            background-color: #3b82f6;
+            color: #fff;
+        }
+    </style>
 </head>
 <body class="bg-base-200">
     <div id="app" class="container mx-auto my-8">
-        <h1 class="text-3xl font-bold mb-4 text-center">Instructions</h1>
+        <i class="fas fa-adjust theme-toggle text-2xl" @click="toggleTheme"></i>
+        <h1 class="text-4xl font-bold mb-4 text-center">Instructions</h1>
         <div class="tabs mb-4 justify-center">
             <button @click="currentLanguage = 'english'" :class="{'tab-active': currentLanguage === 'english'}" class="tab tab-bordered">English</button>
             <button @click="currentLanguage = 'german'" :class="{'tab-active': currentLanguage === 'german'}" class="tab tab-bordered">Deutsch</button>
         </div>
-        <div v-if="currentLanguage === 'english'">
-            <h2 class="text-2xl font-bold mb-4">How to use the Bar Inventory Management System</h2>
+        <div v-if="currentLanguage === 'english'" class="card">
+            <h2 class="text-2xl font-bold mb-4"><i class="fas fa-info-circle"></i> How to use the Bar Inventory Management System</h2>
             <p>Welcome to the Bar Inventory Management System. This guide will help you navigate and use the application effectively.</p>
-            <h3 class="text-xl font-bold mt-4">Main View</h3>
+            <h3 class="text-xl font-bold mt-4"><i class="fas fa-bars"></i> Main View</h3>
             <p>Upon starting the app, you will see two tabs: <strong>List View</strong> and <strong>Manage View</strong>.</p>
-            <h4 class="text-lg font-bold mt-2">List View</h4>
+            <h4 class="text-lg font-bold mt-2"><i class="fas fa-list"></i> List View</h4>
             <p>This is where you can manage and view your inventory levels. It is divided into three phases:</p>
             <ul class="list-disc list-inside">
                 <li><strong>Start</strong>: Record initial inventory levels.</li>
@@ -40,7 +67,7 @@
                 <li><strong>Export Inventory</strong>: Export data as a JSON file.</li>
                 <li><strong>Import Inventory</strong>: Import data from a JSON file.</li>
             </ul>
-            <h4 class="text-lg font-bold mt-2">Manage View</h4>
+            <h4 class="text-lg font-bold mt-2"><i class="fas fa-cogs"></i> Manage View</h4>
             <p>Here you can manage categories, areas, and items.</p>
             <p>Buttons and fields in Manage View:</p>
             <ul class="list-disc list-inside">
@@ -52,7 +79,7 @@
                 <li><strong>Category</strong>: Select the category of the new item.</li>
                 <li><strong>Add Item</strong>: Add the new item.</li>
             </ul>
-            <h4 class="text-lg font-bold mt-2">Summary of Buttons and Functions</h4>
+            <h4 class="text-lg font-bold mt-2"><i class="fas fa-summary"></i> Summary of Buttons and Functions</h4>
             <ul class="list-disc list-inside">
                 <li><strong>Start</strong>: Record initial inventory levels.</li>
                 <li><strong>End</strong>: Record final inventory levels.</li>
@@ -70,12 +97,12 @@
                 <li><strong>Delete</strong>: Delete an item.</li>
             </ul>
         </div>
-        <div v-if="currentLanguage === 'german'">
-            <h2 class="text-2xl font-bold mb-4">Anleitung zur Nutzung des Bar Inventory Management Systems</h2>
+        <div v-if="currentLanguage === 'german'" class="card">
+            <h2 class="text-2xl font-bold mb-4"><i class="fas fa-info-circle"></i> Anleitung zur Nutzung des Bar Inventory Management Systems</h2>
             <p>Willkommen beim Bar Inventory Management System. Diese Anleitung hilft Ihnen, die App effektiv zu nutzen.</p>
-            <h3 class="text-xl font-bold mt-4">Hauptansicht</h3>
+            <h3 class="text-xl font-bold mt-4"><i class="fas fa-bars"></i> Hauptansicht</h3>
             <p>Beim Starten der App sehen Sie zwei Registerkarten: <strong>List View</strong> und <strong>Manage View</strong>.</p>
-            <h4 class="text-lg font-bold mt-2">List View</h4>
+            <h4 class="text-lg font-bold mt-2"><i class="fas fa-list"></i> List View</h4>
             <p>Hier können Sie die Bestände Ihrer Artikel verwalten und einsehen. Diese Ansicht ist in drei Phasen unterteilt:</p>
             <ul class="list-disc list-inside">
                 <li><strong>Start</strong>: Anfangsbestände erfassen.</li>
@@ -92,11 +119,11 @@
             <p>Weitere Funktionen in der List View:</p>
             <ul class="list-disc list-inside">
                 <li><strong>Save</strong>: Speichert Ihre Eingaben.</li>
-                <li><strong>Export to CSV</strong>: Exportiert Ihre Daten als CSV-Datei, die Sie mit Tabellenkalkulationsprogrammen öffnen können.</li>
-                <li><strong>Export Inventory</strong>: Exportiert Ihre Daten als JSON-Datei, die von der App wieder importiert werden kann.</li>
+                <li><strong>Export to CSV</strong>: Exportiert Ihre Daten als CSV-Datei.</li>
+                <li><strong>Export Inventory</strong>: Exportiert Ihre Daten als JSON-Datei.</li>
                 <li><strong>Import Inventory</strong>: Importieren Sie eine zuvor exportierte JSON-Datei, um Ihre Bestände wiederherzustellen.</li>
             </ul>
-            <h4 class="text-lg font-bold mt-2">Manage View</h4>
+            <h4 class="text-lg font-bold mt-2"><i class="fas fa-cogs"></i> Manage View</h4>
             <p>Hier können Sie Kategorien, Bereiche und Artikel verwalten.</p>
             <p>Schaltflächen und Felder in der Manage View:</p>
             <ul class="list-disc list-inside">
@@ -108,7 +135,7 @@
                 <li><strong>Category</strong>: Wählen Sie die Kategorie des neuen Artikels aus.</li>
                 <li><strong>Add Item</strong>: Fügt den neuen Artikel hinzu.</li>
             </ul>
-            <h4 class="text-lg font-bold mt-2">Zusammenfassung der Schaltflächen und Funktionen</h4>
+            <h4 class="text-lg font-bold mt-2"><i class="fas fa-summary"></i> Zusammenfassung der Schaltflächen und Funktionen</h4>
             <ul class="list-disc list-inside">
                 <li><strong>Start</strong>: Erfassen der Anfangsbestände.</li>
                 <li><strong>End</strong>: Erfassen der Endbestände.</li>
@@ -134,8 +161,19 @@
         createApp({
             data() {
                 return {
-                    currentLanguage: 'english'
+                    currentLanguage: 'english',
+                    isDarkTheme: false
                 };
+            },
+            methods: {
+                toggleTheme() {
+                    this.isDarkTheme = !this.isDarkTheme;
+                    if (this.isDarkTheme) {
+                        document.body.classList.add('bg-gray-900', 'text-white');
+                    } else {
+                        document.body.classList.remove('bg-gray-900', 'text-white');
+                    }
+                }
             }
         }).mount('#app');
     </script>
