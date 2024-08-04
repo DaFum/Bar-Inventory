@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bar Inventory</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.35/dist/vue.global.js" onerror="this.onerror=null;this.src='vue.global.js';"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuex@4.0.2/dist/vuex.global.js" onerror="this.onerror=null;this.src='vuex.global.js';"></script>
+    <noscript>
+        <link href="vue.global.js" rel="stylesheet" type="text/css" />
+        <script src="vuex.global.js"></script>
+    </noscript>
+</head>
+<body class="bg-base-200">
+    <nav class="container-fluid">
+        <ul><li><strong>Bar Inventory</strong></li></ul>
+        <ul>
+            <li><a href="#">Home</a></li>
+            <li><a href="#">Inventory</a></li>
+            <li><a href="#" role="button">Contact</a></li>
+        </ul>
+    </nav>
+    <main class="container">
+        <div class="grid">
+            <section>
+                <hgroup>
+                    <h2>Welcome to the Bar Inventory</h2>
+                    <h3>Manage your bar stock effectively</h3>
+                </hgroup>
+                <p>Keep track of your bar inventory with ease. Manage categories, areas, and items seamlessly.</p>
+                <figure>
+                    <img src="https://files.oaiusercontent.com/file-ptrhMsm5abKFIKgtKUSYG2w6?se=2024-08-04T12%3A56%3A22Z&sp=r&sv=2023-11-03&sr=b&rscc=max-age%3D604800%2C%20immutable%2C%20private&rscd=attachment%3B%20filename%3D38a4d66d-e9e1-41ef-8104-cc987b87061c.webp&sig=S2e0/bebYUaOS7ckyax7cq4tnAk4X4XQ03iwBh2H/4A%3D" alt="Stylish bar counter" />
+                    <figcaption><a href="https://files.oaiusercontent.com/file-ptrhMsm5abKFIKgtKUSYG2w6?se=2024-08-04T12%3A56%3A22Z&sp=r&sv=2023-11-03&sr=b&rscc=max-age%3D604800%2C%20immutable%2C%20private&rscd=attachment%3B%20filename%3D38a4d66d-e9e1-41ef-8104-cc987b87061c.webp&sig=S2e0/bebYUaOS7ckyax7cq4tnAk4X4XQ03iwBh2H/4A%3D" target="_blank">View Full Image</a></figcaption>
+                </figure>
+                <h3>Features</h3>
+                <p>Track inventory in different phases: Start, End, and Difference.</p>
+                <h3>Manage</h3>
+                <p>Add, edit, and delete items, categories, and areas easily.</p>
+            </section>
+        </div>
+    </main>
+    <section aria-label="Subscribe example">
+        <div class="container">
+            <article>
+                <hgroup>
+                    <h2>Stay Updated</h2>
+                    <h3>Subscribe to our newsletter</h3>
+                </hgroup>
+                <form class="grid">
+                    <input type="text" id="firstname" name="firstname" placeholder="First Name" aria-label="First Name" required />
+                    <input type="email" id="email" name="email" placeholder="Email" aria-label="Email" required />
+                    <button type="submit" onclick="event.preventDefault()">Subscribe</button>
+                </form>
+            </article>
+        </div>
+    </section>
+    <footer class="container">
+        <small><a href="#">Privacy Policy</a> • <a href="#">Terms of Service</a></small>
+    </footer>
+    <script>
+        let db;
+        const dbRequest = window.indexedDB.open('bar-inventory', 1);
+        dbRequest.onupgradeneeded = event => {
+            db = event.target.result;
+            if (!db.objectStoreNames.contains('items')) {
+                db.createObjectStore('items', { keyPath: 'id', autoIncrement: true });
+            }
+        };
+        dbRequest.onsuccess = event => {
+            db = event.target.result;
+            store.dispatch('loadItems');
+        };
+        dbRequest.onerror = () => {
+            store.commit('setError', 'Failed to open database.');
+        };
+        const store = Vuex.createStore({
+            state: {
+                items: [],
+                categories: ['Spirits', 'Beer', 'Wine', 'Soft Drinks', 'Other'],
+                areas: ['Main Bar', 'VIP Area', 'Patio'],
+                error: null,
+                isValid: false,
+                isCategoryValid: false,
+                isAreaValid: false,
+                toastMessage: '',
+                currentPhase: 'start',
+                notes: '',
+                showCategoryModal: false,
+                showAreaModal: false,
+                modalCategory: '',
+                modalArea: ''
+            },
+            mutations: {
+                setItems(state, items) {
+                    state.items = items;
+                    state.error = null;
+                },
+                addItem(state, item) {
+                    state.items.push(item);
+                    state.error = null;
+                    state.toastMessage = 'Item added successfully!';
+                    setTimeout(() => state.toastMessage = '', 3000);
+                },
+                editItem(state, { index, item }) {
+                    state.items.splice(index, 1, item);
+                    state.error = null;
+                    state.toastMessage = 'Item edited successfully!';
+                    setTimeout(() => state.toastMessage = '', 3000);
+                },
+                deleteItem(state, index) {
+                    state.items.splice(index, 1);
+                    state.error = null;
+                    state.toastMessage = 'Item deleted successfully!';
+                    setTimeout(() => state.toastMessage = '', 3000);
+                },
+                addCategory(state, category) {
+                    state.categories.push(category);
+                    state.toastMessage = 'Category added successfully!';
+                    setTimeout(() => state.toastMessage = '', 3000);
+                },
+                removeCategory(state, index) {
+                    state.categories.splice(index, 1);
+                    state.toastMessage = 'Category removed successfully!';
+                    setTimeout(() => state.toastMessage = '', 3000);
+                },
+                addArea(state, area) {
+                    state.areas.push(area);
+                    state.toastMessage = 'Area added successfully!';
+                    setTimeout(() => state.toastMessage = '', 3000);
+                },
+                removeArea(state, index) {
+                    state.areas.splice(index, 1);
+                    state.toastMessage = 'Area removed successfully!';
+                    setTimeout(() => state.toastMessage = '', 3000);
+                },
+                setError(state, error) {
+                    state.error = error;
+                },
+                validateInput(state, isValid) {
+                    state.isValid = isValid;
+                },
+                validateCategoryInput(state, isCategoryValid) {
+                    state.isCategoryValid = isCategoryValid;
+                },
+                validateAreaInput(state, isAreaValid) {
+                    state.isAreaValid = isAreaValid;
+                },
+                setCurrentPhase(state, phase) {
+                    state.currentPhase = phase;
+                },
+                setNotes(state, notes) {
+                    state.notes = notes;
+                },
+                setCategoryModal(state, { show, category }) {
+                    state.showCategoryModal = show;
+                    state.modalCategory = category || '';
+                },
+                setAreaModal(state, { show, area }) {
+                    state.showAreaModal = show;
+                    state.modalArea = area || '';
+                }
+            },
+            actions: {
+                loadItems({ commit }) {
+                    if (db) {
+                        const tx = db.transaction(['items'], 'readonly');
+                        const store = tx.objectStore('items');
+                        const request = store.getAll();
+                        request.onsuccess = () => {
+                            commit('setItems', request.result);
+                        };
+                        request.onerror = () => {
+                            commit('setError', 'Failed to load inventory data.');
+                        };
+                    }
+                },
+                saveItems({ state, commit }) {
+                    if (db) {
+                        const tx = db.transaction(['items'], 'readwrite');
+                        const store = tx.objectStore('items');
+                        store.clear();
+                        state.items.forEach(item => {
+                            store.add(item);
+                        });
+                        tx.oncomplete = () => {
+                            commit('setError', null);
+                        };
+                        tx.onerror = () => {
+                            commit('setError', 'Failed to save inventory data.');
+                        };
+                    }
+                }
+            }
+        });
+        const app = Vue.createApp({
+            data() {
+                return {
+                    currentView: 'list',
+                    newItem: {
+                        name: '',
+                        category: '',
+                        start: {},
+                        end: {},
+                        difference: {}
+                    },
+                    newCategory: '',
+                    newArea: ''
+                };
+            },
+            computed: {
+                items() {
+                    return store.state.items;
+                },
+                categories() {
+                    return store.state.categories;
+                },
+                areas() {
+                    return store.state.areas;
+                },
+                error() {
+                    return store.state.error;
+                },
+                isValid() {
+                    return store.state.isValid;
+                },
+                isCategoryValid() {
+                    return store.state.isCategoryValid;
+                },
+                isAreaValid() {
+                    return store.state.isAreaValid;
+                },
+                toastMessage() {
+                    return store.state.toastMessage;
+                },
+                currentPhase() {
+                    return store.state.currentPhase;
+                },
+                notes() {
+                    return store.state.notes;
+                },
+                showCategoryModal() {
+                    return store.state.showCategoryModal;
+                },
+                showAreaModal() {
+                    return store.state.showAreaModal;
+                },
+                modalCategory() {
+                    return store.state.modalCategory;
+                },
+                modalArea() {
+                    return store.state.modalArea;
+                }
+            },
+            methods: {
+                addItem() {
+                    if (this.newItem.name && this.newItem.category) {
+                        const item = {
+                            ...this.newItem,
+                            start: {},
+                            end: {},
+                            difference: {}
+                        };
+                        this.areas.forEach(area => {
+                            item.start[area] = 0;
+                            item.end[area] = 0;
+                            item.difference[area] = 0;
+                        });
+                        store.commit('addItem', item);
+                        store.dispatch('saveItems');
+                        this.newItem = {
+                            name: '',
+                            category: '',
+                            start: {},
+                            end: {},
+                            difference: {}
+                        };
+                    }
+                },
+                editItem(index) {
+                    const item = this.items[index];
+                    store.commit('editItem', { index, item });
+                    store.dispatch('saveItems');
+                },
+                confirmDeleteItem(index) {
+                    if (confirm('Are you sure you want to delete this item?')) {
+                        this.deleteItem(index);
+                    }
+                },
+                deleteItem(index) {
+                    store.commit('deleteItem', index);
+                    store.dispatch('saveItems');
+                },
+                exportToCSV() {
+                    const csvContent = 'data:text/csv;charset=utf-8,' 
+                        + 'Name,Category,' + this.areas.map(area => `${area} Start,${area} End,${area} Difference`).join(',') + '\n'
+                        + this.items.map(item => `${item.name},${item.category},` + this.areas.map(area => `${item.start[area]},${item.end[area]},${item.difference[area]}`).join(',')).join('\n');
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement('a');
+                    link.setAttribute('href', encodedUri);
+                    link.setAttribute('download', 'inventory.csv');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                },
+                exportInventory() {
+                    const data = {
+                        items: this.items,
+                        categories: this.categories,
+                        areas: this.areas,
+                        notes: this.notes
+                    };
+                    const jsonContent = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data));
+                    const link = document.createElement('a');
+                    link.setAttribute('href', jsonContent);
+                    link.setAttribute('download', 'inventory.json');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                },
+                importInventory(event) {
+                    const file = event.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const data = JSON.parse(e.target.result);
+                        store.commit('setItems', data.items || []);
+                        store.state.categories = data.categories || [];
+                        store.state.areas = data.areas || [];
+                        store.commit('setNotes', data.notes || '');
+                        store.dispatch('saveItems');
+                    };
+                    reader.readAsText(file);
+                },
+                addCategory() {
+                    if (this.newCategory.trim() !== '' && !this.categories.includes(this.newCategory.trim())) {
+                        store.commit('addCategory', this.newCategory.trim());
+                        this.newCategory = '';
+                    }
+                },
+                removeCategory(index) {
+                    if (confirm('Are you sure you want to remove this category?')) {
+                        store.commit('removeCategory', index);
+                    }
+                },
+                addArea() {
+                    if (this.newArea.trim() !== '' && !this.areas.includes(this.newArea.trim())) {
+                        store.commit('addArea', this.newArea.trim());
+                        this.newArea = '';
+                    }
+                },
+                removeArea(index) {
+                    if (confirm('Are you sure you want to remove this area?')) {
+                        store.commit('removeArea', index);
+                    }
+                },
+                validateInput() {
+                    const isValid = this.newItem.name.trim() !== '' && this.newItem.category !== '';
+                    store.commit('validateInput', isValid);
+                },
+                validateCategoryInput() {
+                    const isCategoryValid = this.newCategory.trim() !== '' && !this.categories.includes(this.newCategory.trim());
+                    store.commit('validateCategoryInput', isCategoryValid);
+                },
+                validateAreaInput() {
+                    const isAreaValid = this.newArea.trim() !== '' && !this.areas.includes(this.newArea.trim());
+                    store.commit('validateAreaInput', isAreaValid);
+                },
+                switchToStartPhase() {
+                    store.commit('setCurrentPhase', 'start');
+                    store.dispatch('saveItems');
+                },
+                switchToEndPhase() {
+                    store.commit('setCurrentPhase', 'end');
+                    this.items.forEach(item => {
+                        this.areas.forEach(area => {
+                            if (item.end[area] === 0) item.end[area] = item.start[area];
+                        });
+                    });
+                    store.dispatch('saveItems');
+                },
+                switchToDifferencePhase() {
+                    store.commit('setCurrentPhase', 'difference');
+                    this.items.forEach(item => {
+                        this.areas.forEach(area => {
+                            item.difference[area] = item.end[area] - item.start[area];
+                        });
+                    });
+                    store.dispatch('saveItems');
+                },
+                saveData() {
+                    store.dispatch('saveItems');
+                },
+                openCategoryModal(category) {
+                    store.commit('setCategoryModal', { show: true, category });
+                },
+                closeCategoryModal() {
+                    store.commit('setCategoryModal', { show: false });
+                },
+                updateCategory() {
+                    if (this.modalCategory.trim() !== '') {
+                        store.commit('addCategory', this.modalCategory.trim());
+                        this.closeCategoryModal();
+                    }
+                },
+                openAreaModal(area) {
+                    store.commit('setAreaModal', { show: true, area });
+                },
+                closeAreaModal() {
+                    store.commit('setAreaModal', { show: false });
+                },
+                updateArea() {
+                    if (this.modalArea.trim() !== '') {
+                        store.commit('addArea', this.modalArea.trim());
+                        this.closeAreaModal();
+                    }
+                }
+            },
+            mounted() {
+                dbRequest.onsuccess = () => {
+                    store.dispatch('loadItems');
+                };
+            }
+        });
+        app.component('inventory-list', {
+            template: '#inventory-list',
+            data() {
+                return {
+                    showFormula: true,
+                };
+            },
+            computed: {
+                ...Vuex.mapState(['items', 'areas', 'currentPhase', 'notes']),
+            },
+            methods: {
+                ...Vuex.mapMutations(['setCurrentPhase']),
+                ...Vuex.mapActions(['saveItems']),
+                toggleView() {
+                    this.showFormula = !this.showFormula;
+                    if (!this.showFormula) {
+                        this.finalizeAllFormulas();
+                    }
+                },
+                switchToStartPhase() {
+                    this.setCurrentPhase('start');
+                    this.saveItems();
+                },
+                switchToEndPhase() {
+                    this.setCurrentPhase('end');
+                    this.items.forEach(item => {
+                        this.areas.forEach(area => {
+                            if (item.end[area] === 0) item.end[area] = item.start[area];
+                        });
+                    });
+                    this.saveItems();
+                },
+                switchToDifferencePhase() {
+                    this.setCurrentPhase('difference');
+                    this.items.forEach(item => {
+                        this.areas.forEach(area => {
+                            const startValue = this.evaluateFormula(item.start[area] || '0');
+                            const endValue = this.evaluateFormula(item.end[area] || '0');
+                            item.difference[area] = endValue - startValue;
+                        });
+                    });
+                    this.saveItems();
+                },
+                saveData() {
+                    this.saveItems();
+                },
+                exportToCSV() {
+                    const csvContent = 'data:text/csv;charset=utf-8,'
+                        + 'Name,Category,' + this.areas.map(area => `${area} Start,${area} End,${area} Difference`).join(',') + '\n'
+                        + this.items.map(item => `${item.name},${item.category},` + this.areas.map(area => `${item.start[area]},${item.end[area]},${item.difference[area]}`).join(',')).join('\n');
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement('a');
+                    link.setAttribute('href', encodedUri);
+                    link.setAttribute('download', 'inventory.csv');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                },
+                exportInventory() {
+                    const data = {
+                        items: this.items,
+                        categories: this.categories,
+                        areas: this.areas,
+                        notes: this.notes
+                    };
+                    const jsonContent = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data));
+                    const link = document.createElement('a');
+                    link.setAttribute('href', jsonContent);
+                    link.setAttribute('download', 'inventory.json');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);},
+                importInventory(event) {
+                    const file = event.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const data = JSON.parse(e.target.result);
+                        this.$store.commit('setItems', data.items || []);
+                        this.$store.state.categories = data.categories || [];
+                        this.$store.state.areas = data.areas || [];
+                        this.$store.commit('setNotes', data.notes || '');
+                        this.saveItems();
+                    };
+                    reader.readAsText(file);
+                },
+                updateFormula(item, area) {
+                    let formula = item[this.currentPhase][area];
+                    formula = formula.replace(/[^0-9+\-*/().]/g, ''); // Remove invalid characters
+                    item[this.currentPhase][area] = formula;
+                },
+                finalizeInput(item, area) {
+                    let formula = item[this.currentPhase][area];
+                    if (formula.length > 0 && !/[+\-*/()]$/.test(formula.slice(-1))) {
+                        formula += '+'; // Append "+" if the formula does not end with an operator or parentheses
+                    }
+                    item[this.currentPhase][area] = formula;
+                },
+                finalizeFormula(item, area) {
+                    let formula = item[this.currentPhase][area];
+                    if (formula.endsWith('+')) {
+                        formula = formula.slice(0, -1); // Remove the trailing "+"
+                    }
+                    item[this.currentPhase][area] = formula;
+                },
+                finalizeAllFormulas() {
+                    this.items.forEach(item => {
+                        this.areas.forEach(area => {
+                            this.finalizeFormula(item, area);
+                        });
+                    });
+                },
+                calculateSum(formula) {
+                    return this.evaluateFormula(formula);
+                },
+                evaluateFormula(formula) {
+                    try {
+                        return eval(formula.replace(/[^0-9+\-*/().]/g, '')) || 0;
+                    } catch {
+                        return 0;
+                    }
+                }
+            }
+        });
+        app.component('inventory-manage', {
+            template: '#inventory-manage',
+            computed: {
+                ...Vuex.mapState(['categories', 'areas', 'items', 'error', 'isCategoryValid', 'isAreaValid', 'isValid']),
+            },
+            data() {
+                return {
+                    newItem: {
+                        name: '',
+                        category: '',
+                        start: {},
+                        end: {},
+                        difference: {}
+                    },
+                    newCategory: '',
+                    newArea: ''
+                };
+            },
+            methods: {
+                ...Vuex.mapMutations(['validateCategoryInput', 'validateAreaInput', 'validateInput']),
+                ...Vuex.mapActions(['saveItems']),
+                addCategory() {
+                    if (this.newCategory.trim() !== '' && !this.categories.includes(this.newCategory.trim())) {
+                        this.$store.commit('addCategory', this.newCategory.trim());
+                        this.newCategory = '';
+                    }
+                },
+                removeCategory(index) {
+                    if (confirm('Are you sure you want to remove this category?')) {
+                        this.$store.commit('removeCategory', index);
+                    }
+                },
+                addArea() {
+                    if (this.newArea.trim() !== '' && !this.areas.includes(this.newArea.trim())) {
+                        this.$store.commit('addArea', this.newArea.trim());
+                        this.newArea = '';
+                    }
+                },
+                removeArea(index) {
+                    if (confirm('Are you sure you want to remove this area?')) {
+                        this.$store.commit('removeArea', index);
+                    }
+                },
+                addItem() {
+                    if (this.newItem.name && this.newItem.category) {
+                        const item = {
+                            ...this.newItem,
+                            start: {},
+                            end: {},
+                            difference: {}
+                        };
+                        this.areas.forEach(area => {
+                            item.start[area] = 0;
+                            item.end[area] = 0;
+                            item.difference[area] = 0;
+                        });
+                        this.$store.commit('addItem', item);
+                        this.saveItems();
+                        this.newItem = {
+                            name: '',
+                            category: '',
+                            start: {},
+                            end: {},
+                            difference: {}
+                        };
+                    }
+                },
+                editItem(index) {
+                    const item = this.items[index];
+                    this.$store.commit('editItem', { index, item });
+                    this.saveItems();
+                },
+                confirmDeleteItem(index) {
+                    if (confirm('Are you sure you want to delete this item?')) {
+                        this.deleteItem(index);
+                    }
+                },
+                deleteItem(index) {
+                    this.$store.commit('deleteItem', index);
+                    this.saveItems();
+                },
+                validateInput() {
+                    const isValid = this.newItem.name.trim() !== '' && this.newItem.category !== '';
+                    this.$store.commit('validateInput', isValid);
+                }
+            }
+        });
+        app.component('toast-message', {
+            template: '#toast-message',
+            props: ['message']
+        });
+        app.component('edit-category-modal', {
+            template: '#edit-category-modal',
+            computed: {
+                ...Vuex.mapState(['modalCategory']),
+            },
+            methods: {
+                ...Vuex.mapMutations(['setCategoryModal']),
+                updateCategory() {
+                    if (this.modalCategory.trim() !== '') {
+                        this.$store.commit('addCategory', this.modalCategory.trim());
+                        this.closeCategoryModal();
+                    }
+                },
+                closeCategoryModal() {
+                    this.setCategoryModal({ show: false });
+                }
+            }
+        });
+        app.component('edit-area-modal', {
+            template: '#edit-area-modal',
+            computed: {
+                ...Vuex.mapState(['modalArea']),
+            },
+            methods: {
+                ...Vuex.mapMutations(['setAreaModal']),
+                updateArea() {
+                    if (this.modalArea.trim() !== '') {
+                        this.$store.commit('addArea', this.modalArea.trim());
+                        this.closeAreaModal();
+                    }
+                },
+                closeAreaModal() {
+                    this.setAreaModal({ show: false });
+                }
+            }
+        });
+        app.use(store);
+        app.mount('#app');
+    </script>
+</body>
+</html>
