@@ -28,8 +28,9 @@ export function debounce<T extends (...args: any[]) => any>(func: T, delay: numb
         }
         timeoutId = setTimeout(() => {
             func.apply(this, args);
+            func.apply(context, args);
+            timeoutId = null;
         }, delay);
-    };
 }
 
 /**
