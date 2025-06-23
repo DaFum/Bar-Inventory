@@ -176,8 +176,12 @@ class IndexedDBService {
 
     if (data.state) {
         const stateStore = tx.objectStore('inventoryState');
-        // Assuming 'currentState' is the key for the single state object
-        await stateStore.put({ ...data.state, key: 'currentState' } as any);
+        // Define the shape of the object to be stored, matching the store's requirements
+        interface StoredInventoryStateForSave extends InventoryState {
+            key: string;
+        }
+        const stateToSave: StoredInventoryStateForSave = { ...data.state, key: 'currentState' };
+        await stateStore.put(stateToSave);
     }
 
     await tx.done;
@@ -244,5 +248,5 @@ async function testDB() {
 // Run the test function for demonstration if not in a production environment
 // Consider a more robust way to handle seeding/testing in a real app
 // if (process.env.NODE_ENV !== 'production') { // This check won't work directly in browser TS
-    testDB();
+    // testDB(); // Commented out: Should not run automatically. Call manually for testing/seeding.
 // }

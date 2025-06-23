@@ -23,12 +23,11 @@ export function debounce<T extends (...args: any[]) => any>(func: T, delay: numb
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     return function(this: ThisParameterType<T>, ...args: Parameters<T>) {
-        const context = this;
         if (timeoutId !== null) {
             clearTimeout(timeoutId);
         }
         timeoutId = setTimeout(() => {
-            func.apply(context, args);
+            func.apply(this, args);
         }, delay);
     };
 }
@@ -51,4 +50,4 @@ export function formatDate(date: Date, locale: string = 'de-DE'): string {
     });
 }
 
-console.log("Helper utilities loaded.");
+// console.log("Helper utilities loaded.");

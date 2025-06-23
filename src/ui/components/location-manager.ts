@@ -4,6 +4,16 @@ import { generateId } from '../../utils/helpers';
 import { exportService } from '../../services/export.service';
 import { showToast } from './toast-notifications';
 
+// Helper function to escape HTML characters
+function escapeHtml(unsafe: string): string {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // Store loaded locations in memory to avoid constant DB reads for UI rendering
 class LocationManagerState {
     loadedLocations: Location[] = [];
@@ -62,11 +72,11 @@ async function handleExportAllLocationsJson() {
     try {
         const dataToExport = {
             exportDate: new Date().toISOString(),
-            locations: loadedLocations
+            locations: state.loadedLocations
         };
         const jsonContent = JSON.stringify(dataToExport, null, 2);
         triggerDownload(jsonContent, 'alle_standorte_export.json', 'application/json;charset=utf-8;');
-        showToast(`${loadedLocations.length} Standort(e) erfolgreich als JSON exportiert.`, "success");
+        showToast(`${state.loadedLocations.length} Standort(e) erfolgreich als JSON exportiert.`, "success");
     } catch (error) {
         console.error("Fehler beim Exportieren aller Standorte:", error);
         showToast("Fehler beim JSON-Export aller Standorte.", "error");
@@ -91,26 +101,14 @@ async function loadAndRenderLocations(): Promise<void> {
     const listContainer = document.getElementById('location-list-container');
     if (!listContainer) return;
 
-    if (loadedLocations.length === 0) {
+    if (state.loadedLocations.length === 0) {
         listContainer.innerHTML = '<p>Noch keine Standorte erfasst. Fügen Sie einen neuen Standort hinzu.</p>';
         return;
     }
 
     listContainer.innerHTML = `
         <ul class="list-group" aria-label="Liste der Standorte">
-// Add this helper at the top of the file (or in a shared utils module)
-function escapeHtml(unsafe: string): string {
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-listContainer.innerHTML = `
-    <ul class="list-group" aria-label="Liste der Standorte">
-        ${loadedLocations.map(loc => `
+        ${state.loadedLocations.map(loc => `
             <li class="list-group-item">
                 <span id="loc-name-${loc.id}">${escapeHtml(loc.name)}</span>
                 <div>
@@ -131,16 +129,15 @@ listContainer.innerHTML = `
         `).join('')}
     </ul>
 `;
-    `;
 
     document.querySelectorAll('.edit-location-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const targetButton = e.target as HTMLElement;
             const locationId = targetButton.dataset.id;
             if (locationId) {
-                currentEditingLocation = loadedLocations.find(loc => loc.id === locationId) || null;
-                if (currentEditingLocation) {
-                    renderLocationDetails(currentEditingLocation);
+                state.currentEditingLocation = state.loadedLocations.find(loc => loc.id === locationId) || null;
+                if (state.currentEditingLocation) {
+                    renderLocationDetails(state.currentEditingLocation);
                     // Focus on the first interactive element in the details form/view
                     setTimeout(() => document.getElementById('edit-this-location-btn')?.focus(), 0);
                 }
@@ -152,7 +149,7 @@ listContainer.innerHTML = `
         btn.addEventListener('click', async (e) => {
             const targetButton = e.target as HTMLElement;
             const locationId = targetButton.dataset.id;
-            const locationName = loadedLocations.find(loc => loc.id === locationId)?.name || 'Unbekannter Standort';
+            const locationName = state.loadedLocations.find(loc => loc.id === locationId)?.name || 'Unbekannter Standort';
             if (locationId && confirm(`Standort "${locationName}" wirklich löschen? Alle zugehörigen Tresen und Bereiche werden ebenfalls entfernt.`)) {
                 await dbService.delete('locations', locationId);
                 await loadAndRenderLocations(); // Refresh list
@@ -175,7 +172,7 @@ function renderLocationForm(location?: Location): void {
     const detailsContainer = document.getElementById('location-details-container');
     if (!detailsContainer) return;
 
-    currentEditingLocation = location || null;
+    state.currentEditingLocation = location || null;
     const formTitleId = "location-form-title";
     detailsContainer.innerHTML = `
         <h3 id="${formTitleId}" class="panel-subtitle">${location ? 'Standort bearbeiten' : 'Neuen Standort erstellen'}</h3>
@@ -202,10 +199,10 @@ function renderLocationForm(location?: Location): void {
         const name = (document.getElementById('location-name') as HTMLInputElement).value;
         const address = (document.getElementById('location-address') as HTMLInputElement).value;
 
-        if (currentEditingLocation) { // Editing existing location
-            currentEditingLocation.name = name;
-            currentEditingLocation.address = address;
-            await dbService.saveLocation(currentEditingLocation);
+        if (state.currentEditingLocation) { // Editing existing location
+            state.currentEditingLocation.name = name;
+            state.currentEditingLocation.address = address;
+            await dbService.saveLocation(state.currentEditingLocation);
         } else { // Creating new location
             const newLocation: Location = {
                 id: generateId('loc'),
@@ -214,11 +211,11 @@ function renderLocationForm(location?: Location): void {
                 counters: []
             };
             await dbService.saveLocation(newLocation);
-            currentEditingLocation = newLocation; // Set for counter management
+            state.currentEditingLocation = newLocation; // Set for counter management
         }
         await loadAndRenderLocations(); // Refresh list
-        if (currentEditingLocation) { // If we just created or saved, re-render details for counter management
-            renderLocationDetails(currentEditingLocation);
+        if (state.currentEditingLocation) { // If we just created or saved, re-render details for counter management
+            renderLocationDetails(state.currentEditingLocation);
         } else {
              detailsContainer.style.display = 'none';
         }
@@ -226,7 +223,7 @@ function renderLocationForm(location?: Location): void {
 
     document.getElementById('cancel-location-edit')?.addEventListener('click', () => {
         detailsContainer.style.display = 'none';
-        currentEditingLocation = null;
+        state.currentEditingLocation = null;
     });
 
     if (location) {
@@ -241,7 +238,7 @@ function renderLocationForm(location?: Location): void {
  * Die Ansicht ermöglicht das Bearbeiten der Stammdaten sowie das Verwalten der Zähler des Standorts.
  */
 function renderLocationDetails(location: Location): void {
-    currentEditingLocation = location;
+    state.currentEditingLocation = location;
     const detailsContainer = document.getElementById('location-details-container');
     if (!detailsContainer) return;
 
@@ -265,7 +262,7 @@ function renderLocationDetails(location: Location): void {
 
     document.getElementById('close-location-details')?.addEventListener('click', () => {
         detailsContainer.style.display = 'none';
-        currentEditingLocation = null;
+        state.currentEditingLocation = null;
     });
 
     renderCountersManagement(location);
@@ -307,10 +304,10 @@ function renderCountersManagement(location: Location): void {
     document.querySelectorAll('.edit-counter-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const counterId = (e.target as HTMLElement).dataset.id;
-            currentEditingCounter = location.counters.find(c => c.id === counterId) || null;
-            if (currentEditingCounter) {
-                renderCounterForm(location, currentEditingCounter); // Show form for editing
-                renderAreasManagement(location, currentEditingCounter); // Show areas for this counter
+            state.currentEditingCounter = location.counters.find(c => c.id === counterId) || null;
+            if (state.currentEditingCounter) {
+                renderCounterForm(location, state.currentEditingCounter); // Show form for editing
+                renderAreasManagement(location, state.currentEditingCounter); // Show areas for this counter
                  document.getElementById('area-management-container')!.style.display = 'block';
             }
         });
@@ -342,7 +339,7 @@ function renderCounterForm(location: Location, counter?: Counter): void {
     const counterFormContainer = document.getElementById('counter-form-container');
     if (!counterFormContainer) return;
 
-    currentEditingCounter = counter || null;
+    state.currentEditingCounter = counter || null;
     counterFormContainer.innerHTML = `
         <h5>${counter ? 'Tresen bearbeiten' : 'Neuen Tresen erstellen'}</h5>
         <form id="counter-form">
@@ -367,24 +364,24 @@ function renderCounterForm(location: Location, counter?: Counter): void {
         const name = (document.getElementById('counter-name') as HTMLInputElement).value;
         const description = (document.getElementById('counter-description') as HTMLInputElement).value;
 
-        if (currentEditingCounter) { // Editing
-            currentEditingCounter.name = name;
-            currentEditingCounter.description = description;
+        if (state.currentEditingCounter) { // Editing
+            state.currentEditingCounter.name = name;
+            state.currentEditingCounter.description = description;
         } else { // Creating
             const newCounter: Counter = { id: generateId('ctr'), name, description, areas: [] };
             location.counters.push(newCounter);
-            currentEditingCounter = newCounter; // Set for area management
+            state.currentEditingCounter = newCounter; // Set for area management
         }
         await dbService.saveLocation(location);
         renderCountersManagement(location); // Re-render counter list
-        if(currentEditingCounter) renderAreasManagement(location, currentEditingCounter); // Refresh areas if context is set
+        if(state.currentEditingCounter) renderAreasManagement(location, state.currentEditingCounter); // Refresh areas if context is set
         counterFormContainer.style.display = 'none'; // Hide form after submit
     });
 
     document.getElementById('cancel-counter-edit')?.addEventListener('click', () => {
         counterFormContainer.style.display = 'none';
         document.getElementById('area-management-container')!.style.display = 'none';
-        currentEditingCounter = null;
+        state.currentEditingCounter = null;
     });
 }
 
@@ -400,7 +397,7 @@ function renderAreasManagement(location: Location, counter: Counter): void {
     const areasContainer = document.getElementById('area-management-container');
     if (!areasContainer) return;
 
-    currentEditingCounter = counter; // Ensure context is set
+    state.currentEditingCounter = counter; // Ensure context is set
 
     areasContainer.innerHTML = `
         <h5>Bereiche für Tresen: ${counter.name}</h5>
@@ -427,8 +424,8 @@ function renderAreasManagement(location: Location, counter: Counter): void {
     document.querySelectorAll('.edit-area-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const areaId = (e.target as HTMLElement).dataset.id;
-            currentEditingArea = counter.areas.find(a => a.id === areaId) || null;
-            if (currentEditingArea) renderAreaForm(location, counter, currentEditingArea);
+            state.currentEditingArea = counter.areas.find(a => a.id === areaId) || null;
+            if (state.currentEditingArea) renderAreaForm(location, counter, state.currentEditingArea);
         });
     });
 
@@ -454,7 +451,7 @@ function renderAreaForm(location: Location, counter: Counter, area?: Area): void
     const areaFormContainer = document.getElementById('area-form-container');
     if (!areaFormContainer) return;
 
-    currentEditingArea = area || null;
+    state.currentEditingArea = area || null;
     areaFormContainer.innerHTML = `
         <h6>${area ? 'Bereich bearbeiten' : 'Neuen Bereich erstellen'}</h6>
         <form id="area-form">
@@ -482,10 +479,10 @@ function renderAreaForm(location: Location, counter: Counter, area?: Area): void
         const description = (document.getElementById('area-description') as HTMLInputElement).value;
         const displayOrder = parseInt((document.getElementById('area-display-order') as HTMLInputElement).value) || undefined;
 
-        if (currentEditingArea) { // Editing
-            currentEditingArea.name = name;
-            currentEditingArea.description = description;
-            currentEditingArea.displayOrder = displayOrder;
+        if (state.currentEditingArea) { // Editing
+            state.currentEditingArea.name = name;
+            state.currentEditingArea.description = description;
+            state.currentEditingArea.displayOrder = displayOrder;
         } else { // Creating
             const newArea: Area = {
                 id: generateId('area'),
@@ -513,7 +510,7 @@ function renderAreaForm(location: Location, counter: Counter, area?: Area): void
 
     document.getElementById('cancel-area-edit')?.addEventListener('click', () => {
         areaFormContainer.style.display = 'none';
-        currentEditingArea = null;
+        state.currentEditingArea = null;
     });
 }
 
