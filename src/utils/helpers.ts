@@ -28,7 +28,7 @@ export function debounce<T extends (...args: any[]) => any>(func: T, delay: numb
         }
         timeoutId = setTimeout(() => {
             func.apply(this, args);
-            func.apply(context, args);
+            // Removed incorrect line: func.apply(context, args);
             timeoutId = null;
         }, delay);
 }
@@ -52,3 +52,7 @@ export function formatDate(date: Date, locale: string = 'de-DE'): string {
 }
 
 // console.log("Helper utilities loaded.");
+
+export const PREDEFINED_CATEGORIES = [
+    "Spirituose", "Bier", "Wein", "Softdrink", "Sirup", "Sonstiges"
+];

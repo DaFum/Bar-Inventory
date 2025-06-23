@@ -1,76 +1,190 @@
-import { dbService } from '../../services/indexeddb.service';
+// import { dbService } from '../../services/indexeddb.service'; // No longer needed directly for CRUD after store
 import { Product } from '../../models';
-import { generateId } from '../../utils/helpers';
+// import { generateId } from '../../utils/helpers'; // generateId is used by ProductFormComponent for new products
 import { showToast } from './toast-notifications';
 import { exportService } from '../../services/export.service';
-import { escapeHtml } from '../../utils/security';
 
-let productManagerContainer: HTMLElement | null = null;
-let loadedProducts: Product[] = [];
-let currentEditingProduct: Product | null = null;
+import { ProductFormComponent } from './product-form.component';
+import { ProductListComponent, ProductListItemCallbacks } from './product-list.component';
+import { productStore } from '../../state/product.store';
 
-// Categories could be dynamic in the future, for now, a predefined list
-const PREDEFINED_CATEGORIES = [
-    "Spirituose", "Bier", "Wein", "Softdrink", "Sirup", "Sonstiges"
-];
+let productManagerContainer: HTMLElement | null = null; // The main container for the product manager view
+// let loadedProducts: Product[] = []; // This is now managed by productStore
+
+// Component instances
+let productListComponent: ProductListComponent | null = null;
+let productFormComponent: ProductFormComponent | null = null;
 
 /**
  * Initialisiert die Produktkatalog-Verwaltung im angegebenen Container.
  *
- * Baut das UI für die Produktverwaltung auf, lädt und rendert die Produktliste, und richtet Event-Handler für das Hinzufügen neuer Produkte sowie den CSV-Export ein.
+ * Baut das UI für die Produktverwaltung auf, lädt die Produktliste über den Store,
+ * und richtet Event-Handler für das Hinzufügen neuer Produkte sowie den CSV-Export ein.
  *
- * @param container - Das HTML-Element, in dem die Produktverwaltung angezeigt werden soll
+ * @param outerContainer - Das HTML-Element, in dem die Produktverwaltung angezeigt werden soll
  */
-export async function initProductManager(container: HTMLElement): Promise<void> {
-    productManagerContainer = container; // Keep this if productManagerContainer is used elsewhere for direct manipulation
-    // The main container passed to initProductManager IS the productManagerContainer for this view.
-    container.innerHTML = `
+export async function initProductManager(outerContainer: HTMLElement): Promise<void> {
+    productManagerContainer = outerContainer;
+    productManagerContainer.innerHTML = `
         <section id="product-manager-content-wrapper" aria-labelledby="product-manager-main-title">
             <div class="panel">
                 <h2 id="product-manager-main-title" class="panel-title">Produktkatalog Verwalten</h2>
-                <div id="product-list-container" aria-live="polite"></div>
+                <div id="product-list-container-host" aria-live="polite"></div>
                 <button id="add-new-product-btn" class="btn btn-primary" aria-label="Neues Produkt zum Katalog hinzufügen">Neues Produkt hinzufügen</button>
             </div>
-            <section id="product-form-container" class="panel mt-4" style="display: none;" aria-labelledby="product-form-title" aria-live="assertive">
-                <!-- Form for adding/editing product will be rendered here -->
-            </section>
-            <!-- Panel footer will be injected here by the next block -->
-        </section>
-    `;
-
-    await loadAndRenderProducts();
-
-    // Inject panel footer for export button after main content is set up
-    const wrapper = document.getElementById('product-manager-content-wrapper');
-    if (wrapper) {
-        wrapper.insertAdjacentHTML('beforeend', `
+            <div id="product-form-container-host">
+                <!-- Form component will be appended here -->
+            </div>
             <div class="panel-footer mt-4 panel p-2">
                 <button id="export-products-csv-btn" class="btn btn-secondary">Produktkatalog als CSV exportieren</button>
             </div>
-        `);
-        document.getElementById('export-products-csv-btn')?.addEventListener('click', handleExportProductsCsv);
+        </section>
+    `;
+
+    const listContainerHost = productManagerContainer.querySelector<HTMLDivElement>('#product-list-container-host');
+    const formContainerHost = productManagerContainer.querySelector<HTMLDivElement>('#product-form-container-host');
+
+    if (!listContainerHost || !formContainerHost) {
+        console.error("Product manager host containers not found!");
+        return;
     }
 
-    document.getElementById('add-new-product-btn')?.addEventListener('click', () => {
-        renderProductForm();
-         setTimeout(() => document.getElementById('product-name')?.focus(), 0);
+    const listItemCallbacks: ProductListItemCallbacks = {
+        onEdit: handleEditProduct,
+        onDelete: handleDeleteProductRequest
+    };
+
+    productListComponent = new ProductListComponent([], listItemCallbacks); // Initial empty, will be populated by store
+    productListComponent.appendTo(listContainerHost);
+
+    productFormComponent = new ProductFormComponent({
+        onSubmit: handleProductFormSubmit,
+        onCancel: handleProductFormCancel
     });
-    // The duplicate injection and event listener for export-products-csv-btn was an error from a previous merge.
-    // It's correctly handled by the wrapper injection logic that follows the loadAndRenderProducts call.
+    productFormComponent.appendTo(formContainerHost);
+    productFormComponent.hide();
+
+    // Initial load and subscription
+    await initialLoadAndSubscribe();
+
+    const addNewProductBtn = productManagerContainer.querySelector<HTMLButtonElement>('#add-new-product-btn');
+    if (addNewProductBtn) {
+        addNewProductBtn.addEventListener('click', () => {
+            productFormComponent?.show(); // Show form for a new product
+        });
+    }
+
+    const exportCsvBtn = productManagerContainer.querySelector<HTMLButtonElement>('#export-products-csv-btn');
+    if (exportCsvBtn) {
+        exportCsvBtn.addEventListener('click', handleExportProductsCsv);
+    }
 }
 
 /**
- * Exportiert die aktuell geladenen Produkte als CSV-Datei.
- *
- * Zeigt eine Info-Benachrichtigung an, wenn keine Produkte vorhanden sind. Bei erfolgreichem Export wird eine Erfolgsnachricht angezeigt, andernfalls eine Fehlermeldung.
+ * Handles the "edit" action for a product.
+ * Shows the product form pre-filled with the given product's data.
+ * @param product - The product to be edited.
+ */
+function handleEditProduct(product: Product): void {
+    productFormComponent?.show(product);
+}
+
+/**
+ * Handles the "delete" action for a product.
+ * Confirms with the user, then calls the product store to delete the product.
+ * Shows toast notifications for success or failure.
+ * @param productId - The ID of the product to delete.
+ * @param productName - The name of the product, for the confirmation dialog.
+ */
+async function handleDeleteProductRequest(productId: string, productName: string): Promise<void> {
+    if (confirm(`Produkt "${productName}" wirklich löschen?`)) {
+        try {
+            await productStore.deleteProduct(productId);
+            showToast(`Produkt "${productName}" gelöscht.`, 'success');
+            productFormComponent?.hide(); // Hide form if it was showing the deleted product
+
+            const addNewButton = productManagerContainer?.querySelector<HTMLButtonElement>('#add-new-product-btn');
+            if (addNewButton) {
+                 setTimeout(() => addNewButton.focus(), 0);
+            }
+        } catch (error) {
+            console.error(`Error deleting product ${productId} via store:`, error);
+            showToast(`Fehler beim Löschen von Produkt "${productName}".`, 'error');
+        }
+    }
+}
+
+/**
+ * Handles the submission of the product form (create or update).
+ * Calls the appropriate product store method and shows toast notifications.
+ * @param productDataFromForm - The product data from the form.
+ * @throws Re-throws error if store operation fails, to notify the form component.
+ */
+async function handleProductFormSubmit(productDataFromForm: Product): Promise<void> {
+    // ProductFormComponent's handleSubmit generates an ID if it's a new product.
+    const isUpdating = !!productStore.getProducts().find(p => p.id === productDataFromForm.id);
+
+    try {
+        if (isUpdating) {
+            await productStore.updateProduct(productDataFromForm);
+            showToast(`Produkt "${productDataFromForm.name}" erfolgreich aktualisiert.`, 'success');
+        } else {
+            // ID should be guaranteed by ProductFormComponent for new products
+            await productStore.addProduct(productDataFromForm);
+            showToast(`Produkt "${productDataFromForm.name}" erfolgreich erstellt.`, 'success');
+        }
+        productFormComponent?.hide();
+        // The productListComponent is updated automatically via its subscription to productStore
+    } catch (error) {
+        console.error("Error saving product via store:", error);
+        showToast(`Fehler beim Speichern des Produkts "${productDataFromForm.name}".`, "error");
+        throw error; // Re-throw to let the form component know submission failed
+    }
+}
+
+/**
+ * Handles the cancellation of the product form. Hides the form.
+ */
+function handleProductFormCancel(): void {
+    productFormComponent?.hide();
+}
+
+/**
+ * Subscribes the ProductListComponent to the ProductStore and triggers initial product loading.
+ */
+async function initialLoadAndSubscribe(): Promise<void> {
+    if (!productListComponent) {
+        console.error("ProductListComponent not initialized for store subscription.");
+        return;
+    }
+    // Subscribe the list component to store updates.
+    // The productStore.subscribe method now immediately calls back with current products if any,
+    // or when products are loaded/modified.
+    // The setProducts method of ProductListComponent will handle rendering.
+    productStore.subscribe(productListComponent.setProducts.bind(productListComponent));
+
+    try {
+        // Trigger initial load. Store will notify subscribers (including productListComponent).
+        await productStore.loadProducts();
+    } catch (error) {
+        console.error("Error during initial product load via store:", error);
+        showToast("Fehler beim Laden der Produktliste.", "error");
+        // If store load fails, productListComponent will receive an empty list or whatever state store settles in.
+    }
+}
+
+/**
+ * Handles the CSV export of the current product catalog.
+ * Fetches products from the store and uses ExportService.
  */
 function handleExportProductsCsv(): void {
-    if (loadedProducts.length === 0) {
+    const currentProducts = productStore.getProducts(); // Get sorted products from store
+    if (currentProducts.length === 0) {
         showToast("Keine Produkte zum Exportieren vorhanden.", "info");
         return;
     }
     try {
-        exportService.exportProductsToCsv(loadedProducts);
+        exportService.exportProductsToCsv(currentProducts);
         showToast("Produktkatalog erfolgreich als CSV exportiert.", "success");
     } catch (error) {
         console.error("Fehler beim Exportieren des Produktkatalogs:", error);
@@ -78,215 +192,4 @@ function handleExportProductsCsv(): void {
     }
 }
 
-/**
- * Lädt die Produktliste aus der Datenbank, sortiert sie nach Kategorie und Name und aktualisiert die Anzeige.
- */
-async function loadAndRenderProducts(): Promise<void> {
-    loadedProducts = await dbService.loadProducts();
-    // Sort products by category, then by name for consistent display
-    loadedProducts.sort((a, b) => {
-        if (a.category.toLowerCase() < b.category.toLowerCase()) return -1;
-        if (a.category.toLowerCase() > b.category.toLowerCase()) return 1;
-        return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
-    });
-    renderProductList();
-}
-
-/**
- * Rendert die Produktliste im Katalogbereich oder zeigt einen Hinweis an, wenn keine Produkte vorhanden sind.
- *
- * Aktualisiert die Anzeige des Produktkatalogs als Tabelle mit Bearbeiten- und Löschen-Schaltflächen für jedes Produkt. Bei leerer Liste wird eine entsprechende Nachricht angezeigt. Die Funktion bindet Event-Handler für Bearbeiten und Löschen an die jeweiligen Schaltflächen.
- */
-function renderProductList(): void {
-    const listContainer = document.getElementById('product-list-container');
-    if (!listContainer) return;
-
-    if (loadedProducts.length === 0) {
-        listContainer.innerHTML = '<p>Noch keine Produkte im Katalog erfasst. Fügen Sie ein neues Produkt hinzu.</p>';
-        return;
-    }
-
-    listContainer.innerHTML = `
-        <table class="table-fixed w-full" aria-label="Produktkatalog">
-            <thead>
-                <tr>
-                    <th scope="col" class="w-1/4 px-4 py-2">Name</th>
-                    <th scope="col" class="w-1/4 px-4 py-2">Kategorie</th>
-                    <th scope="col" class="w-1/6 px-4 py-2">Volumen (ml)</th>
-                    <th scope="col" class="w-1/6 px-4 py-2">Preis/Flasche (€)</th>
-                    <th scope="col" class="w-1/4 px-4 py-2">Aktionen</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${loadedProducts.map(prod => `
-                    <tr class="border-b">
-                        <td class="px-4 py-2">${escapeHtml(prod.name)}</td>
-                        <td class="px-4 py-2">${escapeHtml(prod.category)}</td>
-                        <td class="px-4 py-2 text-right">${prod.volume}</td>
-                        <td class="px-4 py-2 text-right">${prod.pricePerBottle.toFixed(2)}</td>
-                        <td class="px-4 py-2">
-                            <button class="btn btn-sm btn-secondary edit-product-btn" data-id="${prod.id}" aria-label="Produkt ${escapeHtml(prod.name)} bearbeiten">Bearbeiten</button>
-                            <button class="btn btn-sm btn-danger delete-product-btn" data-id="${prod.id}" aria-label="Produkt ${escapeHtml(prod.name)} löschen">Löschen</button>
-                        </td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
-
-    document.querySelectorAll('.edit-product-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const targetButton = e.target as HTMLElement;
-            const productId = targetButton.dataset.id;
-            if (productId) {
-                currentEditingProduct = loadedProducts.find(p => p.id === productId) || null;
-                if (currentEditingProduct) {
-                    renderProductForm(currentEditingProduct);
-                     setTimeout(() => document.getElementById('product-name')?.focus(), 0);
-                }
-            }
-        });
-    });
-
-    document.querySelectorAll('.delete-product-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const targetButton = e.target as HTMLElement;
-            const productId = targetButton.dataset.id;
-            const productName = loadedProducts.find(p => p.id === productId)?.name || "Unbekanntes Produkt";
-            if (productId && confirm(`Produkt "${productName}" wirklich löschen?`)) {
-                await dbService.delete('products', productId);
-                await loadAndRenderProducts(); // Refresh list
-                document.getElementById('product-form-container')!.style.display = 'none';
-                showToast(`Produkt "${productName}" gelöscht.`, 'success');
-                setTimeout(() => document.getElementById('add-new-product-btn')?.focus(),0);
-            }
-        });
-    });
-}
-
-/**
- * Zeigt das Formular zum Erstellen oder Bearbeiten eines Produkts an.
- *
- * Das Formular wird mit den Daten des übergebenen Produkts vorausgefüllt, falls vorhanden, andernfalls für die Erstellung eines neuen Produkts vorbereitet. Es validiert Pflichtfelder und optionale Felder, speichert die Änderungen in der Datenbank und aktualisiert die Produktliste nach dem Speichern. Das Formular kann über einen Abbrechen-Button geschlossen werden.
- *
- * @param product - Optionales Produktobjekt zum Bearbeiten; wenn nicht angegeben, wird ein neues Produkt erstellt.
- */
-function renderProductForm(product?: Product): void {
-    const formContainer = document.getElementById('product-form-container');
-    if (!formContainer) return;
-
-    currentEditingProduct = product || null;
-    const formTitleId = "product-form-title";
-    formContainer.innerHTML = `
-        <h3 id="${formTitleId}" class="panel-subtitle">${product ? 'Produkt bearbeiten' : 'Neues Produkt erstellen'}</h3>
-        <form id="product-form" aria-labelledby="${formTitleId}">
-            <div class="form-group">
-                <label for="product-name">Name:</label>
-                <input type="text" id="product-name" value="${escapeHtml(product?.name)}" required class="form-control" aria-required="true">
-            </div>
-            <div class="form-group">
-                <label for="product-category">Kategorie:</label>
-                <select id="product-category" required class="form-control" aria-required="true">
-                    ${PREDEFINED_CATEGORIES.map(cat =>
-                        `<option value="${escapeHtml(cat)}" ${product?.category === cat ? 'selected' : ''}>${escapeHtml(cat)}</option>`
-                    ).join('')}
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="product-volume">Volumen (ml pro Flasche/Einheit):</label>
-                <input type="number" id="product-volume" value="${product?.volume || ''}" required min="0" class="form-control" aria-required="true">
-            </div>
-            <div class="form-group">
-                <label for="product-pricePerBottle">Preis pro Flasche/Einheit (€):</label>
-                <input type="number" id="product-pricePerBottle" value="${product?.pricePerBottle || ''}" required min="0" step="0.01" class="form-control" aria-required="true">
-            </div>
-            <div class="form-group">
-                <label for="product-itemsPerCrate">Flaschen/Einheiten pro Kasten (optional):</label>
-                <input type="number" id="product-itemsPerCrate" value="${product?.itemsPerCrate || ''}" min="0" class="form-control">
-            </div>
-            <div class="form-group">
-                <label for="product-pricePer100ml">Preis pro 100ml (optional, für offene Posten):</label>
-                <input type="number" id="product-pricePer100ml" value="${product?.pricePer100ml || ''}" min="0" step="0.01" class="form-control">
-            </div>
-             <div class="form-group">
-                <label for="product-supplier">Lieferant (optional):</label>
-                <input type="text" id="product-supplier" value="${escapeHtml(product?.supplier)}" class="form-control">
-            </div>
-            <div class="form-group">
-                <label for="product-imageUrl">Bild-URL (optional):</label>
-                <input type="url" id="product-imageUrl" value="${escapeHtml(product?.imageUrl)}" class="form-control">
-            </div>
-            <div class="form-group">
-                <label for="product-notes">Notizen (optional):</label>
-                <textarea id="product-notes" class="form-control" aria-label="Notizen zum Produkt">${escapeHtml(product?.notes)}</textarea>
-            </div>
-            <button type="submit" class="btn btn-success">${product ? 'Änderungen speichern' : 'Produkt erstellen'}</button>
-            <button type="button" id="cancel-product-edit" class="btn btn-secondary">Abbrechen</button>
-        </form>
-    `;
-    formContainer.style.display = 'block';
-
-    // const categorySelect = document.getElementById('product-category') as HTMLSelectElement;
-    // const customCategoryInput = document.getElementById('product-custom-category') as HTMLInputElement;
-    //     else customCategoryInput.required = false;
-    // });
-
-
-    document.getElementById('product-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = (document.getElementById('product-name') as HTMLInputElement).value;
-        // let category = (document.getElementById('product-category') as HTMLSelectElement).value;
-        // if (category === 'custom') {
-        //     category = (document.getElementById('product-custom-category') as HTMLInputElement).value;
-        // }
-        const category = (document.getElementById('product-category') as HTMLSelectElement).value;
-        const volume = parseFloat((document.getElementById('product-volume') as HTMLInputElement).value);
-        const pricePerBottle = parseFloat((document.getElementById('product-pricePerBottle') as HTMLInputElement).value);
-        const itemsPerCrateVal = (document.getElementById('product-itemsPerCrate') as HTMLInputElement).value.trim();
-        const itemsPerCrate = itemsPerCrateVal ? parseInt(itemsPerCrateVal) : undefined;
-        const pricePer100mlVal = (document.getElementById('product-pricePer100ml') as HTMLInputElement).value.trim();
-        const pricePer100ml = pricePer100mlVal ? parseFloat(pricePer100mlVal) : undefined;
-        const supplier = (document.getElementById('product-supplier') as HTMLInputElement).value || undefined;
-        const imageUrl = (document.getElementById('product-imageUrl') as HTMLInputElement).value || undefined;
-        const notes = (document.getElementById('product-notes') as HTMLTextAreaElement).value || undefined;
-
-
-        if (!name || !category || isNaN(volume) || isNaN(pricePerBottle) || volume <= 0 || pricePerBottle < 0) {
-            // Enhanced validation for required fields and positive values
-            alert("Bitte füllen Sie alle Pflichtfelder korrekt aus. Volumen muss größer als 0 sein und Preis darf nicht negativ sein.");
-            return;
-        }
-    
-        // Validate optional numeric fields
-        if ((itemsPerCrateVal && (isNaN(itemsPerCrate!) || itemsPerCrate! <= 0)) || 
-            (pricePer100mlVal && (isNaN(pricePer100ml!) || pricePer100ml! < 0))) {
-            alert("Bitte geben Sie gültige Werte für Flaschen pro Kasten und Preis pro 100ml ein.");
-            return;
-        }
-
-        const productData: Omit<Product, 'id'> = {
-            name, category, volume, pricePerBottle, itemsPerCrate, pricePer100ml, supplier, imageUrl, notes
-        };
-
-        if (currentEditingProduct) { // Editing existing product
-            const updatedProduct: Product = { ...currentEditingProduct, ...productData };
-            await dbService.saveProduct(updatedProduct);
-        } else { // Creating new product
-            const newProduct: Product = {
-                id: generateId('prod'),
-                ...productData
-            };
-            await dbService.saveProduct(newProduct);
-        }
-        await loadAndRenderProducts(); // Refresh list
-        formContainer.style.display = 'none';
-        currentEditingProduct = null;
-    });
-
-    document.getElementById('cancel-product-edit')?.addEventListener('click', () => {
-        formContainer.style.display = 'none';
-        currentEditingProduct = null;
-    });
-}
-
-console.log("Product Manager UI component loaded.");
+console.log("Product Manager UI now uses ProductStore.");

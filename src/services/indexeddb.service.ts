@@ -1,5 +1,6 @@
 import { DBSchema, openDB, IDBPDatabase } from 'idb';
 import { Product, Location, InventoryState, Counter, Area, InventoryEntry } from '../models';
+import { showToast } from '../ui/components/toast-notifications';
 
 const DATABASE_NAME = 'BarInventoryDB';
 const DATABASE_VERSION = 1;
@@ -31,6 +32,13 @@ class IndexedDBService {
 
   constructor() {
     this.dbPromise = openDB<BarInventoryDBSchema>(DATABASE_NAME, DATABASE_VERSION, {
+      /**
+       * Handles database schema upgrades.
+       * IMPORTANT: All schema changes and data migrations must be handled here
+       * in a forward-compatible manner. Add new `if (oldVersion < X)` blocks
+       * for each new version. Document migration steps carefully.
+       * (AGENTS.md: "IndexedDB upgrades must be forward-compatible; document migration plans for future schema changes.")
+       */
       upgrade(db, oldVersion, newVersion, transaction) {
         console.log(`Upgrading database from version ${oldVersion} to ${newVersion}`);
 
@@ -59,14 +67,19 @@ class IndexedDBService {
       },
       blocked() {
         console.error('IndexedDB blocked. Please close other tabs trying to access this database.');
-        // Potentially show a message to the user
+        // AGENTS.md: "Error Handling: Making sure errors are caught and handled gracefully."
+        // AGENTS.md: "Use user-facing notifications (`showToast`) for all user-triggered failures."
+        // Although this is not a user-triggered failure, it severely impacts user experience.
+        showToast('Datenbankzugriff blockiert. Bitte andere Tabs schließen.', 'error');
       },
       blocking() {
         console.warn('IndexedDB blocking. Database upgrade needed but other tabs are open.');
-        // db.close(); // Close this connection to allow others to upgrade
+        showToast('Datenbank-Update blockiert. Bitte andere Tabs der App schließen und neu laden.', 'warning');
+        // Potentially db.close(); here if it helps, but IDB Promised handles this.
       },
       terminated() {
         console.error('IndexedDB connection terminated unexpectedly.');
+        showToast('Datenbankverbindung unerwartet beendet. Bitte App neu laden.', 'error');
       }
     });
   }
@@ -158,6 +171,12 @@ class IndexedDBService {
 
   // Example of a more comprehensive "saveItems" that saves all current application data
   // This is a conceptual example; actual implementation will depend on how data is managed in the app's state.
+  /**
+   * Saves all provided application data (products, locations, state) to the database.
+   * WARNING: This method clears existing data in 'products' and 'locations' stores before writing.
+   * Ensure this destructive behavior is intended before calling.
+   * @param data - An object containing arrays of products and locations, and an optional inventory state.
+   */
   async saveAllApplicationData(data: { products: Product[], locations: Location[], state?: InventoryState }): Promise<void> {
     const db = await this.dbPromise;
     const tx = db.transaction(['products', 'locations', 'inventoryState'], 'readwrite');
@@ -201,52 +220,5 @@ class IndexedDBService {
 export const dbService = new IndexedDBService();
 console.log("IndexedDB Service initialized.");
 
-/**
- * Führt einen Testlauf des IndexedDB-Service durch, indem Produkte, Standorte und den Inventarstatus geladen, ggf. Beispieldaten angelegt und die Ergebnisse protokolliert werden.
- *
- * Diese Funktion dient Demonstrations- und Testzwecken und initialisiert die Datenbank bei Bedarf mit Beispielwerten.
- */
-async function testDB() {
-    try {
-        console.log("Testing IndexedDB Service...");
-
-        const initialProducts = await dbService.loadProducts();
-        console.log("Initial products:", initialProducts);
-
-        if (initialProducts.length === 0) {
-            console.log("Seeding initial data...");
-            const product1: Product = { id: 'prod001', name: 'Cola', category: 'Softdrink', volume: 330, pricePerBottle: 1.5 };
-            const product2: Product = { id: 'prod002', name: 'Premium Vodka', category: 'Spirituose', volume: 700, pricePerBottle: 25 };
-            await dbService.saveProduct(product1);
-            await dbService.saveProduct(product2);
-
-            const loc1_area1_item1: InventoryEntry = { productId: 'prod001', startBottles: 10, endBottles: 5 };
-            const loc1_area1_item2: InventoryEntry = { productId: 'prod002', startBottles: 2, startOpenVolumeMl: 300, endBottles: 1, endOpenVolumeMl: 600 };
-            const loc1_area1: Area = { id: 'area001', name: 'Kühlschrank Theke', inventoryItems: [loc1_area1_item1, loc1_area1_item2] };
-            const loc1_counter1: Counter = { id: 'counter001', name: 'Haupttheke', areas: [loc1_area1] };
-            const loc1: Location = { id: 'loc001', name: 'Meine Bar', counters: [loc1_counter1] };
-            await dbService.saveLocation(loc1);
-
-            const initialState: InventoryState = { currentLocationId: 'loc001', locations: [loc1], products: [product1, product2], unsyncedChanges: false };
-            await dbService.saveInventoryState(initialState);
-            console.log("Initial data seeded.");
-        }
-
-        const allData = await dbService.loadAllApplicationData();
-        console.log("All loaded data:", allData);
-
-        if (allData.products.length > 0) {
-            const firstProduct = await dbService.get('products', allData.products[0].id);
-            console.log("First product by ID:", firstProduct);
-        }
-
-    } catch (error) {
-        console.error("Error during DB test:", error);
-    }
-}
-
-// Run the test function for demonstration if not in a production environment
-// Consider a more robust way to handle seeding/testing in a real app
-// if (process.env.NODE_ENV !== 'production') { // This check won't work directly in browser TS
-    // testDB(); // Commented out: Should not run automatically. Call manually for testing/seeding.
-// }
+// The testDB() function and its call have been removed.
+// AGENTS.md: "Move demo/test routines to a dedicated test script or dev-only module."
