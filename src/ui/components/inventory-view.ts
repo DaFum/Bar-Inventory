@@ -42,7 +42,7 @@ export async function initInventoryView(container: HTMLElement): Promise<void> {
     `;
 
     // Load necessary data
-    [loadedLocations, loadedProducts] = await Promise.all([
+    [state.loadedLocations, state.loadedProducts] = await Promise.all([
         dbService.loadLocations(),
         dbService.loadProducts()
     ]);
