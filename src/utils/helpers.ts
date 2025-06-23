@@ -31,6 +31,7 @@ export function debounce<T extends (...args: any[]) => any>(func: T, delay: numb
             // Removed incorrect line: func.apply(context, args);
             timeoutId = null;
         }, delay);
+    }
 }
 
 /**
