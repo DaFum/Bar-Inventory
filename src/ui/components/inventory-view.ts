@@ -28,8 +28,6 @@ type InventoryPhase = 'start' | 'end' | 'consumption';
  *
  * @param container - Das HTML-Element, in dem die Inventuransicht angezeigt werden soll
  */
-let currentInventoryPhase: InventoryPhase = 'start';
-
 export async function initInventoryView(container: HTMLElement): Promise<void> {
     state.container = container;
     state.container.innerHTML = `
@@ -90,9 +88,9 @@ function renderSelectionBar(): void {
     const phaseToggleHTML = `
         <div class="flex items-center" role="group" aria-label="Inventurphase auswählen">
             <span id="phase-label" class="mr-2 font-semibold">Ansicht:</span>
-            <button id="phase-start-btn" class="btn btn-sm ${currentInventoryPhase === 'start' ? 'btn-primary' : 'btn-secondary'}" aria-pressed="${currentInventoryPhase === 'start'}" aria-labelledby="phase-label">Anfang</button>
-            <button id="phase-end-btn" class="btn btn-sm ${currentInventoryPhase === 'end' ? 'btn-primary' : 'btn-secondary'} ml-2" aria-pressed="${currentInventoryPhase === 'end'}" aria-labelledby="phase-label">Ende</button>
-            <button id="phase-consumption-btn" class="btn btn-sm ${currentInventoryPhase === 'consumption' ? 'btn-primary' : 'btn-secondary'} ml-2" aria-pressed="${currentInventoryPhase === 'consumption'}" aria-labelledby="phase-label">Verbrauch</button>
+            <button id="phase-start-btn" class="btn btn-sm ${state.currentPhase === 'start' ? 'btn-primary' : 'btn-secondary'}" aria-pressed="${state.currentPhase === 'start'}" aria-labelledby="phase-label">Anfang</button>
+            <button id="phase-end-btn" class="btn btn-sm ${state.currentPhase === 'end' ? 'btn-primary' : 'btn-secondary'} ml-2" aria-pressed="${state.currentPhase === 'end'}" aria-labelledby="phase-label">Ende</button>
+            <button id="phase-consumption-btn" class="btn btn-sm ${state.currentPhase === 'consumption' ? 'btn-primary' : 'btn-secondary'} ml-2" aria-pressed="${state.currentPhase === 'consumption'}" aria-labelledby="phase-label">Verbrauch</button>
         </div>
     `;
 
@@ -137,7 +135,7 @@ function renderSelectionBar(): void {
  * @param phase - Die zu aktivierende Inventurphase ('start', 'end' oder 'consumption')
  */
 function switchInventoryPhase(phase: InventoryPhase): void {
-    currentInventoryPhase = phase;
+    state.currentPhase = phase;
     renderSelectionBar(); // Re-render to update button styles
     if (selectedArea) {
         renderInventoryTable(); // Re-render table for the new phase
@@ -211,7 +209,7 @@ function renderInventoryTable(): void {
     // Ensure all products in the catalog are represented in the current area's inventory list
     prepareInventoryItemsForArea();
 
-    if (currentInventoryPhase === 'consumption') {
+    if (state.currentPhase === 'consumption') {
         renderConsumptionView(tableContainer, selectedArea);
     } else {
         renderEditableInventoryTable(tableContainer, selectedArea);
@@ -254,7 +252,7 @@ function prepareInventoryItemsForArea(): void {
      * @param area - Der aktuell ausgewählte Bereich, dessen Inventurdaten bearbeitet werden sollen
      */
     function renderEditableInventoryTable(tableContainer: HTMLElement, area: Area): void {
-    const phaseName = currentInventoryPhase === 'start' ? 'Schichtanfang' : 'Schichtende';
+    const phaseName = state.currentPhase === 'start' ? 'Schichtanfang' : 'Schichtende';
     const tableId = `inventory-table-${area.id.replace(/[^a-zA-Z0-9]/g, '')}`; // Create a unique ID for the table
     let tableHTML = `
         <h3 id="inventory-table-title" class="panel-subtitle">Inventur für: ${area.name} (${phaseName})</h3>
@@ -274,9 +272,9 @@ function prepareInventoryItemsForArea(): void {
         const product = loadedProducts.find(p => p.id === item.productId);
         if (!product) return;
 
-        const cratesKey = currentInventoryPhase === 'start' ? 'startCrates' : 'endCrates';
-        const bottlesKey = currentInventoryPhase === 'start' ? 'startBottles' : 'endBottles';
-        const openMlKey = currentInventoryPhase === 'start' ? 'startOpenVolumeMl' : 'endOpenVolumeMl';
+        const cratesKey = state.currentPhase === 'start' ? 'startCrates' : 'endCrates';
+        const bottlesKey = state.currentPhase === 'start' ? 'startBottles' : 'endBottles';
+        const openMlKey = state.currentPhase === 'start' ? 'startOpenVolumeMl' : 'endOpenVolumeMl';
 
         // Unique IDs for inputs for better label association if needed, though implicit association is often okay for tables
         const crateInputId = `${cratesKey}-${product.id}-${index}`;
@@ -402,7 +400,7 @@ function renderInventoryActions(): void {
     if (!actionsContainer) return;
 
     // Show save/fill buttons only if not in consumption view
-    if (currentInventoryPhase === 'start' || currentInventoryPhase === 'end') {
+    if (state.currentPhase === 'start' || state.currentPhase === 'end') {
         actionsContainer.innerHTML = `
             <button id="save-inventory-btn" class="btn btn-success">Inventur Speichern</button>
             <button id="fill-defaults-btn" class="btn btn-info ml-2">Alles voll (Standardwerte)</button>
@@ -455,9 +453,9 @@ function fillDefaultValues(): void {
         const product = loadedProducts.find(p => p.id === item.productId);
         if (!product) return;
 
-        const cratesKey = currentInventoryPhase === 'start' ? 'startCrates' : 'endCrates';
-        const bottlesKey = currentInventoryPhase === 'start' ? 'startBottles' : 'endBottles';
-        const openMlKey = currentInventoryPhase === 'start' ? 'startOpenVolumeMl' : 'endOpenVolumeMl';
+        const cratesKey = state.currentPhase === 'start' ? 'startCrates' : 'endCrates';
+        const bottlesKey = state.currentPhase === 'start' ? 'startBottles' : 'endBottles';
+        const openMlKey = state.currentPhase === 'start' ? 'startOpenVolumeMl' : 'endOpenVolumeMl';
 
         // Logic for "full":
         // If itemsPerCrate is defined, one full crate, zero loose bottles, zero open.
@@ -526,7 +524,7 @@ async function saveCurrentInventory(): Promise<void> {
     // We just need to save the `selectedLocation` object which contains the modified area.
     try {
         await dbService.saveLocation(selectedLocation);
-        showToast(`Inventur für ${selectedArea.name} (${currentInventoryPhase === 'start' ? 'Anfang' : 'Ende'}) gespeichert!`, 'success');
+        showToast(`Inventur für ${selectedArea.name} (${state.currentPhase === 'start' ? 'Anfang' : 'Ende'}) gespeichert!`, 'success');
     } catch (error) {
         console.error("Fehler beim Speichern der Inventur:", error);
         showToast("Fehler beim Speichern der Inventur.", 'error');
