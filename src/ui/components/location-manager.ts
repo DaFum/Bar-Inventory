@@ -240,12 +240,15 @@ async function handleLocationFormSubmit(locationData: Pick<Location, 'id' | 'nam
  * Wenn eine bestehende Location bearbeitet wurde, wird die Detailansicht erneut angezeigt. Beim Abbruch eines neuen Standorts wird der Detailbereich ausgeblendet.
  */
 function handleLocationFormCancel(): void {
-    if (locationFormComponent) locationFormComponent.hide();
+    locationFormComponent?.hide();
     if (activeLocation) { // If cancelling an edit, show details view again
         showLocationDetails(activeLocation);
     } else { // If cancelling an "add new", just hide the detail section
-        if (detailSectionHost) detailSectionHost.style.display = 'none';
+        if (detailSectionHost) {
+            detailSectionHost.style.display = 'none';
+        }
     }
+}
 }
 
 
