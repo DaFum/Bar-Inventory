@@ -1,3 +1,5 @@
+import { Chart } from 'chart.js';
+
 const THEME_KEY = 'app-theme';
 const DARK_MODE_CLASS = 'dark-mode';
 
