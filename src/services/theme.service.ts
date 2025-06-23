@@ -52,12 +52,15 @@ export class ThemeService {
         // This might involve re-rendering charts with new color options.
         // For now, CSS overrides for chart text colors are in style.css
         // A more robust solution would be to update Chart.defaults or specific chart instances.
+        // TODO: AGENTS.md - "Refactor chart theming to use CSS variables or context, not just global JS defaults."
+        // The current approach of modifying Chart.defaults globally can be brittle.
         this.updateChartDefaults();
     }
 
     private updateChartDefaults(): void {
         // This is a global override. More specific chart updates might be needed.
         // Chart.js v3+ uses `Chart.defaults.color`, `Chart.defaults.borderColor`, etc.
+        // AGENTS.md: Consider refactoring to avoid global Chart.js default modification.
         const isDark = this.currentTheme === 'dark';
         const fontColor = isDark ? '#e0e0e0' : '#333';
         const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
