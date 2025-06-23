@@ -85,6 +85,9 @@ export function calculateSingleItemConsumption(entry: InventoryEntry, product: P
     // If a "bottle" is the unit of sale and inventory, then consumedUnits might be consumedVolumeMl / product.volume.
     if (product.volume > 0) { // Avoid division by zero
       consumedUnits = consumedVolumeMl / product.volume; // Number of "standard units" (e.g. bottles)
+    } else {
+      // If volume is zero or negative, keep consumedUnits equal to consumedVolumeMl
+      notes.push("Invalid product volume detected. Using raw volume for consumption units.");
     }
 
 
