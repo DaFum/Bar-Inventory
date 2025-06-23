@@ -15,7 +15,7 @@ let currentView: ViewName = 'inventory'; /**
  * @param container - Das HTML-Element, in dem die Hauptanwendung aufgebaut wird
  */
 
-export function exampleAppSetup(container: HTMLElement): void {
+export function initializeApp(container: HTMLElement): void {
     appContainer = container;
     renderLayout();
     navigateTo(currentView); // Navigate to default view
