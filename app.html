@@ -486,11 +486,57 @@
                 calculateDifference({ state }) {
                     function evalFormula(f) {
                         try {
-                            return Function('return (' + (f || '0').replace(/[^0-9+\-*/().]/g, '') + ')')();
+                            // Simple math expression evaluator
+                            const sanitized = (f || '0').replace(/[^0-9+\-*/().]/g, '');
+                            // Use a safer approach than Function constructor
+                            const tokens = sanitized.match(/(\d+(\.\d+)?|\+|\-|\*|\/|\(|\))/g) || ['0'];
+                            const rpn = [];
+                            const operators = [];
+                            const precedence = {'+': 1, '-': 1, '*': 2, '/': 2};
+            
+                            for (const token of tokens) {
+                                if (!isNaN(parseFloat(token))) {
+                                    rpn.push(parseFloat(token));
+                                } else if (token === '(') {
+                                    operators.push(token);
+                                } else if (token === ')') {
+                                    while (operators.length && operators[operators.length-1] !== '(') {
+                                        rpn.push(operators.pop());
+                                    }
+                                    operators.pop(); // Remove '('
+                                } else {
+                                    while (operators.length && operators[operators.length-1] !== '(' && 
+                                           precedence[operators[operators.length-1]] >= precedence[token]) {
+                                        rpn.push(operators.pop());
+                                    }
+                                    operators.push(token);
+                                }
+                            }
+            
+                            while (operators.length) {
+                                rpn.push(operators.pop());
+                            }
+            
+                            const stack = [];
+                            for (const token of rpn) {
+                                if (typeof token === 'number') {
+                                    stack.push(token);
+                                } else {
+                                    const b = stack.pop() || 0;
+                                    const a = stack.pop() || 0;
+                                    if (token === '+') stack.push(a + b);
+                                    else if (token === '-') stack.push(a - b);
+                                    else if (token === '*') stack.push(a * b);
+                                    else if (token === '/') stack.push(b !== 0 ? a / b : 0);
+                                }
+                            }
+            
+                            return stack.pop() || 0;
                         } catch {
                             return 0;
                         }
                     }
+    
                     state.items.forEach(item => {
                         state.areas.forEach(area => {
                             const startVal = evalFormula(item.start[area]);
