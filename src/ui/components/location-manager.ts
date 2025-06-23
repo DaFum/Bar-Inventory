@@ -48,11 +48,12 @@ async function handleExportAllLocationsJson() {
         return;
     }
     try {
-        // For simplicity, exporting each location to a separate file.
-        // A single file with all locations might also be an option.
-        loadedLocations.forEach(loc => {
-            exportService.exportLocationToJson(loc);
-        });
+        const dataToExport = {
+            exportDate: new Date().toISOString(),
+            locations: loadedLocations
+        };
+        const jsonContent = JSON.stringify(dataToExport, null, 2);
+        triggerDownload(jsonContent, 'alle_standorte_export.json', 'application/json;charset=utf-8;');
         showToast(`${loadedLocations.length} Standort(e) erfolgreich als JSON exportiert.`, "success");
     } catch (error) {
         console.error("Fehler beim Exportieren aller Standorte:", error);
