@@ -57,9 +57,15 @@ export class CounterListItemComponent extends BaseComponent<HTMLDivElement> {
 
         const editButton = document.createElement('button');
         editButton.className = 'btn btn-xs btn-secondary edit-counter-btn';
-        editButton.textContent = 'Tresen bearbeiten/Bereiche';
+        editButton.textContent = 'Tresen bearbeiten';
         editButton.addEventListener('click', () => {
             this.callbacks.onEditCounter(this.counter); // Opens CounterForm via parent manager
+        });
+
+        const manageAreasButton = document.createElement('button');
+        manageAreasButton.className = 'btn btn-xs btn-info manage-areas-btn ml-2';
+        manageAreasButton.textContent = 'Bereiche verwalten';
+        manageAreasButton.addEventListener('click', () => {
             this.toggleAreasManagementVisibility(!this.isAreaManagementVisible);
         });
 
