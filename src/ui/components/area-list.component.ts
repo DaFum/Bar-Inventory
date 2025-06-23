@@ -52,10 +52,8 @@ export class AreaListComponent extends BaseComponent<HTMLDivElement> {
     private renderFullList(): void {
         if (this.areas.length === 0) {
             this.element.innerHTML = '<p>Noch keine Bereiche für diesen Tresen erfasst.</p>';
-            if (this.listHostDiv && this.listHostDiv.isConnected) {
-                this.listHostDiv.remove();
-            }
-            this.listHostDiv = undefined as any;
+            this.listHostDiv?.remove();
+            this.listHostDiv = null!;
             this.listItemComponents.clear();
             return;
         }
