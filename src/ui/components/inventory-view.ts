@@ -437,7 +437,12 @@ function handleInventoryInputChange(event: Event): void {
 
     const inventoryItem = selectedArea.inventoryItems.find(item => item.productId === productId);
     if (inventoryItem) {
-        (inventoryItem[field] as any) = value; // Update the in-memory model
+        if (inventoryItem) {
+            // Ensure field is a numeric field before assignment
+            if (field in inventoryItem && typeof inventoryItem[field] === 'number') {
+                (inventoryItem as any)[field] = value;
+            }
+        }
         console.log(`Updated ${productId} - ${field} to ${value}`);
         // No immediate save to DB here; save happens on "Save Inventory" button click
         // This is to allow multiple changes before a transaction.
