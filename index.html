@@ -1,33 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de" data-theme="light"> <!-- Added data-theme for potential CSS hooks -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bar Inventory Management</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css">
-    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.35/dist/vue.global.js"></script>
+    <title>Inventur-App für Bars</title>
+    <!-- Placeholder for styles -->
+    <link rel="stylesheet" href="css/style.css">
+    <meta name="description" content="Inventur-App für Bars zur schnellen Bestandsaufnahme.">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <!-- Theme color for PWA -->
+    <meta name="theme-color" content="#333333">
 </head>
-<body class="bg-base-200">
-    <div id="app" class="container mx-auto my-8 text-center">
-        <h1 class="text-3xl font-bold mb-4">Welcome to the Bar Inventory Management System</h1>
-        <button @click="navigate('app')" class="btn btn-primary mb-4">Bar Inventory App</button>
-        <button @click="navigate('instruction')" class="btn btn-secondary">Instruction</button>
-    </div>
-
-    <script>
-        const { createApp } = Vue;
-
-        createApp({
-            methods: {
-                navigate(page) {
-                    if (page === 'app') {
-                        window.location.href = 'app.html';
-                    } else if (page === 'instruction') {
-                        window.location.href = 'instruction.html';
-                    }
-                }
-            }
-        }).mount('#app');
-    </script>
+<body>
+    <header>
+        <h1>Inventur-App</h1>
+    </header>
+    <main id="app-container">
+        <!-- App content will be rendered here by JavaScript -->
+        <p>Lade App...</p>
+    </main>
+    <footer>
+        <p>&copy; 2024 Inventur-App</p>
+    </footer>
+    <!-- Main application script -->
+    <script type="module" src="dist/app.js"></script>
 </body>
 </html>
