@@ -10,9 +10,9 @@ let appContainer: HTMLElement | null = null;
 // Current active view
 type ViewName = 'locations' | 'products' | 'inventory' | 'analytics' | 'settings'; // Added 'analytics'
 let currentView: ViewName = 'inventory'; /**
- * Initialisiert das Haupt-UI im angegebenen Container und zeigt die Standardansicht an.
+ * Initialisiert die Benutzeroberfläche der Anwendung im angegebenen Container und lädt die Startansicht.
  *
- * @param container - Das HTML-Element, in dem die Anwendung gerendert werden soll
+ * @param container - Das HTML-Element, in dem die Hauptanwendung aufgebaut wird
  */
 
 export function exampleAppSetup(container: HTMLElement): void {
@@ -22,9 +22,9 @@ export function exampleAppSetup(container: HTMLElement): void {
 }
 
 /**
- * Rendert das Hauptlayout der Anwendung im App-Container, einschließlich Navigationsleiste, Themenumschalter und Inhaltsbereich.
+ * Rendert das Hauptlayout der Anwendung mit Navigationsleiste, Theme-Umschalter und Inhaltsbereich im App-Container.
  *
- * Fügt Event-Listener zu den Navigations- und Theme-Buttons hinzu, um zwischen Ansichten zu wechseln und das Farbschema zu ändern.
+ * Initialisiert die Navigations- und Theme-Buttons mit Event-Listenern, um Ansichtswechsel und das Umschalten des Farbschemas zu ermöglichen.
  */
 function renderLayout(): void {
     if (!appContainer) return;
@@ -64,9 +64,9 @@ function renderLayout(): void {
 }
 
 /**
- * Wechselt zur angegebenen Ansicht und initialisiert deren Inhalt im Hauptbereich.
+ * Navigiert zur angegebenen Ansicht und lädt den entsprechenden Inhalt in den Hauptbereich.
  *
- * @param viewName - Der Name der Zielansicht, zu der navigiert werden soll
+ * @param viewName - Name der Zielansicht, die angezeigt werden soll
  */
 function navigateTo(viewName: ViewName): void {
     currentView = viewName;
@@ -103,7 +103,7 @@ function navigateTo(viewName: ViewName): void {
 }
 
 /**
- * Aktualisiert die Navigationsleiste, sodass die Schaltfläche der aktuell aktiven Ansicht hervorgehoben wird.
+ * Hebt die Navigationsschaltfläche der aktuell aktiven Ansicht hervor und entfernt die Hervorhebung von allen anderen.
  */
 function updateActiveNavButton(): void {
     document.querySelectorAll('#main-nav .nav-button').forEach(button => {

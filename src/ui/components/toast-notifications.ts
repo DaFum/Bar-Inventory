@@ -1,7 +1,7 @@
 let toastContainer: HTMLElement | null = null;
 
 /**
- * Stellt sicher, dass ein Container-Element für Toast-Benachrichtigungen im DOM vorhanden ist, und gibt dieses zurück.
+ * Stellt sicher, dass ein Container-Element für Toast-Benachrichtigungen im DOM existiert und gibt dieses zurück.
  *
  * Erstellt das Container-Element bei Bedarf und fügt es dem Dokument hinzu.
  *
@@ -27,11 +27,11 @@ function ensureToastContainer(): HTMLElement {
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 /**
- * Zeigt eine Toast-Benachrichtigung mit einer Nachricht, einem Typ und einer optionalen Anzeigedauer an.
+ * Blendet eine Toast-Benachrichtigung mit angegebener Nachricht, Typ und optionaler Anzeigedauer auf der Webseite ein.
  *
- * @param message - Die anzuzeigende Nachricht im Toast
- * @param type - Der Typ der Benachrichtigung (z. B. 'success', 'error', 'info', 'warning')
- * @param duration - Die Anzeigedauer in Millisekunden (Standard: 3000)
+ * @param message - Die im Toast anzuzeigende Nachricht.
+ * @param type - Der Typ der Benachrichtigung; steuert die Farbe und das Symbol des Toasts.
+ * @param duration - Die Anzeigedauer in Millisekunden, bevor der Toast automatisch ausgeblendet wird (Standard: 3000).
  */
 export function showToast(message: string, type: ToastType = 'info', duration: number = 3000): void {
     const container = ensureToastContainer();

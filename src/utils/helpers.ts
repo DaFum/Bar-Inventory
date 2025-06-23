@@ -13,11 +13,11 @@ export function generateId(prefix: string = 'id'): string {
 }
 
 /**
- * Gibt eine entprellte Version der übergebenen Funktion zurück, die erst nach Ablauf der angegebenen Verzögerung seit dem letzten Aufruf ausgeführt wird.
+ * Gibt eine entprellte Version der angegebenen Funktion zurück, die erst nach Ablauf der angegebenen Verzögerung nach dem letzten Aufruf ausgeführt wird.
  *
- * @param func - Die zu entprellende Funktion
- * @param delay - Die Verzögerung in Millisekunden
- * @returns Die entprellte Funktion
+ * @param func - Die Funktion, die entprellt werden soll
+ * @param delay - Die Wartezeit in Millisekunden nach dem letzten Aufruf, bevor die Funktion ausgeführt wird
+ * @returns Eine neue Funktion, die das Entprellen übernimmt
  */
 export function debounce<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;

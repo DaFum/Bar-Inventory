@@ -29,7 +29,11 @@ let detailSectionHost: HTMLElement | null = null; // Hosts LocationForm or the c
 let countersManagementHost: HTMLElement | null = null; // Specifically for CounterList and CounterForm
 
 /**
- * Initialisiert die Standortverwaltung.
+ * Initialisiert die Benutzeroberfläche zur Verwaltung von Standorten, Zählern und Bereichen im angegebenen Container.
+ *
+ * Baut die Hauptstruktur der Standortverwaltung auf, richtet Komponenten für Listen- und Formularansichten ein, abonniert den zentralen Store zur Synchronisierung der UI und bindet Event-Handler für das Hinzufügen und Exportieren von Standorten.
+ *
+ * @param container - Das HTML-Element, in dem die Standortverwaltung angezeigt werden soll
  */
 export async function initLocationManager(container: HTMLElement): Promise<void> {
     locationManagerViewContainer = container;
@@ -123,6 +127,13 @@ export async function initLocationManager(container: HTMLElement): Promise<void>
     locationManagerViewContainer.querySelector<HTMLButtonElement>('#export-all-locations-json-btn')?.addEventListener('click', handleExportAllLocationsJson);
 }
 
+/**
+ * Zeigt die Detailansicht für einen ausgewählten Standort an, einschließlich Stammdaten, Bearbeitungsoption und Verwaltung der zugehörigen Zähler.
+ *
+ * Die Detailansicht enthält Standortname, Adresse, einen Button zum Bearbeiten der Stammdaten, eine Übersicht der Zähler sowie einen Schließen-Button. Die Ansicht wird im Detailbereich angezeigt und überschreibt vorherigen Inhalt.
+ *
+ * @param location - Der anzuzeigende Standort
+ */
 function showLocationDetails(location: Location): void {
     activeLocation = location;
     if (!detailSectionHost) return;
@@ -169,6 +180,11 @@ function showLocationDetails(location: Location): void {
     detailSectionHost.appendChild(closeButton);
 }
 
+/**
+ * Löscht einen Standort nach Benutzerbestätigung zusammen mit allen zugehörigen Tresen und Bereichen.
+ *
+ * Zeigt eine Erfolgsmeldung bei erfolgreicher Löschung oder eine Fehlermeldung bei einem Fehler an. Blendet die Detailansicht aus, falls der gelöschte Standort gerade angezeigt wurde.
+ */
 async function handleDeleteLocation(locationId: string, locationName: string): Promise<void> {
     if (confirm(`Standort "${locationName}" wirklich löschen? Alle zugehörigen Tresen und Bereiche werden ebenfalls entfernt.`)) {
         try {
@@ -184,6 +200,13 @@ async function handleDeleteLocation(locationId: string, locationName: string): P
     }
 }
 
+/**
+ * Verarbeitet das Absenden des Standort-Formulars zum Erstellen oder Bearbeiten eines Standorts.
+ *
+ * Erstellt einen neuen Standort oder aktualisiert einen bestehenden im Store und zeigt anschließend die Detailansicht des Standorts an. Bei Fehlern wird eine Fehlermeldung angezeigt und der Fehler weitergegeben.
+ *
+ * @param locationData - Die Daten des Standorts (ID, Name, Adresse), die hinzugefügt oder aktualisiert werden sollen.
+ */
 async function handleLocationFormSubmit(locationData: Pick<Location, 'id' | 'name' | 'address'>): Promise<void> {
     try {
         let newOrUpdatedLocation: Location;
@@ -211,6 +234,11 @@ async function handleLocationFormSubmit(locationData: Pick<Location, 'id' | 'nam
     }
 }
 
+/**
+ * Bricht das Bearbeiten oder Hinzufügen eines Standorts ab und stellt die vorherige Ansicht wieder her.
+ *
+ * Wenn eine bestehende Location bearbeitet wurde, wird die Detailansicht erneut angezeigt. Beim Abbruch eines neuen Standorts wird der Detailbereich ausgeblendet.
+ */
 function handleLocationFormCancel(): void {
     if (locationFormComponent) locationFormComponent.hide();
     if (activeLocation) { // If cancelling an edit, show details view again
@@ -221,6 +249,13 @@ function handleLocationFormCancel(): void {
 }
 
 
+/**
+ * Rendert die Tresenverwaltung für einen bestimmten Standort im UI.
+ *
+ * Zeigt die Liste der Tresen (Counter) des angegebenen Standorts an und ermöglicht das Hinzufügen, Bearbeiten und Löschen von Tresen über entsprechende Komponenten und Buttons.
+ *
+ * @param location - Der Standort, dessen Tresen angezeigt und verwaltet werden sollen.
+ */
 function renderCountersForLocation(location: Location): void {
     if (!countersManagementHost) { // Should have been created by showLocationDetails
         console.error("Counters management host not found for location:", location.name);
@@ -269,6 +304,14 @@ function renderCountersForLocation(location: Location): void {
     }
 }
 
+/**
+ * Verarbeitet das Absenden des Tresen-Formulars für Hinzufügen oder Bearbeiten eines Tresens im aktuell aktiven Standort.
+ *
+ * Löst je nach Modus das Hinzufügen eines neuen Tresens oder das Aktualisieren eines bestehenden Tresens im Standort aus. Zeigt Erfolgs- oder Fehlermeldungen an und blendet das Formular nach erfolgreicher Aktion aus.
+ *
+ * @param counterData - Die Daten des Tresens (ID, Name, Beschreibung), die hinzugefügt oder aktualisiert werden sollen.
+ * @throws Wenn kein aktiver Standort ausgewählt ist oder beim Speichern ein Fehler auftritt.
+ */
 async function handleCounterFormSubmit(counterData: Pick<Counter, 'id' | 'name' | 'description'>): Promise<void> {
     if (!activeLocation) {
         showToast("Kein aktiver Standort ausgewählt, um Tresen zu speichern.", "error");
@@ -297,6 +340,11 @@ async function handleCounterFormSubmit(counterData: Pick<Counter, 'id' | 'name' 
     }
 }
 
+/**
+ * Löscht einen Tresen (Counter) und alle zugehörigen Bereiche nach Benutzerbestätigung.
+ *
+ * Zeigt eine Bestätigungsabfrage an und entfernt bei Zustimmung den angegebenen Tresen aus dem Standort. Bei Erfolg oder Fehler wird eine entsprechende Benachrichtigung angezeigt. Ist das gelöschte Tresen-Formular gerade geöffnet, wird es geschlossen.
+ */
 async function handleDeleteCounter(locationId: string, counterId: string, counterName: string): Promise<void> {
     if (confirm(`Tresen "${counterName}" wirklich löschen? Alle zugehörigen Bereiche werden ebenfalls entfernt.`)) {
         try {
@@ -311,6 +359,11 @@ async function handleDeleteCounter(locationId: string, counterId: string, counte
     }
 }
 
+/**
+ * Exportiert alle vorhandenen Standorte als JSON-Datei.
+ *
+ * Erstellt eine JSON-Datei mit allen gespeicherten Standorten und dem Exportdatum und startet den Download. Zeigt eine Benachrichtigung an, wenn keine Standorte vorhanden sind oder ein Fehler auftritt.
+ */
 async function handleExportAllLocationsJson() {
     const locations = locationStore.getLocations();
     if (locations.length === 0) {
