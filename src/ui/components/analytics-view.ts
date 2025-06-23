@@ -16,7 +16,7 @@ let costChart: Chart | null = null;
 /**
  * Initialisiert die Analytics-Ansicht im angegebenen Container für interaktive Verbrauchs- und Kostenberichte.
  *
- * Erstellt die Benutzeroberfläche mit Auswahlfeldern für Standort, Tresen und Bereich sowie einen Button zur Berichtsgenerierung. Lädt Standorte und Produkte aus der Datenbank, befüllt die Auswahlfelder, bindet Event-Listener und initialisiert die Diagramme mit leeren Daten.
+ * Erstellt die Benutzeroberfläche mit Auswahlfeldern für Standort, Tresen und Bereich, lädt relevante Daten aus der Datenbank, bindet Event-Listener und zeigt initial leere Diagramme an.
  *
  * @param container - Das HTML-Element, in dem die Analytics-Ansicht angezeigt werden soll
  */
@@ -67,9 +67,9 @@ export async function initAnalyticsView(container: HTMLElement): Promise<void> {
 }
 
 /**
- * Füllt das Standort-Auswahlfeld mit den verfügbaren Standorten und setzt die Auswahl auf den Standardwert zurück.
+ * Befüllt das Standort-Auswahlfeld mit allen verfügbaren Standorten und einer Option für den gesamten Standort.
  *
- * Entfernt alle bisherigen Optionen und fügt eine Auswahlmöglichkeit für den gesamten Standort sowie alle geladenen Standorte hinzu.
+ * Setzt die Auswahl zurück und ersetzt alle bisherigen Optionen durch die geladenen Standorte.
  */
 function populateLocationSelector(): void {
     const locSelect = document.getElementById('analytics-location-select') as HTMLSelectElement;
@@ -81,9 +81,9 @@ function populateLocationSelector(): void {
 }
 
 /**
- * Behandelt die Standortauswahl im Analysebereich und aktualisiert die abhängigen Auswahllisten.
+ * Reagiert auf die Auswahl eines Standorts im Analysebereich und aktualisiert die Tresen- und Bereichsauswahl entsprechend.
  *
- * Setzt Tresen- und Bereichsauswahl zurück und deaktiviert sie. Bei Auswahl eines Standorts werden die zugehörigen Tresen angezeigt und auswählbar gemacht. Löst automatisch die Berichtserstellung aus oder setzt Auswertung und Diagramme zurück, wenn kein Standort gewählt ist.
+ * Setzt die Tresen- und Bereichsauswahl zurück und deaktiviert sie zunächst. Bei Auswahl eines Standorts werden die zugehörigen Tresen angezeigt und auswählbar gemacht. Löst automatisch die Berichtserstellung aus, wenn ein Standort gewählt ist, oder setzt Auswertung und Diagramme zurück, wenn kein Standort ausgewählt wurde.
  */
 function handleLocationSelectionForAnalytics(): void {
     const locId = (document.getElementById('analytics-location-select') as HTMLSelectElement).value;
@@ -109,9 +109,9 @@ function handleLocationSelectionForAnalytics(): void {
 }
 
 /**
- * Reagiert auf die Auswahl eines Zählers, aktualisiert die Bereichsauswahl entsprechend und startet automatisch die Berichtserstellung.
+ * Aktualisiert die Bereichsauswahl basierend auf der gewählten Zählerauswahl und startet automatisch die Berichtserstellung.
  *
- * Wenn sowohl ein Standort als auch ein Zähler ausgewählt sind, werden die zugehörigen Bereiche in der Auswahl angezeigt und aktiviert. Andernfalls wird die Bereichsauswahl zurückgesetzt und deaktiviert.
+ * Wenn ein Standort und ein Zähler ausgewählt sind, werden die zugehörigen Bereiche zur Auswahl angeboten und die Auswahl aktiviert. Andernfalls wird die Bereichsauswahl zurückgesetzt und deaktiviert.
  */
 function handleCounterSelectionForAnalytics(): void {
     const locId = (document.getElementById('analytics-location-select') as HTMLSelectElement).value;
@@ -136,7 +136,7 @@ function handleCounterSelectionForAnalytics(): void {
 }
 
 /**
- * Löst nach Auswahl einer Area im Analyse-View automatisch die Berichtserstellung aus.
+ * Löst nach Auswahl einer Area im Analyse-View automatisch die Erstellung des Verbrauchs- und Kostenberichts aus.
  */
 function handleAreaSelectionForAnalytics(): void {
     // Auto-generate report based on new selection
@@ -146,7 +146,7 @@ function handleAreaSelectionForAnalytics(): void {
 /**
  * Setzt die Diagramme und die Berichtszusammenfassung im Analysebereich auf den Ausgangszustand zurück.
  *
- * Entfernt bestehende Diagramme, setzt die zugehörigen Canvas-Elemente neu ein, leert die Zusammenfassung und initialisiert die Diagramme ohne Daten.
+ * Entfernt vorhandene Diagramme, setzt die Canvas-Elemente neu ein, leert die Zusammenfassung und initialisiert die Diagramme ohne Daten.
  */
 function clearReportAndCharts(): void {
     if (consumptionChart) consumptionChart.destroy();
@@ -168,9 +168,9 @@ function clearReportAndCharts(): void {
 
 
 /**
- * Erstellt einen Verbrauchs- und Kostenbericht für den aktuell ausgewählten Standort, Tresen oder Bereich und visualisiert die Ergebnisse in Diagrammen.
+ * Generiert einen Verbrauchs- und Kostenbericht für den aktuell ausgewählten Standort, Tresen oder Bereich und visualisiert die Ergebnisse in Diagrammen.
  *
- * Aggregiert die relevanten Inventurdaten, berechnet den Produktverbrauch und die Kosten, filtert nicht konsumierte Produkte heraus und aktualisiert die Diagramme sowie die Zusammenfassung im UI. Bei fehlender Auswahl oder fehlenden Daten werden Hinweise angezeigt und die Anzeige zurückgesetzt.
+ * Aggregiert Inventurdaten entsprechend der aktuellen Auswahl, berechnet den Produktverbrauch und die Kosten, filtert nicht konsumierte Produkte heraus und aktualisiert die Diagramme sowie die Zusammenfassung im UI. Bei fehlender Auswahl oder fehlenden Daten werden Hinweise angezeigt und die Anzeige zurückgesetzt.
  */
 async function generateReport(): Promise<void> {
     const locationId = (document.getElementById('analytics-location-select') as HTMLSelectElement).value;
@@ -258,9 +258,9 @@ async function generateReport(): Promise<void> {
 
 
 /**
- * Stellt Verbrauchs- und Kostenwerte für Produkte als Diagramme dar.
+ * Visualisiert Verbrauchs- und Kostenwerte von Produkten als Diagramme.
  *
- * Erstellt ein Balkendiagramm für den Verbrauch (ml) pro Produkt und, falls Kostenwerte angegeben sind, ein Tortendiagramm für die Kosten (€) pro Produkt. Vorhandene Diagramme werden vor der Neuerstellung entfernt.
+ * Erstellt ein Balkendiagramm für den Produktverbrauch in Millilitern und, falls Kostenwerte angegeben sind, ein Tortendiagramm für die Produktkosten in Euro. Bereits vorhandene Diagramme werden vor der Neuerstellung entfernt.
  *
  * @param productNames - Namen der Produkte für die Diagrammbeschriftungen
  * @param consumptionValuesMl - Verbrauchswerte der Produkte in Millilitern

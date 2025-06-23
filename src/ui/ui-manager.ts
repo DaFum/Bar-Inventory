@@ -10,9 +10,9 @@ let appContainer: HTMLElement | null = null;
 // Current active view
 type ViewName = 'locations' | 'products' | 'inventory' | 'analytics' | 'settings'; // Added 'analytics'
 let currentView: ViewName = 'inventory'; /**
- * Initialisiert die Benutzeroberfläche der Anwendung im angegebenen Container und lädt die Startansicht.
+ * Baut die Hauptbenutzeroberfläche im angegebenen Container auf und zeigt die Standardansicht an.
  *
- * @param container - Das HTML-Element, in dem die Hauptanwendung aufgebaut wird
+ * @param container - Das HTML-Element, in dem die Anwendung gerendert wird
  */
 
 export function initializeApp(container: HTMLElement): void {
@@ -22,9 +22,9 @@ export function initializeApp(container: HTMLElement): void {
 }
 
 /**
- * Rendert das Hauptlayout der Anwendung mit Navigationsleiste, Theme-Umschalter und Inhaltsbereich im App-Container.
+ * Baut das Hauptlayout der Anwendung mit Navigationsleiste, Theme-Umschalter und Inhaltsbereich im App-Container auf.
  *
- * Initialisiert die Navigations- und Theme-Buttons mit Event-Listenern, um Ansichtswechsel und das Umschalten des Farbschemas zu ermöglichen.
+ * Fügt Event-Listener zu den Navigations- und Theme-Buttons hinzu, um zwischen den Ansichten zu wechseln und das Farbschema umzuschalten.
  */
 function renderLayout(): void {
     if (!appContainer) return;
@@ -64,9 +64,9 @@ function renderLayout(): void {
 }
 
 /**
- * Navigiert zur angegebenen Ansicht und lädt den entsprechenden Inhalt in den Hauptbereich.
+ * Wechselt zur angegebenen Ansicht und lädt deren Inhalt in den Hauptbereich der Anwendung.
  *
- * @param viewName - Name der Zielansicht, die angezeigt werden soll
+ * @param viewName - Die Zielansicht, die angezeigt werden soll
  */
 function navigateTo(viewName: ViewName): void {
     currentView = viewName;
@@ -103,7 +103,9 @@ function navigateTo(viewName: ViewName): void {
 }
 
 /**
- * Hebt die Navigationsschaltfläche der aktuell aktiven Ansicht hervor und entfernt die Hervorhebung von allen anderen.
+ * Aktualisiert die Hervorhebung der Navigationsschaltflächen entsprechend der aktuell ausgewählten Ansicht.
+ *
+ * Die Schaltfläche der aktiven Ansicht erhält die CSS-Klasse 'active', während alle anderen diese Klasse verlieren.
  */
 function updateActiveNavButton(): void {
     document.querySelectorAll('#main-nav .nav-button').forEach(button => {
