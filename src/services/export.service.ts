@@ -53,7 +53,7 @@ export class ExportService {
      */
     public exportProductsToCsv(products: Product[]): void {
         if (!products || products.length === 0) {
-            alert("Keine Produkte zum Exportieren vorhanden.");
+            showToast("Keine Produkte zum Exportieren vorhanden.", "info");
             return;
         }
         const columns = ['id', 'name', 'category', 'volume', 'itemsPerCrate', 'pricePerBottle', 'pricePer100ml', 'supplier', 'imageUrl', 'notes'];
