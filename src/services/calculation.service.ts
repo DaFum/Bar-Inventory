@@ -9,10 +9,13 @@ export interface CalculatedConsumption {
 }
 
 /**
- * Calculates the total volume in ml for a given inventory entry part (start or end).
- * @param entryPart The start or end part of an InventoryEntry (e.g., item.startCrates, item.startBottles, item.startOpenVolumeMl).
- * @param product The product definition, used for itemsPerCrate and volume.
- * @returns Total volume in ml.
+ * Berechnet das gesamte Volumen in Millilitern für einen bestimmten Lagerbestandsteil anhand von Kisten, Flaschen und offenem Volumen.
+ *
+ * @param crates - Anzahl der Kisten
+ * @param bottles - Anzahl der Flaschen
+ * @param openVolumeMl - Offenes Volumen in Millilitern
+ * @param product - Produktdefinition mit Angaben zu Volumen und Stückzahl pro Kiste
+ * @returns Das gesamte Volumen in Millilitern
  */
 function getTotalVolumeMl(
     crates: number | undefined,
@@ -35,10 +38,13 @@ function getTotalVolumeMl(
 
 
 /**
- * Calculates the consumption for a single inventory item.
- * @param entry The inventory entry for a product (contains start and end counts).
- * @param product The product definition (contains volume, price info).
- * @returns CalculatedConsumption object for the item.
+ * Berechnet den Verbrauch und die Kosten für einen einzelnen Inventarposten basierend auf Start- und Endbestand.
+ *
+ * Ermittelt die verbrauchte Menge in Standard-Einheiten und Millilitern sowie die zugehörigen Kosten. Fügt Hinweise hinzu, falls negative Verbrauchswerte oder unvollständige Preisinformationen festgestellt werden.
+ *
+ * @param entry - Inventareintrag mit Start- und Endbestand eines Produkts
+ * @param product - Produktdefinition mit Volumen- und Preisinformationen
+ * @returns Ein Objekt mit Produkt-ID, verbrauchten Einheiten, verbrauchtem Volumen in ml, Kosten und optionalen Hinweisen
  */
 export function calculateSingleItemConsumption(entry: InventoryEntry, product: Product): CalculatedConsumption {
     const notes: string[] = [];
@@ -92,10 +98,13 @@ export function calculateSingleItemConsumption(entry: InventoryEntry, product: P
 }
 
 /**
- * Calculates consumption for all items in an area.
- * @param inventoryItems Array of InventoryEntry from a specific area.
- * @param allProducts Array of all available Product definitions.
- * @returns Array of CalculatedConsumption objects.
+ * Berechnet den Verbrauch für alle Inventarpositionen eines Bereichs anhand der Produktdefinitionen.
+ *
+ * Für jede Inventarposition wird der entsprechende Produktdatensatz gesucht und der Verbrauch berechnet. Fehlt die Produktdefinition, wird ein Platzhalterergebnis mit Hinweis zurückgegeben.
+ *
+ * @param inventoryItems - Inventarpositionen eines Bereichs
+ * @param allProducts - Alle verfügbaren Produktdefinitionen
+ * @returns Array mit berechneten Verbrauchsdaten für jede Inventarposition
  */
 export function calculateAreaConsumption(
     inventoryItems: InventoryEntry[],

@@ -13,6 +13,13 @@ const PREDEFINED_CATEGORIES = [
     "Spirituose", "Bier", "Wein", "Softdrink", "Sirup", "Sonstiges"
 ];
 
+/**
+ * Initialisiert die Produktkatalog-Verwaltung im angegebenen Container.
+ *
+ * Baut das UI für die Produktverwaltung auf, lädt und rendert die Produktliste, und richtet Event-Handler für das Hinzufügen neuer Produkte sowie den CSV-Export ein.
+ *
+ * @param container - Das HTML-Element, in dem die Produktverwaltung angezeigt werden soll
+ */
 export async function initProductManager(container: HTMLElement): Promise<void> {
     productManagerContainer = container; // Keep this if productManagerContainer is used elsewhere for direct manipulation
     // The main container passed to initProductManager IS the productManagerContainer for this view.
@@ -51,6 +58,11 @@ export async function initProductManager(container: HTMLElement): Promise<void> 
     // It's correctly handled by the wrapper injection logic that follows the loadAndRenderProducts call.
 }
 
+/**
+ * Exportiert die aktuell geladenen Produkte als CSV-Datei.
+ *
+ * Zeigt eine Info-Benachrichtigung an, wenn keine Produkte vorhanden sind. Bei erfolgreichem Export wird eine Erfolgsnachricht angezeigt, andernfalls eine Fehlermeldung.
+ */
 function handleExportProductsCsv(): void {
     if (loadedProducts.length === 0) {
         showToast("Keine Produkte zum Exportieren vorhanden.", "info");
@@ -65,6 +77,9 @@ function handleExportProductsCsv(): void {
     }
 }
 
+/**
+ * Lädt die Produktliste aus der Datenbank, sortiert sie nach Kategorie und Name und aktualisiert die Anzeige.
+ */
 async function loadAndRenderProducts(): Promise<void> {
     loadedProducts = await dbService.loadProducts();
     // Sort products by category, then by name for consistent display
@@ -76,6 +91,11 @@ async function loadAndRenderProducts(): Promise<void> {
     renderProductList();
 }
 
+/**
+ * Rendert die Produktliste im Katalogbereich oder zeigt einen Hinweis an, wenn keine Produkte vorhanden sind.
+ *
+ * Aktualisiert die Anzeige des Produktkatalogs als Tabelle mit Bearbeiten- und Löschen-Schaltflächen für jedes Produkt. Bei leerer Liste wird eine entsprechende Nachricht angezeigt. Die Funktion bindet Event-Handler für Bearbeiten und Löschen an die jeweiligen Schaltflächen.
+ */
 function renderProductList(): void {
     const listContainer = document.getElementById('product-list-container');
     if (!listContainer) return;
@@ -143,6 +163,13 @@ function renderProductList(): void {
     });
 }
 
+/**
+ * Zeigt das Formular zum Erstellen oder Bearbeiten eines Produkts an.
+ *
+ * Das Formular wird mit den Daten des übergebenen Produkts vorausgefüllt, falls vorhanden, andernfalls für die Erstellung eines neuen Produkts vorbereitet. Es validiert Pflichtfelder und optionale Felder, speichert die Änderungen in der Datenbank und aktualisiert die Produktliste nach dem Speichern. Das Formular kann über einen Abbrechen-Button geschlossen werden.
+ *
+ * @param product - Optionales Produktobjekt zum Bearbeiten; wenn nicht angegeben, wird ein neues Produkt erstellt.
+ */
 function renderProductForm(product?: Product): void {
     const formContainer = document.getElementById('product-form-container');
     if (!formContainer) return;

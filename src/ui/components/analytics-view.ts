@@ -13,6 +13,13 @@ let loadedProducts: Product[] = [];
 let consumptionChart: Chart | null = null;
 let costChart: Chart | null = null;
 
+/**
+ * Initialisiert die Analytics-Ansicht im angegebenen Container und richtet die Benutzeroberfläche für Verbrauchs- und Kostenberichte ein.
+ *
+ * Lädt Standorte und Produkte aus der Datenbank, erstellt die Steuerelemente für Standort-, Tresen- und Bereichsauswahl sowie die Berichtsgenerierung. Bindet Event-Listener für die Auswahlfelder und den Button, und initialisiert die Diagramme mit leeren Daten.
+ *
+ * @param container - Das HTML-Element, in dem die Analytics-Ansicht angezeigt werden soll
+ */
 export async function initAnalyticsView(container: HTMLElement): Promise<void> {
     analyticsViewContainer = container;
     analyticsViewContainer.innerHTML = `
@@ -59,6 +66,9 @@ export async function initAnalyticsView(container: HTMLElement): Promise<void> {
     renderCharts([], []);
 }
 
+/**
+ * Füllt das Standort-Auswahlfeld mit den geladenen Standorten und setzt die Auswahl zurück.
+ */
 function populateLocationSelector(): void {
     const locSelect = document.getElementById('analytics-location-select') as HTMLSelectElement;
     if (!locSelect) return;
@@ -68,6 +78,11 @@ function populateLocationSelector(): void {
     });
 }
 
+/**
+ * Reagiert auf die Auswahl eines Standorts im Analysebereich.
+ *
+ * Setzt die Tresen- und Bereichsauswahl zurück und deaktiviert sie. Wenn ein Standort ausgewählt wurde, werden die zugehörigen Tresen in der Auswahl angezeigt und aktiviert. Anschließend wird automatisch ein Bericht generiert oder, falls kein Standort gewählt ist, die Auswertung und Diagramme zurückgesetzt.
+ */
 function handleLocationSelectionForAnalytics(): void {
     const locId = (document.getElementById('analytics-location-select') as HTMLSelectElement).value;
     const counterSelect = document.getElementById('analytics-counter-select') as HTMLSelectElement;
@@ -91,6 +106,11 @@ function handleLocationSelectionForAnalytics(): void {
     if (locId) generateReport(); else clearReportAndCharts();
 }
 
+/**
+ * Aktualisiert die Bereichsauswahl basierend auf dem gewählten Standort und Zähler und generiert automatisch einen neuen Bericht.
+ *
+ * Wenn sowohl ein Standort als auch ein Zähler ausgewählt sind, werden die zugehörigen Bereiche in der Auswahlliste angezeigt und die Auswahl aktiviert. Andernfalls wird die Bereichsauswahl zurückgesetzt und deaktiviert.
+ */
 function handleCounterSelectionForAnalytics(): void {
     const locId = (document.getElementById('analytics-location-select') as HTMLSelectElement).value;
     const counterId = (document.getElementById('analytics-counter-select') as HTMLSelectElement).value;
@@ -113,11 +133,19 @@ function handleCounterSelectionForAnalytics(): void {
     generateReport();
 }
 
+/**
+ * Reagiert auf die Auswahl einer Area im Analyse-View und generiert automatisch einen neuen Bericht basierend auf der aktuellen Auswahl.
+ */
 function handleAreaSelectionForAnalytics(): void {
     // Auto-generate report based on new selection
     generateReport();
 }
 
+/**
+ * Setzt die Diagramme und den Berichtszusammenfassung im Analysebereich zurück.
+ *
+ * Bestehende Diagramme werden entfernt, die Canvas-Elemente neu eingefügt und die Zusammenfassung geleert. Die Diagramme werden anschließend mit leeren Daten neu initialisiert.
+ */
 function clearReportAndCharts(): void {
     if (consumptionChart) consumptionChart.destroy();
     if (costChart) costChart.destroy();
@@ -137,6 +165,11 @@ function clearReportAndCharts(): void {
 }
 
 
+/**
+ * Generiert einen Verbrauchs- und Kostenbericht für den ausgewählten Standort, Tresen oder Bereich und visualisiert die Ergebnisse in Diagrammen.
+ *
+ * Die Funktion aggregiert Inventurdaten entsprechend der aktuellen Auswahl, berechnet den Produktverbrauch und die Kosten, filtert relevante Produkte für die Darstellung und aktualisiert die Diagramme sowie die Zusammenfassung im UI. Bei fehlender Auswahl oder Daten werden entsprechende Hinweise angezeigt und die Anzeige zurückgesetzt.
+ */
 async function generateReport(): Promise<void> {
     const locationId = (document.getElementById('analytics-location-select') as HTMLSelectElement).value;
     const counterId = (document.getElementById('analytics-counter-select') as HTMLSelectElement).value;
@@ -223,6 +256,15 @@ async function generateReport(): Promise<void> {
 }
 
 
+/**
+ * Visualisiert Verbrauchs- und Kostenwerte für Produkte als Diagramme.
+ *
+ * Erstellt ein Balkendiagramm für den Verbrauch (ml) und, falls Kostenwerte angegeben sind, ein Tortendiagramm für die Kosten (€) der jeweiligen Produkte. Vorherige Diagramme werden entfernt und durch die neuen ersetzt.
+ *
+ * @param productNames - Namen der Produkte, die als Achsenbeschriftungen verwendet werden
+ * @param consumptionValuesMl - Verbrauchswerte der Produkte in Millilitern
+ * @param costValues - (Optional) Kostenwerte der Produkte in Euro für das Tortendiagramm
+ */
 function renderCharts(productNames: string[], consumptionValuesMl: number[], costValues?: number[]): void {
     const consumptionCtx = document.getElementById('consumption-chart') as HTMLCanvasElement;
     const costCtx = document.getElementById('cost-chart') as HTMLCanvasElement;

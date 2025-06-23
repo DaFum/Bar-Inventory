@@ -9,7 +9,11 @@ let appContainer: HTMLElement | null = null;
 
 // Current active view
 type ViewName = 'locations' | 'products' | 'inventory' | 'analytics' | 'settings'; // Added 'analytics'
-let currentView: ViewName = 'inventory'; // Default view
+let currentView: ViewName = 'inventory'; /**
+ * Initialisiert das Haupt-UI im angegebenen Container und zeigt die Standardansicht an.
+ *
+ * @param container - Das HTML-Element, in dem die Anwendung gerendert werden soll
+ */
 
 export function exampleAppSetup(container: HTMLElement): void {
     appContainer = container;
@@ -17,6 +21,11 @@ export function exampleAppSetup(container: HTMLElement): void {
     navigateTo(currentView); // Navigate to default view
 }
 
+/**
+ * Rendert das Hauptlayout der Anwendung im App-Container, einschließlich Navigationsleiste, Themenumschalter und Inhaltsbereich.
+ *
+ * Fügt Event-Listener zu den Navigations- und Theme-Buttons hinzu, um zwischen Ansichten zu wechseln und das Farbschema zu ändern.
+ */
 function renderLayout(): void {
     if (!appContainer) return;
 
@@ -54,6 +63,11 @@ function renderLayout(): void {
     });
 }
 
+/**
+ * Wechselt zur angegebenen Ansicht und initialisiert deren Inhalt im Hauptbereich.
+ *
+ * @param viewName - Der Name der Zielansicht, zu der navigiert werden soll
+ */
 function navigateTo(viewName: ViewName): void {
     currentView = viewName;
     const viewContainer = document.getElementById('view-container');
@@ -88,6 +102,9 @@ function navigateTo(viewName: ViewName): void {
     console.log(`Navigated to ${viewName}`);
 }
 
+/**
+ * Aktualisiert die Navigationsleiste, sodass die Schaltfläche der aktuell aktiven Ansicht hervorgehoben wird.
+ */
 function updateActiveNavButton(): void {
     document.querySelectorAll('#main-nav .nav-button').forEach(button => {
         if (button.getAttribute('data-view') === currentView) {

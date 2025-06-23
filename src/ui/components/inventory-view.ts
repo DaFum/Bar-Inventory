@@ -19,7 +19,13 @@ import { exportService } from '../../services/export.service';
 
 // Phase of inventory: 'start', 'end', or 'consumption'
 type InventoryPhase = 'start' | 'end' | 'consumption';
-let currentInventoryPhase: InventoryPhase = 'start'; // Default to start of shift
+let currentInventoryPhase: InventoryPhase = 'start'; /**
+ * Initialisiert die Inventuransicht im angegebenen Container-Element.
+ *
+ * Lädt Standorte und Produkte aus der Datenbank, setzt die Grundstruktur der Benutzeroberfläche und rendert die Auswahlleiste für Standort, Tresen und Bereich. Zeigt eine Aufforderung an, bis alle erforderlichen Auswahlen getroffen wurden.
+ *
+ * @param container - Das HTML-Element, in dem die Inventuransicht angezeigt werden soll
+ */
 
 export async function initInventoryView(container: HTMLElement): Promise<void> {
     inventoryViewContainer = container;
@@ -45,6 +51,11 @@ export async function initInventoryView(container: HTMLElement): Promise<void> {
     document.getElementById('inventory-table-container')!.innerHTML = "<p>Bitte Standort, Tresen und Bereich auswählen, um die Inventurliste anzuzeigen.</p>";
 }
 
+/**
+ * Rendert die Auswahlleiste für Standort, Tresen, Bereich und Inventurphase.
+ *
+ * Aktualisiert die Dropdown-Menüs und Phasenumschalter entsprechend der aktuellen Auswahl und lädt das Inventar für den gewählten Bereich. Zeigt eine Hinweismeldung an, wenn noch keine vollständige Auswahl getroffen wurde.
+ */
 function renderSelectionBar(): void {
     const selectionBar = document.getElementById('inventory-selection-bar');
     if (!selectionBar) return;
@@ -114,6 +125,13 @@ function renderSelectionBar(): void {
     }
 }
 
+/**
+ * Wechselt die aktuelle Inventurphase und aktualisiert die Anzeige entsprechend.
+ *
+ * Aktualisiert die globale Phase, rendert die Auswahlleiste neu und zeigt die passende Inventurtabelle für den ausgewählten Bereich an.
+ *
+ * @param phase - Die zu aktivierende Inventurphase ('start', 'end' oder 'consumption')
+ */
 function switchInventoryPhase(phase: InventoryPhase): void {
     currentInventoryPhase = phase;
     renderSelectionBar(); // Re-render to update button styles
@@ -123,6 +141,11 @@ function switchInventoryPhase(phase: InventoryPhase): void {
 }
 
 
+/**
+ * Behandelt die Änderung der Standortauswahl und setzt Tresen und Bereich zurück.
+ *
+ * Aktualisiert die ausgewählte Location basierend auf dem Event, setzt Tresen und Bereich zurück, rendert die Auswahlleiste neu und leert die Inventartabelle sowie die Aktionsleiste.
+ */
 async function handleLocationChange(event: Event): Promise<void> {
     const locationId = (event.target as HTMLSelectElement).value;
     selectedLocation = loadedLocations.find(loc => loc.id === locationId) || null;
@@ -133,6 +156,11 @@ async function handleLocationChange(event: Event): Promise<void> {
     document.getElementById('inventory-actions-bar')!.innerHTML = "";
 }
 
+/**
+ * Behandelt Änderungen an der Thekenauswahl und aktualisiert die abhängigen UI-Elemente.
+ *
+ * Setzt den ausgewählten Bereich zurück, rendert die Auswahlleiste neu und leert die Inventartabelle sowie die Aktionsleiste.
+ */
 async function handleCounterChange(event: Event): Promise<void> {
     const counterId = (event.target as HTMLSelectElement).value;
     if (selectedLocation) {
@@ -144,6 +172,11 @@ async function handleCounterChange(event: Event): Promise<void> {
      document.getElementById('inventory-actions-bar')!.innerHTML = "";
 }
 
+/**
+ * Behandelt die Änderung der Bereichsauswahl und aktualisiert die UI entsprechend.
+ *
+ * Wird ein Bereich ausgewählt, werden die Inventartabelle und die zugehörigen Aktionsschaltflächen angezeigt. Ist kein Bereich ausgewählt, werden die entsprechenden UI-Elemente geleert.
+ */
 async function handleAreaChange(event: Event): Promise<void> {
     const areaId = (event.target as HTMLSelectElement).value;
     if (selectedCounter) {
@@ -159,6 +192,11 @@ async function handleAreaChange(event: Event): Promise<void> {
     }
 }
 
+/**
+ * Rendert die Inventartabelle für den aktuell ausgewählten Bereich und die aktuelle Inventarphase.
+ *
+ * Zeigt entweder eine bearbeitbare Tabelle für die Phasen "Start" und "Ende" oder eine Verbrauchsübersicht für die Phase "Verbrauch" an. Falls kein Bereich ausgewählt ist, wird eine entsprechende Meldung angezeigt.
+ */
 function renderInventoryTable(): void {
     const tableContainer = document.getElementById('inventory-table-container');
     if (!tableContainer || !selectedArea) {
@@ -176,6 +214,11 @@ function renderInventoryTable(): void {
     }
 }
 
+/**
+ * Ergänzt die Inventarpositionen des ausgewählten Bereichs um alle fehlenden Produkte und sortiert sie nach Kategorie und Name.
+ *
+ * Stellt sicher, dass für jedes geladene Produkt ein entsprechender Eintrag im Inventar des Bereichs existiert, und initialisiert fehlende Produkte mit Nullwerten.
+ */
 function prepareInventoryItemsForArea(): void {
     if (!selectedArea || !loadedProducts) return;
 
@@ -198,7 +241,15 @@ function prepareInventoryItemsForArea(): void {
     });
 }
 
-function renderEditableInventoryTable(tableContainer: HTMLElement, area: Area): void {
+/**
+     * Rendert eine bearbeitbare Inventurtabelle für den ausgewählten Bereich und die aktuelle Phase ('Schichtanfang' oder 'Schichtende').
+     *
+     * Die Tabelle enthält für jedes Produkt Eingabefelder für Kästen, Flaschen und offene Menge (ml). Felder sind deaktiviert, wenn keine Kasteninformation für das Produkt vorhanden ist. Nach dem Rendern werden Event-Listener für die Eingabefelder hinzugefügt.
+     *
+     * @param tableContainer - Das HTML-Element, in dem die Tabelle angezeigt wird
+     * @param area - Der aktuell ausgewählte Bereich, dessen Inventurdaten bearbeitet werden sollen
+     */
+    function renderEditableInventoryTable(tableContainer: HTMLElement, area: Area): void {
     const phaseName = currentInventoryPhase === 'start' ? 'Schichtanfang' : 'Schichtende';
     const tableId = `inventory-table-${area.id.replace(/[^a-zA-Z0-9]/g, '')}`; // Create a unique ID for the table
     let tableHTML = `
@@ -426,6 +477,11 @@ function fillDefaultValues(): void {
 }
 
 
+/**
+ * Aktualisiert das entsprechende Feld eines Inventaritems im ausgewählten Bereich basierend auf einer Benutzereingabe.
+ *
+ * Die Funktion übernimmt Werte aus einem Eingabefeld und weist sie dem passenden Produktfeld im Inventar des aktuellen Bereichs zu. Änderungen werden nur im Arbeitsspeicher vorgenommen und erst beim expliziten Speichern persistiert.
+ */
 function handleInventoryInputChange(event: Event): void {
     const inputElement = event.target as HTMLInputElement;
     const rowElement = inputElement.closest('.inventory-item-row') as HTMLElement;
@@ -454,6 +510,11 @@ function handleInventoryInputChange(event: Event): void {
     }
 }
 
+/**
+ * Speichert die aktuelle Inventur des ausgewählten Bereichs in der Datenbank.
+ *
+ * Zeigt eine Erfolgsmeldung bei erfolgreichem Speichern oder eine Fehlermeldung bei einem Fehler an.
+ */
 async function saveCurrentInventory(): Promise<void> {
     if (!selectedLocation || !selectedCounter || !selectedArea) {
         alert("Kein Bereich ausgewählt, um die Inventur zu speichern.");
