@@ -38,6 +38,10 @@ class IndexedDBService {
   private dbPromise: Promise<IDBPDatabase<BarInventoryDBSchema>>;
 
   constructor() {
+    if (!('indexedDB' in window)) {
+      showToast('IndexedDB wird nicht unterstützt. Daten können nicht gespeichert werden.', 'error');
+      throw new Error('IndexedDB not supported');
+    }
     this.dbPromise = openDB<BarInventoryDBSchema>(DATABASE_NAME, DATABASE_VERSION, {
       /**
        * Handles database schema upgrades.
