@@ -10,9 +10,9 @@ let appContainer: HTMLElement | null = null;
 // Current active view
 type ViewName = 'locations' | 'products' | 'inventory' | 'analytics' | 'settings'; // Added 'analytics'
 let currentView: ViewName = 'inventory'; /**
- * Initialisiert die Benutzeroberfläche der Anwendung im angegebenen Container und lädt die Startansicht.
+ * Initialisiert die Benutzeroberfläche im angegebenen Container und zeigt die Standardansicht an.
  *
- * @param container - Das HTML-Element, in dem die Hauptanwendung aufgebaut wird
+ * @param container - Das HTML-Element, in dem die Anwendung gerendert wird
  */
 
 export function initializeApp(container: HTMLElement): void {
@@ -24,7 +24,7 @@ export function initializeApp(container: HTMLElement): void {
 /**
  * Rendert das Hauptlayout der Anwendung mit Navigationsleiste, Theme-Umschalter und Inhaltsbereich im App-Container.
  *
- * Initialisiert die Navigations- und Theme-Buttons mit Event-Listenern, um Ansichtswechsel und das Umschalten des Farbschemas zu ermöglichen.
+ * Fügt die Navigations- und Theme-Umschaltbuttons ein und verbindet sie mit den entsprechenden Event-Handlern für Ansichtswechsel und Theme-Wechsel.
  */
 function renderLayout(): void {
     if (!appContainer) return;
@@ -64,9 +64,9 @@ function renderLayout(): void {
 }
 
 /**
- * Navigiert zur angegebenen Ansicht und lädt den entsprechenden Inhalt in den Hauptbereich.
+ * Wechselt zur angegebenen Ansicht und lädt deren Inhalt in den Hauptbereich der Anwendung.
  *
- * @param viewName - Name der Zielansicht, die angezeigt werden soll
+ * @param viewName - Die Zielansicht, die angezeigt werden soll
  */
 function navigateTo(viewName: ViewName): void {
     currentView = viewName;
@@ -103,7 +103,7 @@ function navigateTo(viewName: ViewName): void {
 }
 
 /**
- * Hebt die Navigationsschaltfläche der aktuell aktiven Ansicht hervor und entfernt die Hervorhebung von allen anderen.
+ * Aktualisiert die Navigationsleiste, indem die Schaltfläche der aktuellen Ansicht hervorgehoben und die Hervorhebung bei allen anderen entfernt wird.
  */
 function updateActiveNavButton(): void {
     document.querySelectorAll('#main-nav .nav-button').forEach(button => {

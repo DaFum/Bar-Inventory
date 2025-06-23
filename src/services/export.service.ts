@@ -3,11 +3,11 @@ import { CalculatedConsumption, calculateAreaConsumption } from './calculation.s
 import { showToast } from '../ui/components/toast-notifications';
 
 /**
- * Konvertiert ein Array von Objekten in einen CSV-formatierten String.
+ * Wandelt ein Array von Objekten in einen CSV-formatierten String um.
  *
- * @param data - Die zu konvertierenden Objekte
+ * @param data - Die zu exportierenden Objekte
  * @param columns - Optional: Zu verwendende Spaltenüberschriften; falls nicht angegeben, werden die Schlüssel des ersten Objekts verwendet
- * @returns Den generierten CSV-Inhalt als String; gibt einen leeren String zurück, wenn keine Daten vorhanden sind
+ * @returns Den erzeugten CSV-Inhalt als String; gibt einen leeren String zurück, wenn keine Daten vorhanden sind
  */
 function arrayToCsv(data: any[], columns?: string[]): string {
      if (!data || data.length === 0) {
@@ -31,11 +31,11 @@ function arrayToCsv(data: any[], columns?: string[]): string {
 }
 
 /**
- * Startet den Download einer Datei im Browser mit dem angegebenen Inhalt, Dateinamen und MIME-Typ.
+ * Löst im Browser den Download einer Datei mit dem angegebenen Inhalt, Dateinamen und MIME-Typ aus.
  *
- * @param content - Der Inhalt der Datei
- * @param fileName - Der Name der herunterzuladenden Datei
- * @param contentType - Der MIME-Typ des Dateiinhalts (z.B. "text/csv" oder "application/json")
+ * @param content - Der zu speichernde Dateinhalt
+ * @param fileName - Der gewünschte Name der herunterzuladenden Datei
+ * @param contentType - Der MIME-Typ des Inhalts (z.B. "text/csv" oder "application/json")
  */
 function triggerDownload(content: string, fileName: string, contentType: string): void {
     const blob = new Blob([content], { type: contentType });
