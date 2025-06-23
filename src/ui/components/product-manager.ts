@@ -18,7 +18,7 @@ let productFormComponent: ProductFormComponent | null = null;
 /**
  * Initialisiert die Benutzeroberfläche zur Verwaltung des Produktkatalogs im angegebenen Container.
  *
- * Erstellt die UI-Struktur für Produktliste, Produktformular sowie Schaltflächen zum Hinzufügen neuer Produkte und zum CSV-Export. Bindet die Komponenten an den Store, lädt initial die Produkte und richtet Event-Handler für Benutzeraktionen ein.
+ * Erstellt die UI-Struktur für Produktliste, Produktformular sowie Schaltflächen zum Hinzufügen neuer Produkte und zum CSV-Export. Bindet die Komponenten an den zentralen Produkt-Store, lädt initial die Produktdaten und richtet Event-Handler für Benutzeraktionen ein.
  *
  * @param outerContainer - Das HTML-Element, in dem die Produktverwaltung angezeigt werden soll
  */
@@ -80,21 +80,21 @@ export async function initProductManager(outerContainer: HTMLElement): Promise<v
 }
 
 /**
- * Öffnet das Produktformular zur Bearbeitung und füllt es mit den Daten des angegebenen Produkts vor.
+ * Zeigt das Produktformular an und füllt es mit den Daten des angegebenen Produkts zur Bearbeitung vor.
  *
- * @param product - Das zu bearbeitende Produkt
+ * @param product - Das Produkt, das bearbeitet werden soll
  */
 function handleEditProduct(product: Product): void {
     productFormComponent?.show(product);
 }
 
 /**
- * Löscht ein Produkt nach Benutzerbestätigung aus dem Produktkatalog.
+ * Fordert den Benutzer zur Bestätigung auf und löscht das angegebene Produkt aus dem Katalog.
  *
- * Öffnet einen Bestätigungsdialog für das angegebene Produkt. Bei Zustimmung wird das Produkt aus dem Store entfernt, eine Erfolgsmeldung angezeigt und das Formular ggf. ausgeblendet. Bei Fehlern wird eine Fehlermeldung angezeigt.
+ * Zeigt einen Bestätigungsdialog für das Produkt an. Nach Zustimmung wird das Produkt aus dem Store entfernt, eine Erfolgsmeldung angezeigt und das Produktformular ggf. ausgeblendet. Bei Fehlern erscheint eine Fehlermeldung.
  *
  * @param productId - Die ID des zu löschenden Produkts.
- * @param productName - Der Name des Produkts für die Bestätigungsabfrage.
+ * @param productName - Der Name des Produkts, der im Bestätigungsdialog angezeigt wird.
  */
 async function handleDeleteProductRequest(productId: string, productName: string): Promise<void> {
     if (confirm(`Produkt "${productName}" wirklich löschen?`)) {
@@ -115,11 +115,11 @@ async function handleDeleteProductRequest(productId: string, productName: string
 }
 
 /**
- * Verarbeitet das Absenden des Produktformulars zur Erstellung oder Aktualisierung eines Produkts.
+ * Verarbeitet das Absenden des Produktformulars und speichert das Produkt im Store.
  *
- * Erkennt anhand der Produkt-ID, ob ein neues Produkt erstellt oder ein bestehendes aktualisiert werden soll, und führt die entsprechende Aktion im Produkt-Store aus. Zeigt nach erfolgreicher Speicherung eine Erfolgsmeldung an und blendet das Formular aus. Bei Fehlern wird eine Fehlermeldung angezeigt und der Fehler erneut ausgelöst, um die Formular-Komponente zu benachrichtigen.
+ * Erkennt anhand der Produkt-ID, ob ein neues Produkt angelegt oder ein bestehendes aktualisiert werden soll, und führt die entsprechende Aktion aus. Zeigt bei Erfolg eine Bestätigungsmeldung an und blendet das Formular aus. Im Fehlerfall wird eine Fehlermeldung angezeigt und der Fehler erneut ausgelöst, damit die Formular-Komponente informiert wird.
  *
- * @param productDataFromForm - Die vom Formular übergebenen Produktdaten.
+ * @param productDataFromForm - Die vom Formular übergebenen Produktdaten, die gespeichert werden sollen.
  * @throws Gibt den Fehler weiter, falls das Speichern im Store fehlschlägt.
  */
 async function handleProductFormSubmit(productDataFromForm: Product): Promise<void> {
@@ -145,16 +145,16 @@ async function handleProductFormSubmit(productDataFromForm: Product): Promise<vo
 }
 
 /**
- * Blendet das Produktformular aus, wenn der Benutzer den Vorgang abbricht.
+ * Verbirgt das Produktformular, wenn der Benutzer den Vorgang abbricht.
  */
 function handleProductFormCancel(): void {
     productFormComponent?.hide();
 }
 
 /**
- * Abonniert den ProductStore mit dem ProductListComponent und lädt initial die Produktliste.
+ * Lädt die Produktliste initial aus dem ProductStore und abonniert das ProductListComponent für automatische Updates.
  *
- * Bei Fehlern während des Ladens wird eine Fehlermeldung angezeigt.
+ * Zeigt eine Fehlermeldung an, falls das Laden der Produkte fehlschlägt.
  */
 async function initialLoadAndSubscribe(): Promise<void> {
     if (!productListComponent) {
@@ -180,7 +180,7 @@ async function initialLoadAndSubscribe(): Promise<void> {
 /**
  * Exportiert den aktuellen Produktkatalog als CSV-Datei.
  *
- * Zeigt eine Benachrichtigung an, wenn keine Produkte vorhanden sind oder der Export erfolgreich bzw. fehlgeschlagen ist.
+ * Zeigt eine Benachrichtigung an, wenn keine Produkte vorhanden sind oder der Export erfolgreich oder fehlgeschlagen ist.
  */
 function handleExportProductsCsv(): void {
     const currentProducts = productStore.getProducts(); // Get sorted products from store
