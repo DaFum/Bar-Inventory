@@ -165,7 +165,6 @@ export class CounterListItemComponent extends BaseComponent<HTMLDivElement> {
         } catch (error) {
             console.error("Error saving area:", error);
             showToast("Fehler beim Speichern des Bereichs.", "error");
-            throw error;
         }
     }
 
