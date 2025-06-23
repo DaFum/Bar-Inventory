@@ -3,6 +3,7 @@ import { Product } from '../../models';
 import { generateId } from '../../utils/helpers';
 import { showToast } from './toast-notifications';
 import { exportService } from '../../services/export.service';
+import { escapeHtml } from '../../utils/security';
 
 let productManagerContainer: HTMLElement | null = null;
 let loadedProducts: Product[] = [];
@@ -119,13 +120,13 @@ function renderProductList(): void {
             <tbody>
                 ${loadedProducts.map(prod => `
                     <tr class="border-b">
-                        <td class="px-4 py-2">${prod.name}</td>
-                        <td class="px-4 py-2">${prod.category}</td>
+                        <td class="px-4 py-2">${escapeHtml(prod.name)}</td>
+                        <td class="px-4 py-2">${escapeHtml(prod.category)}</td>
                         <td class="px-4 py-2 text-right">${prod.volume}</td>
                         <td class="px-4 py-2 text-right">${prod.pricePerBottle.toFixed(2)}</td>
                         <td class="px-4 py-2">
-                            <button class="btn btn-sm btn-secondary edit-product-btn" data-id="${prod.id}" aria-label="Produkt ${prod.name} bearbeiten">Bearbeiten</button>
-                            <button class="btn btn-sm btn-danger delete-product-btn" data-id="${prod.id}" aria-label="Produkt ${prod.name} löschen">Löschen</button>
+                            <button class="btn btn-sm btn-secondary edit-product-btn" data-id="${prod.id}" aria-label="Produkt ${escapeHtml(prod.name)} bearbeiten">Bearbeiten</button>
+                            <button class="btn btn-sm btn-danger delete-product-btn" data-id="${prod.id}" aria-label="Produkt ${escapeHtml(prod.name)} löschen">Löschen</button>
                         </td>
                     </tr>
                 `).join('')}
@@ -181,13 +182,13 @@ function renderProductForm(product?: Product): void {
         <form id="product-form" aria-labelledby="${formTitleId}">
             <div class="form-group">
                 <label for="product-name">Name:</label>
-                <input type="text" id="product-name" value="${product?.name || ''}" required class="form-control" aria-required="true">
+                <input type="text" id="product-name" value="${escapeHtml(product?.name)}" required class="form-control" aria-required="true">
             </div>
             <div class="form-group">
                 <label for="product-category">Kategorie:</label>
                 <select id="product-category" required class="form-control" aria-required="true">
                     ${PREDEFINED_CATEGORIES.map(cat =>
-                        `<option value="${cat}" ${product?.category === cat ? 'selected' : ''}>${cat}</option>`
+                        `<option value="${escapeHtml(cat)}" ${product?.category === cat ? 'selected' : ''}>${escapeHtml(cat)}</option>`
                     ).join('')}
                 </select>
             </div>
@@ -209,15 +210,15 @@ function renderProductForm(product?: Product): void {
             </div>
              <div class="form-group">
                 <label for="product-supplier">Lieferant (optional):</label>
-                <input type="text" id="product-supplier" value="${product?.supplier || ''}" class="form-control">
+                <input type="text" id="product-supplier" value="${escapeHtml(product?.supplier)}" class="form-control">
             </div>
             <div class="form-group">
                 <label for="product-imageUrl">Bild-URL (optional):</label>
-                <input type="url" id="product-imageUrl" value="${product?.imageUrl || ''}" class="form-control">
+                <input type="url" id="product-imageUrl" value="${escapeHtml(product?.imageUrl)}" class="form-control">
             </div>
             <div class="form-group">
                 <label for="product-notes">Notizen (optional):</label>
-                <textarea id="product-notes" class="form-control" aria-label="Notizen zum Produkt">${product?.notes || ''}</textarea>
+                <textarea id="product-notes" class="form-control" aria-label="Notizen zum Produkt">${escapeHtml(product?.notes)}</textarea>
             </div>
             <button type="submit" class="btn btn-success">${product ? 'Änderungen speichern' : 'Produkt erstellen'}</button>
             <button type="button" id="cancel-product-edit" class="btn btn-secondary">Abbrechen</button>
@@ -227,9 +228,6 @@ function renderProductForm(product?: Product): void {
 
     // const categorySelect = document.getElementById('product-category') as HTMLSelectElement;
     // const customCategoryInput = document.getElementById('product-custom-category') as HTMLInputElement;
-        // Enhanced validation for required fields and positive values
-        showToast("Bitte füllen Sie alle Pflichtfelder korrekt aus. Volumen muss größer als 0 sein und Preis darf nicht negativ sein.", "error");
-        return;
     //     else customCategoryInput.required = false;
     // });
 

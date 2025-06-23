@@ -28,12 +28,9 @@ type InventoryPhase = 'start' | 'end' | 'consumption';
  *
  * @param container - Das HTML-Element, in dem die Inventuransicht angezeigt werden soll
  */
-let currentInventoryPhase: InventoryPhase = 'start';
-
 export async function initInventoryView(container: HTMLElement): Promise<void> {
     state.container = container;
     state.container.innerHTML = `
-    inventoryViewContainer.innerHTML = `
         <section class="panel" aria-labelledby="inventory-main-title">
             <h2 id="inventory-main-title" class="panel-title">Inventuraufnahme</h2>
             <div id="inventory-selection-bar" class="flex space-x-4 mb-4 p-2 bg-gray-100 rounded items-center" role="toolbar" aria-label="Inventur Auswahl Steuerung"></div>
@@ -66,23 +63,23 @@ function renderSelectionBar(): void {
 
     // Location Selector
     let locationOptions = '<option value="">Standort wählen...</option>';
-    loadedLocations.forEach(loc => {
-        locationOptions += `<option value="${loc.id}" ${selectedLocation?.id === loc.id ? 'selected' : ''}>${loc.name}</option>`;
+    state.loadedLocations.forEach(loc => {
+        locationOptions += `<option value="${loc.id}" ${state.selectedLocation?.id === loc.id ? 'selected' : ''}>${loc.name}</option>`;
     });
 
     // Counter Selector (depends on location)
     let counterOptions = '<option value="">Tresen wählen...</option>';
-    if (selectedLocation) {
-        selectedLocation.counters.forEach(counter => {
-            counterOptions += `<option value="${counter.id}" ${selectedCounter?.id === counter.id ? 'selected' : ''}>${counter.name}</option>`;
+    if (state.selectedLocation) {
+        state.selectedLocation.counters.forEach(counter => {
+            counterOptions += `<option value="${counter.id}" ${state.selectedCounter?.id === counter.id ? 'selected' : ''}>${counter.name}</option>`;
         });
     }
 
     // Area Selector (depends on counter)
     let areaOptions = '<option value="">Bereich wählen...</option>';
-    if (selectedCounter) {
-        selectedCounter.areas.forEach(area => {
-            areaOptions += `<option value="${area.id}" ${selectedArea?.id === area.id ? 'selected' : ''}>${area.name}</option>`;
+    if (state.selectedCounter) {
+        state.selectedCounter.areas.forEach(area => {
+            areaOptions += `<option value="${area.id}" ${state.selectedArea?.id === area.id ? 'selected' : ''}>${area.name}</option>`;
         });
     }
 
@@ -90,9 +87,9 @@ function renderSelectionBar(): void {
     const phaseToggleHTML = `
         <div class="flex items-center" role="group" aria-label="Inventurphase auswählen">
             <span id="phase-label" class="mr-2 font-semibold">Ansicht:</span>
-            <button id="phase-start-btn" class="btn btn-sm ${currentInventoryPhase === 'start' ? 'btn-primary' : 'btn-secondary'}" aria-pressed="${currentInventoryPhase === 'start'}" aria-labelledby="phase-label">Anfang</button>
-            <button id="phase-end-btn" class="btn btn-sm ${currentInventoryPhase === 'end' ? 'btn-primary' : 'btn-secondary'} ml-2" aria-pressed="${currentInventoryPhase === 'end'}" aria-labelledby="phase-label">Ende</button>
-            <button id="phase-consumption-btn" class="btn btn-sm ${currentInventoryPhase === 'consumption' ? 'btn-primary' : 'btn-secondary'} ml-2" aria-pressed="${currentInventoryPhase === 'consumption'}" aria-labelledby="phase-label">Verbrauch</button>
+            <button id="phase-start-btn" class="btn btn-sm ${state.currentPhase === 'start' ? 'btn-primary' : 'btn-secondary'}" aria-pressed="${state.currentPhase === 'start'}" aria-labelledby="phase-label">Anfang</button>
+            <button id="phase-end-btn" class="btn btn-sm ${state.currentPhase === 'end' ? 'btn-primary' : 'btn-secondary'} ml-2" aria-pressed="${state.currentPhase === 'end'}" aria-labelledby="phase-label">Ende</button>
+            <button id="phase-consumption-btn" class="btn btn-sm ${state.currentPhase === 'consumption' ? 'btn-primary' : 'btn-secondary'} ml-2" aria-pressed="${state.currentPhase === 'consumption'}" aria-labelledby="phase-label">Verbrauch</button>
         </div>
     `;
 
@@ -121,7 +118,7 @@ function renderSelectionBar(): void {
     document.getElementById('phase-consumption-btn')?.addEventListener('click', () => switchInventoryPhase('consumption'));
 
     // If an area is already selected, render its inventory table
-    if (selectedArea) {
+    if (state.selectedArea) {
         renderInventoryTable();
     } else {
         document.getElementById('inventory-table-container')!.innerHTML = "<p>Bitte Standort, Tresen und Bereich auswählen.</p>";
@@ -137,7 +134,7 @@ function renderSelectionBar(): void {
  * @param phase - Die zu aktivierende Inventurphase ('start', 'end' oder 'consumption')
  */
 function switchInventoryPhase(phase: InventoryPhase): void {
-    currentInventoryPhase = phase;
+    state.currentPhase = phase;
     renderSelectionBar(); // Re-render to update button styles
     if (selectedArea) {
         renderInventoryTable(); // Re-render table for the new phase
@@ -152,9 +149,9 @@ function switchInventoryPhase(phase: InventoryPhase): void {
  */
 async function handleLocationChange(event: Event): Promise<void> {
     const locationId = (event.target as HTMLSelectElement).value;
-    selectedLocation = loadedLocations.find(loc => loc.id === locationId) || null;
-    selectedCounter = null; // Reset counter and area
-    selectedArea = null;
+    state.selectedLocation = state.loadedLocations.find(loc => loc.id === locationId) || null;
+    state.selectedCounter = null; // Reset counter and area
+    state.selectedArea = null;
     renderSelectionBar(); // Re-render dependent dropdowns
     document.getElementById('inventory-table-container')!.innerHTML = "<p>Bitte Tresen und Bereich auswählen.</p>";
     document.getElementById('inventory-actions-bar')!.innerHTML = "";
@@ -167,10 +164,10 @@ async function handleLocationChange(event: Event): Promise<void> {
  */
 async function handleCounterChange(event: Event): Promise<void> {
     const counterId = (event.target as HTMLSelectElement).value;
-    if (selectedLocation) {
-        selectedCounter = selectedLocation.counters.find(c => c.id === counterId) || null;
+    if (state.selectedLocation) {
+        state.selectedCounter = state.selectedLocation.counters.find(c => c.id === counterId) || null;
     }
-    selectedArea = null; // Reset area
+    state.selectedArea = null; // Reset area
     renderSelectionBar();
     document.getElementById('inventory-table-container')!.innerHTML = "<p>Bitte Bereich auswählen.</p>";
      document.getElementById('inventory-actions-bar')!.innerHTML = "";
@@ -183,8 +180,8 @@ async function handleCounterChange(event: Event): Promise<void> {
  */
 async function handleAreaChange(event: Event): Promise<void> {
     const areaId = (event.target as HTMLSelectElement).value;
-    if (selectedCounter) {
-        selectedArea = selectedCounter.areas.find(a => a.id === areaId) || null;
+    if (state.selectedCounter) {
+        state.selectedArea = state.selectedCounter.areas.find(a => a.id === areaId) || null;
     }
     renderSelectionBar(); // Update selection bar (though no direct visual change from area selection itself)
     if (selectedArea) {
@@ -203,7 +200,7 @@ async function handleAreaChange(event: Event): Promise<void> {
  */
 function renderInventoryTable(): void {
     const tableContainer = document.getElementById('inventory-table-container');
-    if (!tableContainer || !selectedArea) {
+    if (!tableContainer || !state.selectedArea) {
         if (tableContainer) tableContainer.innerHTML = "<p>Kein Bereich ausgewählt oder Bereich hat keine Produkte.</p>";
         return;
     }
@@ -211,10 +208,10 @@ function renderInventoryTable(): void {
     // Ensure all products in the catalog are represented in the current area's inventory list
     prepareInventoryItemsForArea();
 
-    if (currentInventoryPhase === 'consumption') {
-        renderConsumptionView(tableContainer, selectedArea);
+    if (state.currentPhase === 'consumption') {
+        renderConsumptionView(tableContainer, state.selectedArea);
     } else {
-        renderEditableInventoryTable(tableContainer, selectedArea);
+        renderEditableInventoryTable(tableContainer, state.selectedArea);
     }
 }
 
@@ -224,20 +221,20 @@ function renderInventoryTable(): void {
  * Stellt sicher, dass für jedes geladene Produkt ein entsprechender Eintrag im Inventar des Bereichs existiert, und initialisiert fehlende Produkte mit Nullwerten.
  */
 function prepareInventoryItemsForArea(): void {
-    if (!selectedArea || !loadedProducts) return;
+    if (!state.selectedArea || !state.loadedProducts) return;
 
-    loadedProducts.forEach(product => {
-        if (!selectedArea!.inventoryItems.find(item => item.productId === product.id)) {
-            selectedArea!.inventoryItems.push({
+    state.loadedProducts.forEach(product => {
+        if (!state.selectedArea!.inventoryItems.find(item => item.productId === product.id)) {
+            state.selectedArea!.inventoryItems.push({
                 productId: product.id,
                 startCrates: 0, startBottles: 0, startOpenVolumeMl: 0,
                 endCrates: 0, endBottles: 0, endOpenVolumeMl: 0,
             });
         }
     });
-    selectedArea.inventoryItems.sort((a, b) => {
-        const productA = loadedProducts.find(p => p.id === a.productId);
-        const productB = loadedProducts.find(p => p.id === b.productId);
+    state.selectedArea.inventoryItems.sort((a, b) => {
+        const productA = state.loadedProducts.find(p => p.id === a.productId);
+        const productB = state.loadedProducts.find(p => p.id === b.productId);
         if (!productA || !productB) return 0;
         if (productA.category.toLowerCase() < productB.category.toLowerCase()) return -1;
         if (productA.category.toLowerCase() > productB.category.toLowerCase()) return 1;
@@ -254,7 +251,7 @@ function prepareInventoryItemsForArea(): void {
      * @param area - Der aktuell ausgewählte Bereich, dessen Inventurdaten bearbeitet werden sollen
      */
     function renderEditableInventoryTable(tableContainer: HTMLElement, area: Area): void {
-    const phaseName = currentInventoryPhase === 'start' ? 'Schichtanfang' : 'Schichtende';
+    const phaseName = state.currentPhase === 'start' ? 'Schichtanfang' : 'Schichtende';
     const tableId = `inventory-table-${area.id.replace(/[^a-zA-Z0-9]/g, '')}`; // Create a unique ID for the table
     let tableHTML = `
         <h3 id="inventory-table-title" class="panel-subtitle">Inventur für: ${area.name} (${phaseName})</h3>
@@ -274,9 +271,9 @@ function prepareInventoryItemsForArea(): void {
         const product = loadedProducts.find(p => p.id === item.productId);
         if (!product) return;
 
-        const cratesKey = currentInventoryPhase === 'start' ? 'startCrates' : 'endCrates';
-        const bottlesKey = currentInventoryPhase === 'start' ? 'startBottles' : 'endBottles';
-        const openMlKey = currentInventoryPhase === 'start' ? 'startOpenVolumeMl' : 'endOpenVolumeMl';
+        const cratesKey = state.currentPhase === 'start' ? 'startCrates' : 'endCrates';
+        const bottlesKey = state.currentPhase === 'start' ? 'startBottles' : 'endBottles';
+        const openMlKey = state.currentPhase === 'start' ? 'startOpenVolumeMl' : 'endOpenVolumeMl';
 
         // Unique IDs for inputs for better label association if needed, though implicit association is often okay for tables
         const crateInputId = `${cratesKey}-${product.id}-${index}`;
@@ -402,7 +399,7 @@ function renderInventoryActions(): void {
     if (!actionsContainer) return;
 
     // Show save/fill buttons only if not in consumption view
-    if (currentInventoryPhase === 'start' || currentInventoryPhase === 'end') {
+    if (state.currentPhase === 'start' || state.currentPhase === 'end') {
         actionsContainer.innerHTML = `
             <button id="save-inventory-btn" class="btn btn-success">Inventur Speichern</button>
             <button id="fill-defaults-btn" class="btn btn-info ml-2">Alles voll (Standardwerte)</button>
@@ -417,7 +414,7 @@ function renderInventoryActions(): void {
 }
 
 function handleExportConsumptionCsv(): void {
-    if (!selectedArea || !selectedLocation || !selectedCounter) {
+    if (!state.selectedArea || !state.selectedLocation || !state.selectedCounter) {
         showToast("Kein Bereich ausgewählt für den Export.", "warning");
         return;
     }
@@ -427,10 +424,10 @@ function handleExportConsumptionCsv(): void {
     }
     try {
         exportService.exportAreaInventoryToCsv(
-            selectedArea,
-            selectedLocation.name,
-            selectedCounter.name,
-            loadedProducts,
+            state.selectedArea,
+            state.selectedLocation.name,
+            state.selectedCounter.name,
+            state.loadedProducts,
             true // includeConsumption is true by default, but explicit here
         );
         showToast("Verbrauchsdaten erfolgreich als CSV exportiert.", "success");
@@ -451,13 +448,13 @@ function fillDefaultValues(): void {
         return;
     }
 
-    selectedArea.inventoryItems.forEach(item => {
-        const product = loadedProducts.find(p => p.id === item.productId);
+    state.selectedArea.inventoryItems.forEach(item => {
+        const product = state.loadedProducts.find(p => p.id === item.productId);
         if (!product) return;
 
-        const cratesKey = currentInventoryPhase === 'start' ? 'startCrates' : 'endCrates';
-        const bottlesKey = currentInventoryPhase === 'start' ? 'startBottles' : 'endBottles';
-        const openMlKey = currentInventoryPhase === 'start' ? 'startOpenVolumeMl' : 'endOpenVolumeMl';
+        const cratesKey = state.currentPhase === 'start' ? 'startCrates' : 'endCrates';
+        const bottlesKey = state.currentPhase === 'start' ? 'startBottles' : 'endBottles';
+        const openMlKey = state.currentPhase === 'start' ? 'startOpenVolumeMl' : 'endOpenVolumeMl';
 
         // Logic for "full":
         // If itemsPerCrate is defined, one full crate, zero loose bottles, zero open.
@@ -493,11 +490,10 @@ function handleInventoryInputChange(event: Event): void {
 
     if (!selectedArea || !productId || !field) return;
 
-    const inventoryItem = selectedArea.inventoryItems.find(item => item.productId === productId);
+    const inventoryItem = state.selectedArea.inventoryItems.find(item => item.productId === productId);
     if (inventoryItem) {
-        if (inventoryItem) {
-            // Ensure field is a numeric field before assignment
-            if (field in inventoryItem && typeof inventoryItem[field] === 'number') {
+        // Ensure field is a numeric field before assignment
+        if (field in inventoryItem && typeof inventoryItem[field] === 'number') {
                 (inventoryItem as any)[field] = value;
             }
         }
@@ -505,7 +501,7 @@ function handleInventoryInputChange(event: Event): void {
         // No immediate save to DB here; save happens on "Save Inventory" button click
         // This is to allow multiple changes before a transaction.
         // Mark location as having unsaved changes (for dbService.saveLocation)
-        if(selectedLocation) {
+        if(state.selectedLocation) {
             // A flag on selectedLocation or a global state could indicate unsaved changes.
             // For now, this is implicit.
         }
@@ -522,11 +518,11 @@ async function saveCurrentInventory(): Promise<void> {
         alert("Kein Bereich ausgewählt, um die Inventur zu speichern.");
         return;
     }
-    // The `selectedArea.inventoryItems` are already updated in memory by `handleInventoryInputChange`.
-    // We just need to save the `selectedLocation` object which contains the modified area.
+    // The `state.selectedArea.inventoryItems` are already updated in memory by `handleInventoryInputChange`.
+    // We just need to save the `state.selectedLocation` object which contains the modified area.
     try {
-        await dbService.saveLocation(selectedLocation);
-        showToast(`Inventur für ${selectedArea.name} (${currentInventoryPhase === 'start' ? 'Anfang' : 'Ende'}) gespeichert!`, 'success');
+        await dbService.saveLocation(state.selectedLocation);
+        showToast(`Inventur für ${state.selectedArea.name} (${state.currentPhase === 'start' ? 'Anfang' : 'Ende'}) gespeichert!`, 'success');
     } catch (error) {
         console.error("Fehler beim Speichern der Inventur:", error);
         showToast("Fehler beim Speichern der Inventur.", 'error');

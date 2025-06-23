@@ -1,5 +1,6 @@
 import { Location, Product, InventoryEntry, Area, Counter } from '../models';
 import { CalculatedConsumption, calculateAreaConsumption } from './calculation.service';
+import { showToast } from '../ui/components/toast-notifications';
 
 /**
  * Wandelt ein Array von Objekten in einen CSV-String um.
@@ -79,7 +80,7 @@ export class ExportService {
         includeConsumption: boolean = true
     ): void {
         if (!area || !area.inventoryItems || area.inventoryItems.length === 0) {
-            alert("Keine Inventurdaten für diesen Bereich zum Exportieren vorhanden.");
+            showToast("Keine Inventurdaten für diesen Bereich zum Exportieren vorhanden.", "info");
             return;
         }
 
@@ -120,7 +121,7 @@ export class ExportService {
         }
 
         if (flatData.length === 0) {
-             alert("Keine aufbereiteten Daten zum Exportieren.");
+             showToast("Keine aufbereiteten Daten zum Exportieren.", "info");
             return;
         }
 

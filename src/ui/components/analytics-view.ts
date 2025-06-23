@@ -212,7 +212,6 @@ async function generateReport(): Promise<void> {
         return;
     }
 
-    const totalConsumedItems = consumptionReport.reduce((sum, item) => sum + (item.consumedVolumeMl !== undefined && item.consumedVolumeMl > 0 ? 1 : 0), 0)
     // This is important if itemsToAnalyze comes from multiple areas,
     // as a product might appear in several area.inventoryItems lists.
     const aggregatedInventoryEntries = new Map<string, InventoryEntry>();
@@ -245,11 +244,11 @@ async function generateReport(): Promise<void> {
 
     // Display summary
     const summaryContainer = document.getElementById('report-summary')!;
-    const totalConsumedItems = consumptionReport.reduce((sum, item) => sum + (item.consumedUnits > 0 ? 1 : 0) ,0)
+    const totalConsumedItemsCount = consumptionReport.reduce((sum, item) => sum + (item.consumedUnits > 0 ? 1 : 0), 0);
     const totalOverallCost = consumptionReport.reduce((sum, item) => sum + item.costOfConsumption, 0);
     summaryContainer.innerHTML = `
         <h3 class="panel-subtitle">Zusammenfassung für: ${reportScopeName}</h3>
-        <p>Anzahl verschiedener verbrauchter Produkte: ${totalConsumedItems}</p>
+        <p>Anzahl verschiedener verbrauchter Produkte: ${totalConsumedItemsCount}</p>
         <p>Gesamtkosten des Verbrauchs: ${totalOverallCost.toFixed(2)} €</p>
     `;
      showToast(`Bericht für ${reportScopeName} generiert.`, "success");
