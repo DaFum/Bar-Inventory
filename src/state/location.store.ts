@@ -77,23 +77,28 @@ class LocationStore {
      * @param locationData - Object containing the name and optional address for the new location.
      * @returns The newly created location.
      */
-    async addLocation(locationData: Pick<Location, 'name' | 'address'>): Promise<Location> {
-        try {
-            const newLocation: Location = {
-                id: generateId('loc'),
-                name: locationData.name,
-                address: locationData.address,
-                counters: []
-            };
-            await dbService.saveLocation(newLocation);
-            this.locations.push(newLocation); // Add to local cache
-            this.notifySubscribers();
-            return newLocation;
-        } catch (error) {
-            console.error("LocationStore: Error adding location", error);
-            throw error;
+async addLocation(locationData: Pick<Location, 'name' | 'address'>): Promise<Location> {
+    try {
+        // Validierung
+        if (!locationData.name?.trim()) {
+            throw new Error('Standortname darf nicht leer sein');
         }
+
+        const newLocation: Location = {
+            id: generateId('loc'),
+            name: locationData.name.trim(),
+            address: locationData.address,
+            counters: []
+        };
+        await dbService.saveLocation(newLocation);
+        this.locations.push(newLocation); // Add to local cache
+        this.notifySubscribers();
+        return newLocation;
+    } catch (error) {
+        console.error("LocationStore: Error adding location", error);
+        throw error;
     }
+}
 
     /**
      * Updates an existing location in the database and store, then notifies subscribers.
