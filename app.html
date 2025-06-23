@@ -629,13 +629,18 @@
                     this.areas.forEach(area => {
                         item.start[area] = 0;
                         item.end[area] = 0;
-                        item.difference[area] = 0;
-                        item.cost[area] = 0;
-                    });
-                    return item;
-                });
-                this.$store.commit('setItems', items);
-                this.saveItems();
+                        // Initialize area values and sanitize inputs
+                        this.areas.forEach(area => {
+                            item.start[area] = 0;
+                            item.end[area] = 0;
+                            item.difference[area] = 0;
+                            item.cost[area] = 0;
+                        });
+
+                        // Sanitize text inputs
+                        item.name = item.name.replace(/</g, '<').replace(/>/g, '>');
+                        item.category = item.category.replace(/</g, '<').replace(/>/g, '>');
+                        item.image = item.image.replace(/javascript:/gi, '').replace(/data:/gi, '');
             };
             reader.readAsText(file);
         },
