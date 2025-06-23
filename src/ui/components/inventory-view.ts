@@ -2,6 +2,9 @@ import { dbService } from '../../services/indexeddb.service';
 import { Location, Product, InventoryEntry, Area, Counter } from '../../models';
 import { generateId, debounce } from '../../utils/helpers';
 import { showToast } from './toast-notifications';
+import { calculateAreaConsumption, CalculatedConsumption } from '../../services/calculation.service';
+import { exportService } from '../../services/export.service';
+import { escapeHtml } from '../../utils/security';
 
 class InventoryViewState {
     container: HTMLElement | null = null;
@@ -14,8 +17,6 @@ class InventoryViewState {
 }
 
 const state = new InventoryViewState();
-import { calculateAreaConsumption, CalculatedConsumption } from '../../services/calculation.service';
-import { exportService } from '../../services/export.service';
 
 // Phase of inventory: 'start', 'end', or 'consumption'
 type InventoryPhase = 'start' | 'end' | 'consumption';
@@ -280,11 +281,9 @@ function prepareInventoryItemsForArea(): void {
         // Unique IDs for inputs for better label association if needed, though implicit association is often okay for tables
         const crateInputId = `${cratesKey}-${product.id}-${index}`;
         const bottleInputId = `${bottlesKey}-${product.id}-${index}`;
-import { escapeHtml } from '../../utils/security';
+        const openMlInputId = `${openMlKey}-${product.id}-${index}`;
 
-const openMlInputId = `${openMlKey}-${product.id}-${index}`;
-
-tableHTML += `
+        tableHTML += `
     <tr class="border-b inventory-item-row" data-product-id="${product.id}">
         <td class="px-4 py-2" role="rowheader">
             <span class="font-semibold">${escapeHtml(product.name)}</span><br>
