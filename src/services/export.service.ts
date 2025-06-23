@@ -135,7 +135,9 @@ export class ExportService {
         }
 
         const csvData = arrayToCsv(flatData, columns);
-        const fileName = `inventur_${locationName.replace(/\s/g, '_')}_${counterName.replace(/\s/g, '_')}_${area.name.replace(/\s/g, '_')}.csv`;
+        // Better sanitize user input for file names
+        const sanitize = (str: string) => str.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
+        const fileName = `inventur_${sanitize(locationName)}_${sanitize(counterName)}_${sanitize(area.name)}.csv`;
         triggerDownload(csvData, fileName, 'text/csv;charset=utf-8;');
     }
 
