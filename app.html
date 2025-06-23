@@ -127,6 +127,35 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
                 <div>
+                    <h3 class="text-xl font-bold mb-2">Locations</h3>
+                    <div class="form-control mb-4">
+                        <label class="label">Add New Location</label>
+                        <input type="text" v-model="newLocation" class="input input-bordered" @input="validateLocationInput">
+                        <button @click="addLocation" :disabled="!isLocationValid" class="btn btn-primary mt-2">Add Location</button>
+                    </div>
+                    <ul class="list-disc ml-6">
+                        <li v-for="(location, index) in locations" :key="index">
+                            {{ location }} <button @click="removeLocation(index)" class="btn btn-sm btn-error ml-2">Remove</button>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold mb-2">Bars</h3>
+                    <div class="form-control mb-4">
+                        <label class="label">Add New Bar</label>
+                        <input type="text" v-model="newBar" class="input input-bordered" @input="validateBarInput">
+                        <button @click="addBar" :disabled="!isBarValid" class="btn btn-primary mt-2">Add Bar</button>
+                    </div>
+                    <ul class="list-disc ml-6">
+                        <li v-for="(bar, index) in bars" :key="index">
+                            {{ bar }} <button @click="removeBar(index)" class="btn btn-sm btn-error ml-2">Remove</button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                <div>
                     <h3 class="text-xl font-bold mb-2">Categories</h3>
                     <div class="form-control mb-4">
                         <label class="label">Add New Category</label>
@@ -482,11 +511,58 @@
                 calculateDifference({ state }) {
                     function evalFormula(f) {
                         try {
+                            // Simple math expression evaluator
+                            const sanitized = (f || '0').replace(/[^0-9+\-*/().]/g, '');
+                            // Use a safer approach than Function constructor
+                            const tokens = sanitized.match(/(\d+(\.\d+)?|\+|\-|\*|\/|\(|\))/g) || ['0'];
+                            const rpn = [];
+                            const operators = [];
+                            const precedence = {'+': 1, '-': 1, '*': 2, '/': 2};
+            
+                            for (const token of tokens) {
+                                if (!isNaN(parseFloat(token))) {
+                                    rpn.push(parseFloat(token));
+                                } else if (token === '(') {
+                                    operators.push(token);
+                                } else if (token === ')') {
+                                    while (operators.length && operators[operators.length-1] !== '(') {
+                                        rpn.push(operators.pop());
+                                    }
+                                    operators.pop(); // Remove '('
+                                } else {
+                                    while (operators.length && operators[operators.length-1] !== '(' && 
+                                           precedence[operators[operators.length-1]] >= precedence[token]) {
+                                        rpn.push(operators.pop());
+                                    }
+                                    operators.push(token);
+                                }
+                            }
+            
+                            while (operators.length) {
+                                rpn.push(operators.pop());
+                            }
+            
+                            const stack = [];
+                            for (const token of rpn) {
+                                if (typeof token === 'number') {
+                                    stack.push(token);
+                                } else {
+                                    const b = stack.pop() || 0;
+                                    const a = stack.pop() || 0;
+                                    if (token === '+') stack.push(a + b);
+                                    else if (token === '-') stack.push(a - b);
+                                    else if (token === '*') stack.push(a * b);
+                                    else if (token === '/') stack.push(b !== 0 ? a / b : 0);
+                                }
+                            }
+            
+                            return stack.pop() || 0;
                             return Function('return (' + (f || '0').replace(/[^0-9+\-*/().]/g, '') + ')')();
                         } catch {
                             return 0;
                         }
                     }
+    
                     state.items.forEach(item => {
                         state.areas.forEach(area => {
                             const startVal = evalFormula(item.start[area]);
@@ -614,6 +690,9 @@
                     const cols = line.split(',');
                     const item = {
                         name: cols[0],
+                        category: cols[1],
+                        volume: parseFloat(cols[2]) || 0,
+                        bottlesPerCase: parseFloat(cols[3]) || 0,
                         const items = lines.map(line => {
                             // Handle quoted fields in CSV
                             const cols = [];
@@ -640,6 +719,10 @@
                         difference: {},
                         cost: {}
                     };
+                    return item;
+                });
+                this.$store.commit('setItems', items);
+                this.saveItems();
                     // Initialize area values
                     this.areas.forEach(area => {
                         item.start[area] = 0;
