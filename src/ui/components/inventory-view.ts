@@ -28,7 +28,8 @@ let currentInventoryPhase: InventoryPhase = 'start'; /**
  */
 
 export async function initInventoryView(container: HTMLElement): Promise<void> {
-    inventoryViewContainer = container;
+    state.container = container;
+    state.container.innerHTML = `
     inventoryViewContainer.innerHTML = `
         <section class="panel" aria-labelledby="inventory-main-title">
             <h2 id="inventory-main-title" class="panel-title">Inventuraufnahme</h2>
