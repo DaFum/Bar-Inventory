@@ -8,11 +8,16 @@ The Bar Inventory Management System is a web application designed to help bar ma
 
 - **Category Management**: Add, edit, and remove categories.
 - **Area Management**: Add, edit, and remove areas within the bar.
+- **Location and Bar Management**: Manage multiple locations and bars.
 - **Item Management**: Add, edit, and remove inventory items.
+- **Product Details**: Track volume, price, and packaging for each item.
 - **Phases**: Track inventory at the start and end of a period, and automatically calculate the difference.
 - **Formula Input**: Enter formulas for inventory quantities that can be dynamically calculated.
 - **View Toggle**: Switch between formula view and sum view for inventory quantities.
 - **Export/Import**: Export inventory data to CSV or JSON files, and import data from JSON files.
+- **CSV Import**: Import product data from a CSV file.
+- **Report Generation**: Export consumption and cost reports as CSV.
+- **Analytics**: View consumption and cost charts directly in the app.
 - **Toasts**: Display toast notifications for successful actions.
 
 ## Technologies Used
@@ -36,12 +41,19 @@ The Bar Inventory Management System is a web application designed to help bar ma
 2. Under "Areas", you can add new areas by entering the area name and clicking "Add Area".
 3. Existing areas can be removed by clicking the "Remove" button next to the area name.
 
+### Managing Locations and Bars
+
+1. Navigate to the "Manage View" tab.
+2. Under "Locations" and "Bars", you can add new entries and remove existing ones.
+3. These settings are stored locally so they persist between sessions.
+
 ### Managing Items
 
 1. Navigate to the "Manage View" tab.
 2. Under "Add Item", enter the item name and select a category.
-3. Click "Add Item" to add the item to the inventory.
-4. Existing items can be edited or removed by clicking the respective buttons next to the item name in the inventory list.
+3. Optionally specify volume, packaging, and pricing information.
+4. Click "Add Item" to add the item to the inventory.
+5. Existing items can be edited or removed by clicking the respective buttons next to the item name in the inventory list.
 
 ### Viewing and Updating Inventory
 
@@ -50,6 +62,11 @@ The Bar Inventory Management System is a web application designed to help bar ma
 3. Enter inventory quantities using formulas (e.g., `5+10`). The system will dynamically calculate the sum.
 4. Toggle between formula view and sum view using the "Show Formula" / "Show Sum" button.
 5. Notes can be added for the "Difference" phase.
+
+### Viewing Analytics
+
+1. Switch to the "Analytics" tab to see charts of differences and costs per item.
+2. Charts update automatically when inventory data changes.
 
 ### Exporting and Importing Data
 
