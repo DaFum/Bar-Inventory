@@ -35,7 +35,7 @@ function renderLayout(): void {
         </nav>
         <main id="view-container" class="view-content" role="main" aria-live="polite">
             <!-- Specific view content will be rendered here -->
-        </div>
+        </main>
     `;
 
     document.querySelectorAll('#main-nav .nav-button').forEach(button => {
