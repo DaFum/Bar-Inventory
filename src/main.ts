@@ -11,18 +11,24 @@ class Application {
     private initialize(): void {
         console.log("Application initializing...");
         // Setup basic event listeners or initial UI components
-        document.addEventListener('DOMContentLoaded', () => {
-            const appContainer = document.getElementById('app-container');
-            if (appContainer) {
-                // Example: Load initial view or component
-                // For now, just log. Later this will call UI rendering functions.
-                console.log("DOM content loaded, app container found.");
-                exampleAppSetup(appContainer);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                this.setupApp();
+            });
+        } else {
+            this.setupApp();
+        }
+    }
 
-            } else {
-                console.error("App container not found in HTML.");
-            }
-        });
+    private setupApp(): void {
+        const appContainer = document.getElementById('app-container');
+        if (appContainer) {
+            console.log("DOM content loaded, app container found.");
+            exampleAppSetup(appContainer);
+        } else {
+            console.error("App container not found in HTML.");
+        }
+    }
     }
 }
 
