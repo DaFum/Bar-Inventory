@@ -228,7 +228,7 @@ function renderProductForm(product?: Product): void {
 
         if (!name || !category || isNaN(volume) || isNaN(pricePerBottle)) {
             // Basic validation, can be enhanced
-            alert("Bitte füllen Sie alle Pflichtfelder (Name, Kategorie, Volumen, Preis) korrekt aus.");
+            showToast("Bitte füllen Sie alle Pflichtfelder (Name, Kategorie, Volumen, Preis) korrekt aus.", "warning");
             return;
         }
 
