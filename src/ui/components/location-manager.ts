@@ -78,7 +78,7 @@ async function handleExportAllLocationsJson() {
  * Lädt alle Standorte aus der Datenbank und aktualisiert die Anzeige der Standortliste im UI.
  */
 async function loadAndRenderLocations(): Promise<void> {
-    loadedLocations = await dbService.loadLocations();
+    state.loadedLocations = await dbService.loadLocations();
     renderLocationList();
 }
 
