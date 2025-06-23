@@ -79,7 +79,7 @@ function renderSelectionBar(): void {
     let areaOptions = '<option value="">Bereich wählen...</option>';
     if (state.selectedCounter) {
         state.selectedCounter.areas.forEach(area => {
-            areaOptions += `<option value="${area.id}" ${state.selectedArea?.id === area.id ? 'selected' : ''}>${area.name}</option>`;
+            areaOptions += `<option value="${escapeHtml(area.id)}" ${state.selectedArea?.id === area.id ? 'selected' : ''}>${escapeHtml(area.name)}</option>`;
         });
     }
 
