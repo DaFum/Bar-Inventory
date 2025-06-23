@@ -101,18 +101,14 @@
         <div>
             <h2 class="text-2xl font-bold mb-2">Manage Categories, Areas, and Items</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <h3 class="text-xl font-bold mb-2">Locations</h3>
-                    <div class="form-control mb-4">
-                        <label class="label">Add New Location</label>
-                        <input type="text" v-model="newLocation" class="input input-bordered" @input="validateLocationInput">
-                        <button @click="addLocation" :disabled="!isLocationValid" class="btn btn-primary mt-2">Add Location</button>
-                    </div>
-                    <ul class="list-disc ml-6">
-                        <li v-for="(location, index) in locations" :key="index">
-                            {{ location }} <button @click="removeLocation(index)" class="btn btn-sm btn-error ml-2">Remove</button>
-                        </li>
-                    </ul>
+ data() {
+   return {
+     newLocation: '',
+     newItem: { … },
+     newCategory: '',
+     newArea: ''
+   };
+ }
                 </div>
                 <div>
                     <h3 class="text-xl font-bold mb-2">Bars</h3>
