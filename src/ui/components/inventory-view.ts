@@ -226,14 +226,17 @@ function renderEditableInventoryTable(tableContainer: HTMLElement, area: Area): 
         // Unique IDs for inputs for better label association if needed, though implicit association is often okay for tables
         const crateInputId = `${cratesKey}-${product.id}-${index}`;
         const bottleInputId = `${bottlesKey}-${product.id}-${index}`;
-        const openMlInputId = `${openMlKey}-${product.id}-${index}`;
+import { escapeHtml } from '../../utils/security';
 
-        tableHTML += `
-            <tr class="border-b inventory-item-row" data-product-id="${product.id}">
-                <td class="px-4 py-2" role="rowheader">
-                    <span class="font-semibold">${product.name}</span><br>
-                    <small class="text-gray-600">${product.category} - ${product.volume}ml</small>
-                </td>
+const openMlInputId = `${openMlKey}-${product.id}-${index}`;
+
+tableHTML += `
+    <tr class="border-b inventory-item-row" data-product-id="${product.id}">
+        <td class="px-4 py-2" role="rowheader">
+            <span class="font-semibold">${escapeHtml(product.name)}</span><br>
+            <small class="text-gray-600">${escapeHtml(product.category)} - ${product.volume}ml</small>
+        </td>
+`;
                 <td class="px-4 py-2">
                     <label for="${crateInputId}" class="sr-only">Kästen für ${product.name}</label>
                     <input type="number" id="${crateInputId}" class="form-control form-control-sm text-center inventory-input" data-field="${cratesKey}" value="${item[cratesKey] || 0}" min="0" ${!product.itemsPerCrate ? 'disabled title="Keine Kasteninfo für Produkt"' : ''} aria-label="Kästen für ${product.name}">
