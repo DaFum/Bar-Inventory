@@ -200,7 +200,11 @@ async saveInventoryState(state: InventoryState): Promise<string> {
 export const dbService = new IndexedDBService();
 console.log("IndexedDB Service initialized.");
 
-// Example usage (can be removed or moved to a test/init file):
+/**
+ * Führt einen Testlauf des IndexedDB-Service durch, indem Produkte, Standorte und den Inventarstatus geladen, ggf. Beispieldaten angelegt und die Ergebnisse protokolliert werden.
+ *
+ * Diese Funktion dient Demonstrations- und Testzwecken und initialisiert die Datenbank bei Bedarf mit Beispielwerten.
+ */
 async function testDB() {
     try {
         console.log("Testing IndexedDB Service...");

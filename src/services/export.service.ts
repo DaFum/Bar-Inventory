@@ -2,10 +2,11 @@ import { Location, Product, InventoryEntry, Area, Counter } from '../models';
 import { CalculatedConsumption, calculateAreaConsumption } from './calculation.service';
 
 /**
- * Generates CSV content from an array of objects.
- * @param data Array of objects to convert.
- * @param columns Array of column headers. If null, headers are derived from keys of the first object.
- * @returns CSV string.
+ * Wandelt ein Array von Objekten in einen CSV-String um.
+ *
+ * @param data - Die zu konvertierenden Objekte
+ * @param columns - Optional: Zu verwendende Spaltenüberschriften; falls nicht angegeben, werden die Schlüssel des ersten Objekts verwendet
+ * @returns Den generierten CSV-Inhalt als String oder einen leeren String, wenn keine Daten vorhanden sind
  */
 function arrayToCsv(data: any[], columns?: string[]): string {
     if (!data || data.length === 0) {
@@ -29,10 +30,11 @@ function arrayToCsv(data: any[], columns?: string[]): string {
 }
 
 /**
- * Triggers a browser download for the given content.
- * @param content The content to download.
- * @param fileName The name of the file to be downloaded.
- * @param contentType The MIME type of the content.
+ * Löst den Download einer Datei im Browser mit dem angegebenen Inhalt, Dateinamen und MIME-Typ aus.
+ *
+ * @param content - Der herunterzuladende Dateinhalt
+ * @param fileName - Der gewünschte Name der heruntergeladenen Datei
+ * @param contentType - Der MIME-Typ des Inhalts (z.B. "text/csv" oder "application/json")
  */
 function triggerDownload(content: string, fileName: string, contentType: string): void {
     const blob = new Blob([content], { type: contentType });

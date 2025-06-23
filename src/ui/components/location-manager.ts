@@ -15,6 +15,13 @@ class LocationManagerState {
 
 const state = new LocationManagerState();
 
+/**
+ * Initialisiert die Standortverwaltung und rendert die Benutzeroberfläche im angegebenen Container.
+ *
+ * Lädt vorhandene Standorte, zeigt sie als Liste an und richtet Event-Handler für das Hinzufügen neuer Standorte sowie den Export aller Standorte als JSON ein.
+ *
+ * @param container - Das HTML-Element, in dem die Standortverwaltung angezeigt werden soll.
+ */
 export async function initLocationManager(container: HTMLElement): Promise<void> {
     locationManagerContainer = container;
     locationManagerContainer.innerHTML = `
@@ -42,6 +49,11 @@ export async function initLocationManager(container: HTMLElement): Promise<void>
     document.getElementById('export-all-locations-json-btn')?.addEventListener('click', handleExportAllLocationsJson);
 }
 
+/**
+ * Exportiert alle geladenen Standorte als JSON-Datei.
+ *
+ * Zeigt eine Information, falls keine Standorte vorhanden sind. Bei Erfolg wird eine JSON-Datei mit allen Standorten und dem Exportdatum zum Download angeboten. Im Fehlerfall wird eine Fehlermeldung angezeigt.
+ */
 async function handleExportAllLocationsJson() {
     if (loadedLocations.length === 0) {
         showToast("Keine Standorte zum Exportieren vorhanden.", "info");
@@ -62,12 +74,20 @@ async function handleExportAllLocationsJson() {
 }
 
 
+/**
+ * Lädt alle Standorte aus der Datenbank und aktualisiert die Anzeige der Standortliste im UI.
+ */
 async function loadAndRenderLocations(): Promise<void> {
     loadedLocations = await dbService.loadLocations();
     renderLocationList();
 }
 
-function renderLocationList(): void {
+/**
+         * Rendert die Liste aller geladenen Standorte im UI.
+         *
+         * Zeigt eine Hinweismeldung an, wenn keine Standorte vorhanden sind. Für jeden Standort werden Name sowie Bearbeiten- und Löschen-Schaltflächen angezeigt.
+         */
+        function renderLocationList(): void {
     const listContainer = document.getElementById('location-list-container');
     if (!listContainer) return;
 
@@ -144,6 +164,13 @@ listContainer.innerHTML = `
     });
 }
 
+/**
+ * Zeigt ein Formular zum Erstellen oder Bearbeiten eines Standorts an.
+ *
+ * Wenn ein bestehender Standort übergeben wird, werden die Felder vorausgefüllt und die Verwaltung der zugehörigen Zähler ermöglicht. Nach dem Speichern oder Erstellen wird die Standortliste aktualisiert und ggf. die Detailansicht für die weitere Bearbeitung angezeigt.
+ *
+ * @param location - Optional. Der zu bearbeitende Standort. Wenn nicht angegeben, wird ein neuer Standort angelegt.
+ */
 function renderLocationForm(location?: Location): void {
     const detailsContainer = document.getElementById('location-details-container');
     if (!detailsContainer) return;
@@ -208,6 +235,11 @@ function renderLocationForm(location?: Location): void {
 }
 
 
+/**
+ * Zeigt die Detailansicht eines Standorts an, einschließlich Adresse und zugehöriger Zähler.
+ *
+ * Die Ansicht ermöglicht das Bearbeiten der Stammdaten sowie das Verwalten der Zähler des Standorts.
+ */
 function renderLocationDetails(location: Location): void {
     currentEditingLocation = location;
     const detailsContainer = document.getElementById('location-details-container');
@@ -239,7 +271,13 @@ function renderLocationDetails(location: Location): void {
     renderCountersManagement(location);
 }
 
-// --- Counter Management ---
+/**
+ * Rendert die Verwaltung der Tresen (Counter) für einen bestimmten Standort im UI.
+ *
+ * Zeigt eine Liste aller Tresen des Standorts mit Optionen zum Bearbeiten, Löschen und Hinzufügen neuer Tresen. Ermöglicht das Öffnen von Formularen zur Tresenbearbeitung sowie die Verwaltung der zugehörigen Bereiche. Änderungen werden direkt im persistenten Speicher aktualisiert.
+ *
+ * @param location - Der Standort, dessen Tresen verwaltet werden sollen
+ */
 function renderCountersManagement(location: Location): void {
     const countersContainer = document.getElementById('counters-management-container');
     if (!countersContainer) return;
@@ -292,6 +330,14 @@ function renderCountersManagement(location: Location): void {
     });
 }
 
+/**
+ * Zeigt ein Formular zum Erstellen oder Bearbeiten eines Tresens (Counter) für einen Standort an.
+ *
+ * Das Formular wird mit vorhandenen Daten vorausgefüllt, falls ein Tresen bearbeitet wird. Nach dem Absenden werden die Änderungen gespeichert, die Tresenliste aktualisiert und ggf. die Bereichsverwaltung angezeigt. Das Formular kann mit "Abbrechen" geschlossen werden.
+ *
+ * @param location - Der Standort, zu dem der Tresen gehört
+ * @param counter - Optional; der zu bearbeitende Tresen. Wenn nicht angegeben, wird ein neuer Tresen erstellt.
+ */
 function renderCounterForm(location: Location, counter?: Counter): void {
     const counterFormContainer = document.getElementById('counter-form-container');
     if (!counterFormContainer) return;
@@ -342,7 +388,14 @@ function renderCounterForm(location: Location, counter?: Counter): void {
     });
 }
 
-// --- Area Management ---
+/**
+ * Zeigt die Verwaltung der Bereiche für einen bestimmten Tresen an und ermöglicht das Hinzufügen, Bearbeiten und Löschen von Bereichen.
+ *
+ * Die Funktion rendert die Liste der vorhandenen Bereiche eines Tresens, stellt Schaltflächen für Bearbeitung und Löschung bereit und bietet die Möglichkeit, neue Bereiche hinzuzufügen. Änderungen werden direkt gespeichert und die Anzeige entsprechend aktualisiert.
+ *
+ * @param location - Die Location, zu der der Tresen gehört
+ * @param counter - Der Tresen, dessen Bereiche verwaltet werden sollen
+ */
 function renderAreasManagement(location: Location, counter: Counter): void {
     const areasContainer = document.getElementById('area-management-container');
     if (!areasContainer) return;
@@ -392,6 +445,11 @@ function renderAreasManagement(location: Location, counter: Counter): void {
     });
 }
 
+/**
+ * Zeigt ein Formular zum Erstellen oder Bearbeiten eines Bereichs innerhalb eines Zählers an.
+ *
+ * Wird ein bestehender Bereich übergeben, werden die Felder vorausgefüllt und Änderungen gespeichert. Andernfalls wird ein neuer Bereich erstellt und zur Liste hinzugefügt. Nach dem Speichern oder Abbrechen wird das Formular ausgeblendet und die Bereichsliste aktualisiert.
+ */
 function renderAreaForm(location: Location, counter: Counter, area?: Area): void {
     const areaFormContainer = document.getElementById('area-form-container');
     if (!areaFormContainer) return;
