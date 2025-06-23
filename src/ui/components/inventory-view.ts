@@ -19,13 +19,15 @@ import { exportService } from '../../services/export.service';
 
 // Phase of inventory: 'start', 'end', or 'consumption'
 type InventoryPhase = 'start' | 'end' | 'consumption';
-let currentInventoryPhase: InventoryPhase = 'start'; /**
+
+/**
  * Initialisiert die Inventuransicht im angegebenen Container-Element.
  *
  * Lädt Standorte und Produkte aus der Datenbank, setzt die Grundstruktur der Benutzeroberfläche und rendert die Auswahlleiste für Standort, Tresen und Bereich. Zeigt eine Aufforderung an, bis alle erforderlichen Auswahlen getroffen wurden.
  *
  * @param container - Das HTML-Element, in dem die Inventuransicht angezeigt werden soll
  */
+let currentInventoryPhase: InventoryPhase = 'start';
 
 export async function initInventoryView(container: HTMLElement): Promise<void> {
     state.container = container;
