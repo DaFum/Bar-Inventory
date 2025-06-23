@@ -148,8 +148,14 @@ class IndexedDBService {
    */
   async saveInventoryState(state: InventoryState): Promise<string> {
     // Ensure the key is set for the state object if it's a fixed key store
-    const stateToSave = { ...state, key: 'currentState' };
-    return this.put('inventoryState', stateToSave as any); // Cast because key is not on InventoryState model
+interface StoredInventoryState extends InventoryState {
+    key: string;
+}
+
+async saveInventoryState(state: InventoryState): Promise<string> {
+    const stateToSave: StoredInventoryState = { ...state, key: 'currentState' };
+    return this.put('inventoryState', stateToSave);
+}
   }
 
 
