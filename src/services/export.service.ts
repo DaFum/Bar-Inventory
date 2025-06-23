@@ -8,9 +8,9 @@ import { CalculatedConsumption, calculateAreaConsumption } from './calculation.s
  * @param columns - Optional: Zu verwendende Spaltenüberschriften; falls nicht angegeben, werden die Schlüssel des ersten Objekts verwendet
  * @returns Den generierten CSV-Inhalt als String oder einen leeren String, wenn keine Daten vorhanden sind
  */
-function arrayToCsv(data: any[], columns?: string[]): string {
-    if (!data || data.length === 0) {
-        return "";
+     if (!data || data.length === 0) {
+         return columns ? columns.join(',') : "";
+     }
     }
 
     const columnHeaders = columns || Object.keys(data[0]);
