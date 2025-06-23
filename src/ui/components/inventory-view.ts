@@ -70,9 +70,9 @@ function renderSelectionBar(): void {
     // Counter Selector (depends on location)
     let counterOptions = '<option value="">Tresen wählen...</option>';
     if (state.selectedLocation) {
-        state.selectedLocation.counters.forEach(counter => {
-            counterOptions += `<option value="${counter.id}" ${state.selectedCounter?.id === counter.id ? 'selected' : ''}>${counter.name}</option>`;
-        });
+state.selectedLocation.counters.forEach(counter => {
+    counterOptions += `<option value="${escapeHtml(counter.id)}" ${state.selectedCounter?.id === counter.id ? 'selected' : ''}>${escapeHtml(counter.name)}</option>`;
+});
     }
 
     // Area Selector (depends on counter)
