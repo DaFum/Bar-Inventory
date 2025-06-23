@@ -42,7 +42,6 @@ export async function initLocationManager(container: HTMLElement): Promise<void>
         </section>
         <section id="location-details-container" class="panel mt-4" style="display: none;" aria-labelledby="location-details-title" aria-live="polite">
             <!-- Details for selected location, counters, and areas will be rendered here -->
-        </div>
     `;
     await loadAndRenderLocations();
 
