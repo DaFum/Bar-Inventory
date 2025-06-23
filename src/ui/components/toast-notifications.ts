@@ -26,6 +26,10 @@ export function showToast(message: string, type: ToastType = 'info', duration: n
     toastElement.className = `toast toast-${type}`; // CSS classes for styling
     toastElement.textContent = message;
 
+    // Accessibility attributes
+    toastElement.setAttribute('role', 'alert');
+    toastElement.setAttribute('aria-live', 'assertive');
+
     // Basic styling for toast - can be enhanced in CSS
     toastElement.style.padding = '10px 20px';
     toastElement.style.borderRadius = '4px';
