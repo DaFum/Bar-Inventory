@@ -86,7 +86,7 @@ export function calculateSingleItemConsumption(entry: InventoryEntry, product: P
         productId: entry.productId,
         consumedUnits: consumedUnits, // This might be in bottles or other units depending on product definition
         consumedVolumeMl: consumedVolumeMl, // Always available
-        costOfConsumption: parseFloat(costOfConsumption.toFixed(2)), // Round to 2 decimal places
+        costOfConsumption: Math.round(costOfConsumption * 100) / 100, // Round to 2 decimal places
         notes
     };
 }
