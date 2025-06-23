@@ -212,7 +212,7 @@ async function generateReport(): Promise<void> {
         return;
     }
 
-    // Aggregate consumption data by product ID
+    const totalConsumedItems = consumptionReport.reduce((sum, item) => sum + (item.consumedVolumeMl !== undefined && item.consumedVolumeMl > 0 ? 1 : 0), 0)
     // This is important if itemsToAnalyze comes from multiple areas,
     // as a product might appear in several area.inventoryItems lists.
     const aggregatedInventoryEntries = new Map<string, InventoryEntry>();
