@@ -77,7 +77,7 @@ export class ThemeService {
                 Chart.defaults.plugins.title.color = fontColor;
             }
             // Force update all active charts
-            Chart.instancesforEach(instance => {
+            Object.values(Chart.instances).forEach(instance => {
                 instance.update();
             });
         }
