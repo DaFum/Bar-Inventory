@@ -336,8 +336,10 @@ function renderConsumptionView(tableContainer: HTMLElement, area: Area): void {
         tableHTML += `
             <tr class="border-b ${consump.consumedVolumeMl !== undefined && consump.consumedVolumeMl < 0 ? 'bg-red-100' : ''}">
                 <td class="px-4 py-2">
-                    <span class="font-semibold">${product.name}</span><br>
-                    <small class="text-gray-600">${product.category} - ${product.volume}ml</small>
+-                    <span class="font-semibold">${product.name}</span><br>
+-                    <small class="text-gray-600">${product.category} - ${product.volume}ml</small>
++                    <span class="font-semibold">${escapeHtml(product.name)}</span><br>
++                    <small class="text-gray-600">${escapeHtml(product.category)} - ${product.volume}ml</small>
                     ${consump.notes && consump.notes.length > 0 ? `<br><small class="text-red-500">${consump.notes.join(', ')}</small>` : ''}
                 </td>
                 <td class="px-4 py-2 text-center">${consump.consumedUnits.toFixed(2)}</td>
