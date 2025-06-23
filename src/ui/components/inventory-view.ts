@@ -3,14 +3,17 @@ import { Location, Product, InventoryEntry, Area, Counter } from '../../models';
 import { generateId, debounce } from '../../utils/helpers';
 import { showToast } from './toast-notifications';
 
-let inventoryViewContainer: HTMLElement | null = null;
-let loadedLocations: Location[] = [];
-let loadedProducts: Product[] = [];
+class InventoryViewState {
+    container: HTMLElement | null = null;
+    loadedLocations: Location[] = [];
+    loadedProducts: Product[] = [];
+    selectedLocation: Location | null = null;
+    selectedCounter: Counter | null = null;
+    selectedArea: Area | null = null;
+    currentPhase: InventoryPhase = 'start';
+}
 
-let selectedLocation: Location | null = null;
-let selectedCounter: Counter | null = null;
-let selectedArea: Area | null = null;
-
+const state = new InventoryViewState();
 import { calculateAreaConsumption, CalculatedConsumption } from '../../services/calculation.service';
 import { exportService } from '../../services/export.service';
 
