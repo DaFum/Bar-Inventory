@@ -217,18 +217,25 @@ function renderProductForm(product?: Product): void {
         const category = (document.getElementById('product-category') as HTMLSelectElement).value;
         const volume = parseFloat((document.getElementById('product-volume') as HTMLInputElement).value);
         const pricePerBottle = parseFloat((document.getElementById('product-pricePerBottle') as HTMLInputElement).value);
-        const itemsPerCrateVal = (document.getElementById('product-itemsPerCrate') as HTMLInputElement).value;
+        const itemsPerCrateVal = (document.getElementById('product-itemsPerCrate') as HTMLInputElement).value.trim();
         const itemsPerCrate = itemsPerCrateVal ? parseInt(itemsPerCrateVal) : undefined;
-        const pricePer100mlVal = (document.getElementById('product-pricePer100ml') as HTMLInputElement).value;
+        const pricePer100mlVal = (document.getElementById('product-pricePer100ml') as HTMLInputElement).value.trim();
         const pricePer100ml = pricePer100mlVal ? parseFloat(pricePer100mlVal) : undefined;
         const supplier = (document.getElementById('product-supplier') as HTMLInputElement).value || undefined;
         const imageUrl = (document.getElementById('product-imageUrl') as HTMLInputElement).value || undefined;
         const notes = (document.getElementById('product-notes') as HTMLTextAreaElement).value || undefined;
 
 
-        if (!name || !category || isNaN(volume) || isNaN(pricePerBottle)) {
-            // Basic validation, can be enhanced
-            showToast("Bitte füllen Sie alle Pflichtfelder (Name, Kategorie, Volumen, Preis) korrekt aus.", "warning");
+        if (!name || !category || isNaN(volume) || isNaN(pricePerBottle) || volume <= 0 || pricePerBottle < 0) {
+            // Enhanced validation for required fields and positive values
+            alert("Bitte füllen Sie alle Pflichtfelder korrekt aus. Volumen muss größer als 0 sein und Preis darf nicht negativ sein.");
+            return;
+        }
+    
+        // Validate optional numeric fields
+        if ((itemsPerCrateVal && (isNaN(itemsPerCrate!) || itemsPerCrate! <= 0)) || 
+            (pricePer100mlVal && (isNaN(pricePer100ml!) || pricePer100ml! < 0))) {
+            alert("Bitte geben Sie gültige Werte für Flaschen pro Kasten und Preis pro 100ml ein.");
             return;
         }
 
