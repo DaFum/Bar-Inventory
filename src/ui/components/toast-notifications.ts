@@ -62,8 +62,7 @@ export function showToast(message: string, type: ToastType = 'info', duration: n
         case 'warning':
             toastElement.style.backgroundColor = '#f39c12'; // Orange
             break;
-        case 'info':
-        default:
+        default: // handles 'info' and any other types
             toastElement.style.backgroundColor = '#3498db'; // Blue
             break;
     }
