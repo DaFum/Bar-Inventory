@@ -228,9 +228,6 @@ function renderProductForm(product?: Product): void {
 
     // const categorySelect = document.getElementById('product-category') as HTMLSelectElement;
     // const customCategoryInput = document.getElementById('product-custom-category') as HTMLInputElement;
-        // Enhanced validation for required fields and positive values
-        showToast("Bitte füllen Sie alle Pflichtfelder korrekt aus. Volumen muss größer als 0 sein und Preis darf nicht negativ sein.", "error");
-        return;
     //     else customCategoryInput.required = false;
     // });
 
