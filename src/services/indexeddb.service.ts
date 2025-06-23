@@ -16,11 +16,18 @@ interface BarInventoryDBSchema extends DBSchema {
     key: string; // Location.id
     value: Location;
   };
-  // A single store for the overall inventory state, perhaps keyed by a constant
+// Erweiterte Version von InventoryState für IndexedDB-Speicherung
+interface StoredInventoryState extends InventoryState {
+  key: string;
+}
+
+interface BarInventoryDBSchema extends DBSchema {
+  // ...
   inventoryState: {
     key: string; // e.g., 'currentState'
-    value: InventoryState;
+    value: StoredInventoryState;
   };
+}
   // It might be more granular to store counters and areas if they are frequently accessed/modified independently
   // However, devplan.md implies locations, tresen (counters), and bereiche (areas) are often managed together.
   // For now, keeping them nested within Locations as per current models.
