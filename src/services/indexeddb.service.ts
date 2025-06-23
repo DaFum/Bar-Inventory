@@ -148,14 +148,11 @@ class IndexedDBService {
    */
   async saveInventoryState(state: InventoryState): Promise<string> {
     // Ensure the key is set for the state object if it's a fixed key store
-interface StoredInventoryState extends InventoryState {
-    key: string;
-}
-
-async saveInventoryState(state: InventoryState): Promise<string> {
+    interface StoredInventoryState extends InventoryState {
+      key: string;
+    }
     const stateToSave: StoredInventoryState = { ...state, key: 'currentState' };
     return this.put('inventoryState', stateToSave);
-}
   }
 
 
