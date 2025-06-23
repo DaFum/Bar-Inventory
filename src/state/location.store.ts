@@ -121,7 +121,7 @@ async addLocation(locationData: Pick<Location, 'name' | 'address'>): Promise<Loc
             if (index !== -1) {
                 this.locations[index] = location;
             } else {
-                this.locations.push(location); // Should ideally not happen if updating existing
+                throw new Error(`Location with id ${location.id} not found for update`);
             }
             this.notifySubscribers();
             return location;
