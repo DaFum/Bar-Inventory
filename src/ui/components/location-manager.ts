@@ -5,13 +5,15 @@ import { exportService } from '../../services/export.service';
 import { showToast } from './toast-notifications';
 
 // Store loaded locations in memory to avoid constant DB reads for UI rendering
-let loadedLocations: Location[] = [];
-let currentEditingLocation: Location | null = null;
-let currentEditingCounter: Counter | null = null;
-let currentEditingArea: Area | null = null;
+class LocationManagerState {
+    loadedLocations: Location[] = [];
+    currentEditingLocation: Location | null = null;
+    currentEditingCounter: Counter | null = null;
+    currentEditingArea: Area | null = null;
+    locationManagerContainer: HTMLElement | null = null;
+}
 
-// Main container for location management UI
-let locationManagerContainer: HTMLElement | null = null;
+const state = new LocationManagerState();
 
 export async function initLocationManager(container: HTMLElement): Promise<void> {
     locationManagerContainer = container;
