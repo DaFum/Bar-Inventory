@@ -64,7 +64,9 @@ function renderSelectionBar(): void {
     // Location Selector
     let locationOptions = '<option value="">Standort wählen...</option>';
     state.loadedLocations.forEach(loc => {
-        locationOptions += `<option value="${loc.id}" ${state.selectedLocation?.id === loc.id ? 'selected' : ''}>${loc.name}</option>`;
+-        locationOptions += `<option value="${loc.id}" ${state.selectedLocation?.id === loc.id ? 'selected' : ''}>${loc.name}</option>`;
++        locationOptions += `<option value="${escapeHtml(loc.id)}" ${state.selectedLocation?.id === loc.id ? 'selected' : ''}>${escapeHtml(loc.name)}</option>`;
+    });
     });
 
     // Counter Selector (depends on location)
