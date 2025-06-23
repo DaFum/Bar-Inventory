@@ -61,7 +61,7 @@ export class LocationListComponent extends BaseComponent<HTMLDivElement> {
         });
     }
 
-    private createAndAppendLocationItem(location: Location): ProductListItemComponent {
+    private createAndAppendLocationItem(location: Location): LocationListItemComponent {
         const itemComponent = new LocationListItemComponent(location, this.itemCallbacks);
         this.listItemComponents.set(location.id, itemComponent);
         itemComponent.appendTo(this.ulElement);
