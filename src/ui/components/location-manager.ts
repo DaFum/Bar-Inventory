@@ -55,7 +55,7 @@ export async function initLocationManager(container: HTMLElement): Promise<void>
  * Zeigt eine Information, falls keine Standorte vorhanden sind. Bei Erfolg wird eine JSON-Datei mit allen Standorten und dem Exportdatum zum Download angeboten. Im Fehlerfall wird eine Fehlermeldung angezeigt.
  */
 async function handleExportAllLocationsJson() {
-    if (loadedLocations.length === 0) {
+    if (state.loadedLocations.length === 0) {
         showToast("Keine Standorte zum Exportieren vorhanden.", "info");
         return;
     }
