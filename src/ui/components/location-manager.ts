@@ -78,16 +78,39 @@ function renderLocationList(): void {
 
     listContainer.innerHTML = `
         <ul class="list-group" aria-label="Liste der Standorte">
-            ${loadedLocations.map(loc => `
-                <li class="list-group-item">
-                    <span id="loc-name-${loc.id}">${loc.name}</span>
-                    <div>
-                        <button class="btn btn-sm btn-secondary edit-location-btn" data-id="${loc.id}" aria-label="Standort ${loc.name} bearbeiten">Bearbeiten</button>
-                        <button class="btn btn-sm btn-danger delete-location-btn" data-id="${loc.id}" aria-label="Standort ${loc.name} löschen">Löschen</button>
-                    </div>
-                </li>
-            `).join('')}
-        </ul>
+// Add this helper at the top of the file (or in a shared utils module)
+function escapeHtml(unsafe: string): string {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+listContainer.innerHTML = `
+    <ul class="list-group" aria-label="Liste der Standorte">
+        ${loadedLocations.map(loc => `
+            <li class="list-group-item">
+                <span id="loc-name-${loc.id}">${escapeHtml(loc.name)}</span>
+                <div>
+                    <button
+                        class="btn btn-sm btn-secondary edit-location-btn"
+                        data-id="${loc.id}"
+                        aria-label="Standort ${escapeHtml(loc.name)} bearbeiten">
+                        Bearbeiten
+                    </button>
+                    <button
+                        class="btn btn-sm btn-danger delete-location-btn"
+                        data-id="${loc.id}"
+                        aria-label="Standort ${escapeHtml(loc.name)} löschen">
+                        Löschen
+                    </button>
+                </div>
+            </li>
+        `).join('')}
+    </ul>
+`;
     `;
 
     document.querySelectorAll('.edit-location-btn').forEach(btn => {
