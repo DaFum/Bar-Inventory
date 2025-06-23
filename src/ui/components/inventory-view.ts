@@ -499,8 +499,7 @@ function handleInventoryInputChange(event: Event): void {
             (inventoryItem[field as keyof InventoryEntry] as number) = value;
         }
         }
-        console.log(`Updated ${productId} - ${field} to ${value}`);
-        // No immediate save to DB here; save happens on "Save Inventory" button click
+            }
         // This is to allow multiple changes before a transaction.
         // Mark location as having unsaved changes (for dbService.saveLocation)
         if(state.selectedLocation) {
