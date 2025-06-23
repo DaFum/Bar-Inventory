@@ -629,6 +629,13 @@
                         difference: {},
                         cost: {}
                     };
+                    // Initialize area values
+                    this.areas.forEach(area => {
+                        item.start[area] = 0;
+                        item.end[area] = 0;
+                        item.difference[area] = 0;
+                        item.cost[area] = 0;
+                    });
                     return item;
                 });
                 this.$store.commit('setItems', items);
