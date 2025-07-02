@@ -184,14 +184,6 @@ describe('Utility Functions', () => {
       }, 150);
     });
 
-    // it('should handle immediate execution', () => {
-    //   const mockFn = jest.fn();
-    //   const debouncedFn = debounce(mockFn, 100, true); // Assuming true is for immediate
-      
-    //   debouncedFn();
-    //   expect(mockFn).toHaveBeenCalledTimes(1);
-    // });
-
     it('should handle null/undefined function', () => {
       expect(() => debounce(null as any, 100)).toThrow();
       expect(() => debounce(undefined as any, 100)).toThrow();
