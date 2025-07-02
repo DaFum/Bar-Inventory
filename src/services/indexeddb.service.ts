@@ -1,0 +1,235 @@
+import { DBSchema, openDB, IDBPDatabase } from 'idb';
+import { Product, Location, InventoryState, Counter, Area, InventoryEntry } from '../models';
+import { showToast } from '../ui/components/toast-notifications';
+
+const DATABASE_NAME = 'BarInventoryDB';
+const DATABASE_VERSION = 1;
+
+// Define the database schema using the DBSchema interface from 'idb'
+interface BarInventoryDBSchema extends DBSchema {
+  products: {
+    key: string; // Product.id
+    value: Product;
+    indexes: { 'category': string }; // Example index
+  };
+  locations: {
+    key: string; // Location.id
+    value: Location;
+  };
+// Erweiterte Version von InventoryState für IndexedDB-Speicherung
+interface StoredInventoryState extends InventoryState {
+  key: string;
+}
+
+interface BarInventoryDBSchema extends DBSchema {
+  // ...
+  inventoryState: {
+    key: string; // e.g., 'currentState'
+    value: StoredInventoryState;
+  };
+}
+  // It might be more granular to store counters and areas if they are frequently accessed/modified independently
+  // However, devplan.md implies locations, tresen (counters), and bereiche (areas) are often managed together.
+  // For now, keeping them nested within Locations as per current models.
+  // If performance or complexity demands, these could be broken out into their own stores.
+}
+
+class IndexedDBService {
+  private dbPromise: Promise<IDBPDatabase<BarInventoryDBSchema>>;
+
+  constructor() {
+    if (!('indexedDB' in window)) {
+      showToast('IndexedDB wird nicht unterstützt. Daten können nicht gespeichert werden.', 'error');
+      throw new Error('IndexedDB not supported');
+    }
+    this.dbPromise = openDB<BarInventoryDBSchema>(DATABASE_NAME, DATABASE_VERSION, {
+      /**
+       * Handles database schema upgrades.
+       * IMPORTANT: All schema changes and data migrations must be handled here
+       * in a forward-compatible manner. Add new `if (oldVersion < X)` blocks
+       * for each new version. Document migration steps carefully.
+       * (AGENTS.md: "IndexedDB upgrades must be forward-compatible; document migration plans for future schema changes.")
+       */
+      upgrade(db, oldVersion, newVersion, transaction) {
+        console.log(`Upgrading database from version ${oldVersion} to ${newVersion}`);
+
+        // Object store for Products
+        if (!db.objectStoreNames.contains('products')) {
+          const productStore = db.createObjectStore('products', { keyPath: 'id' });
+          productStore.createIndex('category', 'category');
+          // Add initial products if necessary (example)
+          // Seed data can be added here or via a separate setup function
+        }
+
+        // Object store for Locations (which will contain counters and areas)
+        if (!db.objectStoreNames.contains('locations')) {
+          db.createObjectStore('locations', { keyPath: 'id' });
+          // Add initial locations if necessary
+        }
+
+        // Object store for general inventory state (e.g., settings, last sync time)
+        if (!db.objectStoreNames.contains('inventoryState')) {
+          db.createObjectStore('inventoryState', { keyPath: 'key' });
+          // Example: transaction.objectStore('inventoryState').add({ key: 'currentState', unsyncedChanges: false });
+        }
+
+        // Handle other version upgrades incrementally
+        // if (oldVersion < 2) { /* upgrade to version 2 */ }
+      },
+      blocked() {
+        console.error('IndexedDB blocked. Please close other tabs trying to access this database.');
+        // AGENTS.md: "Error Handling: Making sure errors are caught and handled gracefully."
+        // AGENTS.md: "Use user-facing notifications (`showToast`) for all user-triggered failures."
+        // Although this is not a user-triggered failure, it severely impacts user experience.
+        showToast('Datenbankzugriff blockiert. Bitte andere Tabs schließen.', 'error');
+      },
+      blocking() {
+        console.warn('IndexedDB blocking. Database upgrade needed but other tabs are open.');
+        showToast('Datenbank-Update blockiert. Bitte andere Tabs der App schließen und neu laden.', 'warning');
+        // Potentially db.close(); here if it helps, but IDB Promised handles this.
+      },
+      terminated() {
+        console.error('IndexedDB connection terminated unexpectedly.');
+        showToast('Datenbankverbindung unerwartet beendet. Bitte App neu laden.', 'error');
+      }
+    });
+  }
+
+  // Generic CRUD operations
+  async getAll<T extends keyof BarInventoryDBSchema>(storeName: T): Promise<BarInventoryDBSchema[T]['value'][]> {
+    const db = await this.dbPromise;
+    return db.getAll(storeName);
+  }
+
+  async get<T extends keyof BarInventoryDBSchema>(storeName: T, key: BarInventoryDBSchema[T]['key']): Promise<BarInventoryDBSchema[T]['value'] | undefined> {
+    const db = await this.dbPromise;
+    return db.get(storeName, key);
+  }
+
+  async put<T extends keyof BarInventoryDBSchema>(storeName: T, value: BarInventoryDBSchema[T]['value']): Promise<BarInventoryDBSchema[T]['key']> {
+    const db = await this.dbPromise;
+    return db.put(storeName, value);
+  }
+
+  async add<T extends keyof BarInventoryDBSchema>(storeName: T, value: BarInventoryDBSchema[T]['value']): Promise<BarInventoryDBSchema[T]['key']> {
+    const db = await this.dbPromise;
+    return db.add(storeName, value);
+  }
+
+  async delete<T extends keyof BarInventoryDBSchema>(storeName: T, key: BarInventoryDBSchema[T]['key']): Promise<void> {
+    const db = await this.dbPromise;
+    return db.delete(storeName, key);
+  }
+
+  async clearStore(storeName: keyof BarInventoryDBSchema): Promise<void> {
+    const db = await this.dbPromise;
+    return db.clear(storeName);
+  }
+
+  // Specific methods for `loadItems` and `saveItems` (as per dev/improve.md)
+  // These might relate to loading/saving the entire inventory state or specific parts.
+
+  /**
+   * Loads all products from the database.
+   * Corresponds to a part of what `loadItems` might do.
+   */
+  async loadProducts(): Promise<Product[]> {
+    return this.getAll('products');
+  }
+
+  /**
+   * Saves a single product to the database.
+   * Can be used by a more comprehensive `saveItems` function.
+   */
+  async saveProduct(product: Product): Promise<string> {
+    return this.put('products', product);
+  }
+
+  /**
+   * Loads all locations (including their counters and areas with inventory items).
+   */
+  async loadLocations(): Promise<Location[]> {
+    return this.getAll('locations');
+  }
+
+  /**
+   * Saves a single location.
+   */
+  async saveLocation(location: Location): Promise<string> {
+    return this.put('locations', location);
+  }
+
+  /**
+   * Gets the overall inventory state.
+   */
+  async getInventoryState(): Promise<InventoryState | undefined> {
+    // Assuming a single document for state, keyed 'currentState'
+    return this.get('inventoryState', 'currentState');
+  }
+
+  /**
+   * Saves the overall inventory state.
+   */
+  async saveInventoryState(state: InventoryState): Promise<string> {
+    // Ensure the key is set for the state object if it's a fixed key store
+    interface StoredInventoryState extends InventoryState {
+      key: string;
+    }
+    const stateToSave: StoredInventoryState = { ...state, key: 'currentState' };
+    return this.put('inventoryState', stateToSave);
+  }
+
+
+  // Example of a more comprehensive "saveItems" that saves all current application data
+  // This is a conceptual example; actual implementation will depend on how data is managed in the app's state.
+  /**
+   * Saves all provided application data (products, locations, state) to the database.
+   * WARNING: This method clears existing data in 'products' and 'locations' stores before writing.
+   * Ensure this destructive behavior is intended before calling.
+   * @param data - An object containing arrays of products and locations, and an optional inventory state.
+   */
+  async saveAllApplicationData(data: { products: Product[], locations: Location[], state?: InventoryState }): Promise<void> {
+    const db = await this.dbPromise;
+    const tx = db.transaction(['products', 'locations', 'inventoryState'], 'readwrite');
+
+    const productStore = tx.objectStore('products');
+    await productStore.clear(); // Clear existing products before adding new ones
+    for (const product of data.products) {
+      await productStore.put(product);
+    }
+
+    const locationStore = tx.objectStore('locations');
+    await locationStore.clear();
+    for (const location of data.locations) {
+      await locationStore.put(location);
+    }
+
+    if (data.state) {
+        const stateStore = tx.objectStore('inventoryState');
+        // Define the shape of the object to be stored, matching the store's requirements
+        interface StoredInventoryStateForSave extends InventoryState {
+            key: string;
+        }
+        const stateToSave: StoredInventoryStateForSave = { ...data.state, key: 'currentState' };
+        await stateStore.put(stateToSave);
+    }
+
+    await tx.done;
+    console.log("All application data saved to IndexedDB.");
+  }
+
+  // Example of loading all necessary data for the app
+  async loadAllApplicationData(): Promise<{ products: Product[], locations: Location[], state?: InventoryState }> {
+    const products = await this.getAll('products');
+    const locations = await this.getAll('locations');
+    const state = await this.get('inventoryState', 'currentState');
+    return { products, locations, state };
+  }
+}
+
+// Export a singleton instance of the service
+export const dbService = new IndexedDBService();
+console.log("IndexedDB Service initialized.");
+
+// The testDB() function and its call have been removed.
+// AGENTS.md: "Move demo/test routines to a dedicated test script or dev-only module."

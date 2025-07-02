@@ -1,0 +1,439 @@
+/* General Body Styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    margin: 0;
+    background-color: #f4f7f9; /* Light grey background */
+    color: #333;
+    line-height: 1.6;
+}
+
+header {
+    background-color: #2c3e50; /* Dark blue-grey */
+    color: white;
+    padding: 1rem;
+    text-align: center;
+}
+
+/* Main Application Container */
+#app-container {
+    padding: 1rem;
+    max-width: 1200px;
+    margin: 1rem auto;
+}
+
+/* Navigation Bar */
+.navbar {
+    background-color: #34495e; /* Slightly lighter blue-grey */
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.nav-button {
+    background-color: #5d6d7e;
+    color: white;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.nav-button:hover {
+    background-color: #85929e;
+}
+
+.nav-button.active {
+    background-color: #e74c3c; /* Contrasting color for active button */
+    font-weight: bold;
+}
+
+/* View Content Area */
+.view-content {
+    background-color: #ffffff; /* White background for content areas */
+    padding: 1.5rem;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Panel Styling (for sections within views) */
+.panel {
+    background-color: #ecf0f1; /* Very light grey for panels */
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    border: 1px solid #dadedf;
+}
+
+.panel-title {
+    font-size: 1.5em;
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    border-bottom: 2px solid #bdc3c7;
+    padding-bottom: 0.5rem;
+}
+
+.panel-subtitle {
+    font-size: 1.2em;
+    color: #34495e;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+/* Buttons */
+.btn {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    text-decoration: none;
+    display: inline-block;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem; /* For spacing when buttons wrap */
+    transition: opacity 0.2s ease-in-out;
+}
+
+.btn:hover {
+    opacity: 0.85;
+}
+
+.btn-primary { background-color: #3498db; color: white; }
+.btn-secondary { background-color: #95a5a6; color: white; }
+.btn-success { background-color: #2ecc71; color: white; }
+.btn-danger { background-color: #e74c3c; color: white; }
+.btn-warning { background-color: #f39c12; color: white; }
+.btn-info { background-color: #1abc9c; color: white; }
+.btn-light-grey { background-color: #bdc3c7; color: #333; }
+
+
+.btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+.btn-xs { padding: 0.2rem 0.5rem; font-size: 0.7rem; }
+
+
+/* Forms */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box; /* Important for width 100% */
+}
+.form-control-sm { padding: 0.4rem; font-size: 0.9rem; }
+
+
+/* List Groups (for displaying items like locations, counters, areas) */
+.list-group {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.list-group-item {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    padding: 0.75rem 1rem;
+    margin-bottom: -1px; /* Overlap borders */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.list-group-item:first-child {
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+.list-group-item:last-child {
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    margin-bottom: 0;
+}
+
+/* Nested list items for counters/areas */
+.list-group-item.nested {
+    background-color: #f9f9f9; /* Slightly different background for nesting */
+    padding-left: 2rem; /* Indent nested items */
+    border-left: 3px solid #3498db; /* Accent border for nesting */
+}
+.list-group-item.even-more-nested {
+    background-color: #f2f2f2;
+    padding-left: 3rem;
+    border-left: 3px solid #2ecc71;
+}
+
+/* Tables (for product list, etc.) */
+.table-fixed {
+    table-layout: fixed;
+}
+.w-full {
+    width: 100%;
+}
+.border-b {
+    border-bottom-width: 1px;
+    border-color: #ddd; /* Match list item border */
+}
+th, td {
+    padding: 0.75rem; /* Default padding for table cells */
+    text-align: left;
+    border-bottom: 1px solid #ddd; /* Consistent line under rows */
+}
+th {
+    background-color: #e9ecef; /* Light grey background for headers */
+    font-weight: bold;
+    color: #333;
+}
+.px-4 { padding-left: 1rem; padding-right: 1rem; } /* Example padding, adjust as needed */
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.w-1\/4 { width: 25%; }
+.w-1\/5 { width: 20%; } /* For inventory table columns */
+.w-2\/5 { width: 40%; } /* For inventory table product name column */
+.w-1\/6 { width: 16.666667%; }
+.text-right { text-align: right; }
+.text-center { text-align: center; } /* For inventory inputs */
+
+/* Inventory View Specifics */
+#inventory-selection-bar {
+    display: flex;
+    gap: 1rem; /* Spacing between select elements */
+    align-items: center;
+    padding: 0.75rem;
+    background-color: #e9ecef; /* Light background for the bar */
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+#inventory-selection-bar .form-control-sm {
+    min-width: 150px; /* Ensure selects are not too small */
+}
+
+.inventory-table input[type="number"] {
+    max-width: 80px; /* Limit width of number inputs */
+    margin: 0 auto; /* Center if in a text-center cell */
+}
+
+.inventory-item-row small {
+    color: #555;
+    font-size: 0.85em;
+}
+
+/* Consumption View Specifics */
+.consumption-table tfoot tr {
+    border-top: 2px solid #333; /* More prominent footer separator */
+}
+.bg-red-100 { /* For highlighting rows with issues, e.g., negative consumption */
+    background-color: #fee2e2; /* Tailwind's red-100 */
+}
+.text-red-500 { /* For notes about issues */
+    color: #ef4444; /* Tailwind's red-500 */
+}
+
+/* Analytics View Specifics */
+#analytics-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+#analytics-controls .form-control-sm {
+    min-width: 150px;
+}
+#charts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Responsive grid for charts */
+    gap: 1.5rem;
+}
+#charts-container > div { /* Each chart wrapper */
+    background-color: #fff;
+    padding: 1rem;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+canvas {
+    max-width: 100%; /* Ensure canvas is responsive */
+    height: auto !important; /* Override Chart.js inline style if needed, or manage via options */
+}
+
+/* Dark Mode Styles */
+body.dark-mode {
+    background-color: #1a1a1a; /* Darker background */
+    color: #e0e0e0; /* Lighter text */
+}
+
+body.dark-mode header {
+    background-color: #0d1b2a; /* Even darker header */
+}
+
+body.dark-mode .navbar {
+    background-color: #1b263b; /* Darker navbar */
+}
+body.dark-mode .nav-button {
+    background-color: #415a77;
+    color: #e0e0e0;
+}
+body.dark-mode .nav-button:hover {
+    background-color: #778da9;
+}
+body.dark-mode .nav-button.active {
+    background-color: #e07a5f; /* A contrasting warm color for active in dark mode */
+}
+
+body.dark-mode .view-content {
+    background-color: #2a2a2a; /* Dark content area */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3); /* Adjusted shadow for dark */
+}
+
+body.dark-mode .panel {
+    background-color: #333333; /* Darker panels */
+    border-color: #444444;
+}
+body.dark-mode .panel-title {
+    color: #bac8de; /* Lighter panel title */
+    border-bottom-color: #555;
+}
+body.dark-mode .panel-subtitle {
+    color: #a9b4c4; /* Lighter panel subtitle */
+}
+
+body.dark-mode .form-group label {
+    color: #c0c0c0; /* Lighter labels */
+}
+body.dark-mode .form-control {
+    background-color: #444;
+    color: #e0e0e0;
+    border-color: #555;
+}
+body.dark-mode .form-control::placeholder {
+    color: #888;
+}
+
+body.dark-mode .list-group-item {
+    background-color: #3a3a3a;
+    border-color: #555;
+}
+body.dark-mode .list-group-item.nested {
+    background-color: #404040;
+    border-left-color: #5fa8d3; /* Brighter accent for dark mode */
+}
+body.dark-mode .list-group-item.even-more-nested {
+    background-color: #454545;
+    border-left-color: #4caf50; /* Brighter accent for dark mode */
+}
+
+body.dark-mode th {
+    background-color: #2c2c2c;
+    color: #d0d0d0;
+    border-color: #444;
+}
+body.dark-mode td {
+    border-color: #444;
+}
+body.dark-mode .border-b { /* Ensure table row borders are visible */
+    border-color: #444 !important;
+}
+
+
+body.dark-mode #inventory-selection-bar,
+body.dark-mode #analytics-controls {
+    background-color: #2c2c2c;
+}
+
+body.dark-mode .inventory-item-row small,
+body.dark-mode .consumption-table small {
+    color: #b0b0b0; /* Lighter small text */
+}
+
+body.dark-mode footer {
+    background-color: #222;
+    color: #aaa;
+}
+
+/* Dark mode chart adjustments are now primarily handled by theme.service.ts by updating Chart.defaults */
+/* These CSS overrides can serve as a fallback or for very specific non-standard chart elements if needed. */
+/* body.dark-mode .chartjs-legend-text,
+body.dark-mode .chartjs-title-text,
+body.dark-mode .chartjs-axis-title-text,
+body.dark-mode .chartjs-axis-tick-text {
+    fill: #e0e0e0 !important;
+} */
+
+/* Ensure navbar items are spaced out correctly with the new theme toggle button */
+.navbar {
+    justify-content: space-between; /* Pushes button groups to opposite ends */
+    align-items: center; /* Vertically align items if navbar height allows */
+}
+
+
+/* Utility Classes */
+.mt-1 { margin-top: 0.25rem !important; }
+.mt-2 { margin-top: 0.5rem !important; }
+.mt-3 { margin-top: 1rem !important; }
+.mt-4 { margin-top: 1.5rem !important; }
+
+.mb-1 { margin-bottom: 0.25rem !important; }
+.mb-2 { margin-bottom: 0.5rem !important; }
+.mb-3 { margin-bottom: 1rem !important; }
+.mb-4 { margin-bottom: 1.5rem !important; }
+
+.my-2 { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
+
+.p-1 { padding: 0.25rem !important; }
+.p-2 { padding: 0.5rem !important; }
+
+.text-center { text-align: center; }
+.flex { display: flex; }
+.justify-between { justify-content: space-between; }
+.items-center { align-items: center; }
+
+hr {
+    border: 0;
+    height: 1px;
+    background-color: #ccc;
+    margin: 1rem 0;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 1rem;
+    margin-top: 2rem;
+    background-color: #e9ecef;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .navbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .nav-button {
+        text-align: center;
+        margin-bottom: 0.3rem;
+    }
+    .list-group-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .list-group-item div { /* Container for buttons */
+        margin-top: 0.5rem;
+    }
+}
