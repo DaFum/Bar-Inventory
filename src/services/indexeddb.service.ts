@@ -5,6 +5,11 @@ import { showToast } from '../ui/components/toast-notifications';
 const DATABASE_NAME = 'BarInventoryDB';
 const DATABASE_VERSION = 1;
 
+// Erweiterte Version von InventoryState für IndexedDB-Speicherung
+interface StoredInventoryState extends InventoryState {
+  key: string;
+}
+
 // Define the database schema using the DBSchema interface from 'idb'
 interface BarInventoryDBSchema extends DBSchema {
   products: {
@@ -16,18 +21,10 @@ interface BarInventoryDBSchema extends DBSchema {
     key: string; // Location.id
     value: Location;
   };
-// Erweiterte Version von InventoryState für IndexedDB-Speicherung
-interface StoredInventoryState extends InventoryState {
-  key: string;
-}
-
-interface BarInventoryDBSchema extends DBSchema {
-  // ...
   inventoryState: {
     key: string; // e.g., 'currentState'
-    value: StoredInventoryState;
+    value: StoredInventoryState; // Use the globally defined StoredInventoryState
   };
-}
   // It might be more granular to store counters and areas if they are frequently accessed/modified independently
   // However, devplan.md implies locations, tresen (counters), and bereiche (areas) are often managed together.
   // For now, keeping them nested within Locations as per current models.
@@ -171,10 +168,7 @@ class IndexedDBService {
    * Saves the overall inventory state.
    */
   async saveInventoryState(state: InventoryState): Promise<string> {
-    // Ensure the key is set for the state object if it's a fixed key store
-    interface StoredInventoryState extends InventoryState {
-      key: string;
-    }
+    // Uses the global StoredInventoryState
     const stateToSave: StoredInventoryState = { ...state, key: 'currentState' };
     return this.put('inventoryState', stateToSave);
   }
@@ -184,38 +178,70 @@ class IndexedDBService {
   // This is a conceptual example; actual implementation will depend on how data is managed in the app's state.
   /**
    * Saves all provided application data (products, locations, state) to the database.
-   * WARNING: This method clears existing data in 'products' and 'locations' stores before writing.
-   * Ensure this destructive behavior is intended before calling.
+   * This method updates existing data, adds new data, and removes obsolete data
+   * to ensure data integrity and avoid loss during operations.
    * @param data - An object containing arrays of products and locations, and an optional inventory state.
    */
   async saveAllApplicationData(data: { products: Product[], locations: Location[], state?: InventoryState }): Promise<void> {
     const db = await this.dbPromise;
+    // Start a readwrite transaction. Note: get operations are also allowed in readwrite.
     const tx = db.transaction(['products', 'locations', 'inventoryState'], 'readwrite');
 
-    const productStore = tx.objectStore('products');
-    await productStore.clear(); // Clear existing products before adding new ones
-    for (const product of data.products) {
-      await productStore.put(product);
-    }
+    try {
+      const productStore = tx.objectStore('products');
+      const locationStore = tx.objectStore('locations');
+      const stateStore = tx.objectStore('inventoryState');
 
-    const locationStore = tx.objectStore('locations');
-    await locationStore.clear();
-    for (const location of data.locations) {
-      await locationStore.put(location);
-    }
+      // === Products ===
+      const existingProductKeys = await productStore.getAllKeys();
+      const incomingProductKeys = new Set(data.products.map(p => p.id));
 
-    if (data.state) {
-        const stateStore = tx.objectStore('inventoryState');
-        // Define the shape of the object to be stored, matching the store's requirements
-        interface StoredInventoryStateForSave extends InventoryState {
-            key: string;
+      // Add or update products
+      for (const product of data.products) {
+        await productStore.put(product);
+      }
+      // Delete obsolete products
+      for (const oldKey of existingProductKeys) {
+        if (!incomingProductKeys.has(oldKey as string)) { // type assertion for key
+          await productStore.delete(oldKey);
         }
-        const stateToSave: StoredInventoryStateForSave = { ...data.state, key: 'currentState' };
-        await stateStore.put(stateToSave);
-    }
+      }
 
-    await tx.done;
-    console.log("All application data saved to IndexedDB.");
+      // === Locations ===
+      const existingLocationKeys = await locationStore.getAllKeys();
+      const incomingLocationKeys = new Set(data.locations.map(l => l.id));
+
+      // Add or update locations
+      for (const location of data.locations) {
+        await locationStore.put(location);
+      }
+      // Delete obsolete locations
+      for (const oldKey of existingLocationKeys) {
+        if (!incomingLocationKeys.has(oldKey as string)) { // type assertion for key
+          await locationStore.delete(oldKey);
+        }
+      }
+
+      // === Inventory State ===
+      if (data.state) {
+        // Uses the global StoredInventoryState
+        const stateToSave: StoredInventoryState = { ...data.state, key: 'currentState' };
+        await stateStore.put(stateToSave);
+      } else {
+        // When no state is provided, we preserve the existing state.
+        // This follows the principle that absence of data means "no change".
+        console.log("No state data provided in saveAllApplicationData, preserving existing inventory state.");
+      }
+
+      await tx.done;
+      console.log("All application data processed and saved to IndexedDB.");
+    } catch (error) {
+      console.error("Error during saveAllApplicationData, transaction aborted:", error);
+      showToast("Fehler beim Speichern der Anwendungsdaten. Änderungen wurden nicht gespeichert.", "error");
+      // The transaction will automatically abort on error, so data remains consistent (previous state).
+      // No need to manually rollback, but rethrowing allows caller to know.
+      throw error;
+    }
   }
 
   // Example of loading all necessary data for the app
