@@ -290,6 +290,13 @@ async function generateReport(): Promise<void> {
         return;
     }
 
+    // Ensure counterId is provided when areaId is used, as _aggregateInventoryData expects this for area-specific logic
+    if (areaId && !counterId) {
+        showToast("Fehler: Bereich kann nicht ohne zugehörigen Tresen ausgewählt werden.", "error");
+        clearReportAndCharts();
+        return;
+    }
+
     const { itemsToAnalyze, reportScopeName } = _aggregateInventoryData(location, counterId, areaId);
 
     if (itemsToAnalyze.length === 0) {

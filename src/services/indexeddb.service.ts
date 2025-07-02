@@ -228,13 +228,9 @@ class IndexedDBService {
         const stateToSave: StoredInventoryState = { ...data.state, key: 'currentState' };
         await stateStore.put(stateToSave);
       } else {
-        // If no state is provided, we might want to clear the existing state or leave it.
-        // For now, let's assume if no state is passed, current state is deleted.
-        // Or, if 'currentState' is the only key, simply delete it.
-        // This depends on application requirements.
-        // If state is optional and its absence means "no change", then this delete is wrong.
-        // Assuming 'currentState' is the only or primary key for state.
-        // await stateStore.delete('currentState'); // Uncomment if this is the desired behavior
+        // When no state is provided, we preserve the existing state.
+        // This follows the principle that absence of data means "no change".
+        console.log("No state data provided in saveAllApplicationData, preserving existing inventory state.");
       }
 
       await tx.done;
