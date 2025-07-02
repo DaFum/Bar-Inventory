@@ -1,5 +1,5 @@
-import { Product } from '../models';
-import { dbService } from '../services/indexeddb.service';
+import { Product } from "../models";
+import { dbService } from "../services/indexeddb.service";
 // generateId might be needed if the store takes responsibility for ID creation for new products.
 // For now, assuming Product objects passed to addProduct already have an ID.
 
@@ -10,130 +10,130 @@ type ProductSubscriber = (products: Product[]) => void;
  * Notifies subscribers of any changes to the product list.
  */
 class ProductStore {
-    private products: Product[] = [];
-    private subscribers: ProductSubscriber[] = [];
+  private products: Product[] = [];
+  private subscribers: ProductSubscriber[] = [];
 
-    constructor() {
-        // Initial data loading can be triggered here or explicitly by the application.
-    }
+  constructor() {
+    // Initial data loading can be triggered here or explicitly by the application.
+  }
 
-    /** Sorts products by category, then by name. */
-    private sortProducts(products: Product[]): Product[] {
-        return [...products].sort((a, b) => {
-            const catA = a.category.toLowerCase();
-            const catB = b.category.toLowerCase();
-            if (catA < catB) return -1;
-            if (catA > catB) return 1;
-            return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
-        });
-    }
+  /** Sorts products by category, then by name. */
+  private sortProducts(products: Product[]): Product[] {
+    return [...products].sort((a, b) => {
+      const catA = a.category.toLowerCase();
+      const catB = b.category.toLowerCase();
+      if (catA < catB) return -1;
+      if (catA > catB) return 1;
+      return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+    });
+  }
 
-    private notifySubscribers(): void {
-        const sortedProducts = this.sortProducts(this.products);
-        this.subscribers.forEach(callback => callback(sortedProducts));
-    }
+  private notifySubscribers(): void {
+    const sortedProducts = this.sortProducts(this.products);
+    this.subscribers.forEach(callback => callback(sortedProducts));
+  }
 
-    /**
-     * Subscribes a callback function to product state changes.
-     * @param callback - The function to call when products change.
-     * @returns A function to unsubscribe.
-     */
-    subscribe(callback: ProductSubscriber): () => void {
-        this.subscribers.push(callback);
-        // Optionally, immediately notify with current products:
-        // callback(this.sortProducts(this.products));
-        return () => {
-            this.unsubscribe(callback);
-        };
-    }
+  /**
+   * Subscribes a callback function to product state changes.
+   * @param callback - The function to call when products change.
+   * @returns A function to unsubscribe.
+   */
+  subscribe(callback: ProductSubscriber): () => void {
+    this.subscribers.push(callback);
+    // Optionally, immediately notify with current products:
+    // callback(this.sortProducts(this.products));
+    return () => {
+      this.unsubscribe(callback);
+    };
+  }
 
-    /**
-     * Unsubscribes a callback function from product state changes.
-     * @param callback - The callback function to remove.
-     */
-    unsubscribe(callback: ProductSubscriber): void {
-        this.subscribers = this.subscribers.filter(sub => sub !== callback);
-    }
+  /**
+   * Unsubscribes a callback function from product state changes.
+   * @param callback - The callback function to remove.
+   */
+  unsubscribe(callback: ProductSubscriber): void {
+    this.subscribers = this.subscribers.filter(sub => sub !== callback);
+  }
 
-    /**
-     * Gets a sorted copy of the current products.
-     * @returns An array of products, sorted by category and name.
-     */
-    getProducts(): Product[] {
-        return this.sortProducts(this.products); // Return a sorted copy
-    }
+  /**
+   * Gets a sorted copy of the current products.
+   * @returns An array of products, sorted by category and name.
+   */
+  getProducts(): Product[] {
+    return this.sortProducts(this.products); // Return a sorted copy
+  }
 
-    /**
-     * Loads all products from the database and notifies subscribers.
-     */
-    async loadProducts(): Promise<void> {
-        try {
-            this.products = await dbService.loadProducts();
-            this.notifySubscribers();
-        } catch (error) {
-            console.error("ProductStore: Error loading products from DB", error);
-            // Potentially re-throw or handle more gracefully for UI feedback
-            throw error;
-        }
+  /**
+   * Loads all products from the database and notifies subscribers.
+   */
+  async loadProducts(): Promise<void> {
+    try {
+      this.products = await dbService.loadProducts();
+      this.notifySubscribers();
+    } catch (error) {
+      console.error("ProductStore: Error loading products from DB", error);
+      // Potentially re-throw or handle more gracefully for UI feedback
+      throw error;
     }
+  }
 
-    /**
-     * Adds a new product to the database and store, then notifies subscribers.
-     * Assumes the product object (including ID) is fully formed by the caller.
-     * @param product - The product to add.
-     * @returns The added product.
-     */
-    async addProduct(product: Product): Promise<Product> {
-        // Assuming product.id is already generated by the caller (e.g., ProductFormComponent)
-        try {
-            await dbService.saveProduct(product); // saveProduct in dbService handles add or update (put)
-            this.products.push(product);
-            this.notifySubscribers();
-            return product;
-        } catch (error) {
-            console.error("ProductStore: Error adding product", error);
-            throw error;
-        }
+  /**
+   * Adds a new product to the database and store, then notifies subscribers.
+   * Assumes the product object (including ID) is fully formed by the caller.
+   * @param product - The product to add.
+   * @returns The added product.
+   */
+  async addProduct(product: Product): Promise<Product> {
+    // Assuming product.id is already generated by the caller (e.g., ProductFormComponent)
+    try {
+      await dbService.saveProduct(product); // saveProduct in dbService handles add or update (put)
+      this.products.push(product);
+      this.notifySubscribers();
+      return product;
+    } catch (error) {
+      console.error("ProductStore: Error adding product", error);
+      throw error;
     }
+  }
 
-    /**
-     * Updates an existing product in the database and store, then notifies subscribers.
-     * @param product - The product to update.
-     * @returns The updated product.
-     */
-    async updateProduct(product: Product): Promise<Product> {
-        try {
-            await dbService.saveProduct(product);
-            const index = this.products.findIndex(p => p.id === product.id);
-            if (index !== -1) {
-                this.products[index] = product;
-            } else {
-                // If for some reason it wasn't in the local list, add it.
-                // This could happen if loadProducts hasn't completed or state is inconsistent.
-                this.products.push(product);
-            }
-            this.notifySubscribers();
-            return product;
-        } catch (error) {
-            console.error("ProductStore: Error updating product", error);
-            throw error;
-        }
+  /**
+   * Updates an existing product in the database and store, then notifies subscribers.
+   * @param product - The product to update.
+   * @returns The updated product.
+   */
+  async updateProduct(product: Product): Promise<Product> {
+    try {
+      await dbService.saveProduct(product);
+      const index = this.products.findIndex(p => p.id === product.id);
+      if (index !== -1) {
+        this.products[index] = product;
+      } else {
+        // If for some reason it wasn't in the local list, add it.
+        // This could happen if loadProducts hasn't completed or state is inconsistent.
+        this.products.push(product);
+      }
+      this.notifySubscribers();
+      return product;
+    } catch (error) {
+      console.error("ProductStore: Error updating product", error);
+      throw error;
     }
+  }
 
-    /**
-     * Deletes a product from the database and store, then notifies subscribers.
-     * @param productId - The ID of the product to delete.
-     */
-    async deleteProduct(productId: string): Promise<void> {
-        try {
-            await dbService.delete('products', productId);
-            this.products = this.products.filter(p => p.id !== productId);
-            this.notifySubscribers();
-        } catch (error) {
-            console.error("ProductStore: Error deleting product", error);
-            throw error;
-        }
+  /**
+   * Deletes a product from the database and store, then notifies subscribers.
+   * @param productId - The ID of the product to delete.
+   */
+  async deleteProduct(productId: string): Promise<void> {
+    try {
+      await dbService.delete("products", productId);
+      this.products = this.products.filter(p => p.id !== productId);
+      this.notifySubscribers();
+    } catch (error) {
+      console.error("ProductStore: Error deleting product", error);
+      throw error;
     }
+  }
 }
 
 export const productStore = new ProductStore();
