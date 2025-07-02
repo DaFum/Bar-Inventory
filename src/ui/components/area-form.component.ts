@@ -125,7 +125,11 @@ export class AreaFormComponent extends BaseComponent<HTMLDivElement> {
             await this.onSubmitCallback(areaData);
         } catch (error) {
             console.error("AreaFormComponent: Error during submission callback", error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            showToast(`Fehler beim Speichern des Bereichs: ${errorMessage}`, "error");
             // User feedback for store errors should be handled by the caller of the store method.
+            // Re-throw the error so the caller can also handle it if needed.
+            throw error;
         }
     }
 

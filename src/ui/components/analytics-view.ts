@@ -168,28 +168,17 @@ function clearReportAndCharts(): void {
 
 
 /**
- * Generiert einen Verbrauchs- und Kostenbericht für den aktuell ausgewählten Standort, Tresen oder Bereich und visualisiert die Ergebnisse in Diagrammen.
- *
- * Aggregiert die relevanten Inventurdaten, berechnet den Produktverbrauch und die Kosten, filtert nicht konsumierte Produkte heraus und aktualisiert die Diagramme sowie die Zusammenfassung im UI. Bei fehlender Auswahl oder fehlenden Daten werden Hinweise angezeigt und die Anzeige zurückgesetzt.
+ * Aggregiert Inventurdaten basierend auf Standort, Tresen und Bereich.
+ * @param location Das ausgewählte Standortobjekt.
+ * @param counterId Die ID des ausgewählten Tresens (optional).
+ * @param areaId Die ID des ausgewählten Bereichs (optional).
+ * @returns Ein Objekt mit den zu analysierenden Inventureinträgen und dem Namen des Berichtsumfangs.
  */
-async function generateReport(): Promise<void> {
-    const locationId = (document.getElementById('analytics-location-select') as HTMLSelectElement).value;
-    const counterId = (document.getElementById('analytics-counter-select') as HTMLSelectElement).value;
-    const areaId = (document.getElementById('analytics-area-select') as HTMLSelectElement).value;
-
-    if (!locationId) {
-        showToast("Bitte einen Standort auswählen.", "info");
-        clearReportAndCharts();
-        return;
-    }
-
-    const location = loadedLocations.find(l => l.id === locationId);
-    if (!location) return;
-
+function _aggregateInventoryData(location: Location, counterId?: string, areaId?: string): { itemsToAnalyze: InventoryEntry[], reportScopeName: string } {
     let itemsToAnalyze: InventoryEntry[] = [];
     let reportScopeName = location.name;
 
-    if (areaId) { // Specific area selected
+    if (areaId && counterId) { // Specific area selected
         const counter = location.counters.find(c => c.id === counterId);
         const area = counter?.areas.find(a => a.id === areaId);
         if (area) {
@@ -208,52 +197,109 @@ async function generateReport(): Promise<void> {
         });
     }
 
+    // Aggregate items if they come from multiple areas (e.g. whole counter or whole location)
+    // to avoid issues with the same product appearing in multiple inventoryItem lists.
+    if (!areaId) { // Aggregation needed if not a specific area
+        const aggregatedInventoryEntries = new Map<string, InventoryEntry>();
+        for (const item of itemsToAnalyze) {
+            if (!aggregatedInventoryEntries.has(item.productId)) {
+                aggregatedInventoryEntries.set(item.productId, { ...item }); // Copy item
+            } else {
+                const existing = aggregatedInventoryEntries.get(item.productId)!;
+                existing.startCrates = (existing.startCrates || 0) + (item.startCrates || 0);
+                existing.startBottles = (existing.startBottles || 0) + (item.startBottles || 0);
+                existing.startOpenVolumeMl = (existing.startOpenVolumeMl || 0) + (item.startOpenVolumeMl || 0);
+                existing.endCrates = (existing.endCrates || 0) + (item.endCrates || 0);
+                existing.endBottles = (existing.endBottles || 0) + (item.endBottles || 0);
+                existing.endOpenVolumeMl = (existing.endOpenVolumeMl || 0) + (item.endOpenVolumeMl || 0);
+            }
+        }
+        itemsToAnalyze = Array.from(aggregatedInventoryEntries.values());
+    }
+
+    return { itemsToAnalyze, reportScopeName };
+}
+
+/**
+ * Berechnet Verbrauchsdaten aus Inventureinträgen und Produktinformationen.
+ * @param items Die aggregierten Inventureinträge.
+ * @param products Eine Liste aller geladenen Produkte.
+ * @returns Ein Objekt mit Produktnamen, Verbrauchswerten, Kostenwerten und dem detaillierten Verbrauchsbericht.
+ */
+function _calculateConsumptionData(items: InventoryEntry[], products: Product[]): { productNames: string[], consumptionValuesMl: number[], costValues: number[], consumptionReport: any[] } {
+    const consumptionReport = calculateAreaConsumption(items, products);
+
+    // Filter out items with zero or negative consumption for charts to make them cleaner
+    const consumedItemsForChart = consumptionReport.filter(c => c.consumedVolumeMl !== undefined && c.consumedVolumeMl > 0);
+
+    const productNames = consumedItemsForChart.map(c => products.find(p => p.id === c.productId)?.name || 'Unbekannt');
+    const consumptionValuesMl = consumedItemsForChart.map(c => c.consumedVolumeMl || 0);
+    const costValues = consumedItemsForChart.map(c => c.costOfConsumption);
+
+    return { productNames, consumptionValuesMl, costValues, consumptionReport };
+}
+
+/**
+ * Aktualisiert die UI mit den generierten Berichtsdaten (Diagramme und Zusammenfassung).
+ * @param consumptionData Die berechneten Verbrauchsdaten.
+ * @param scopeName Der Name des Bereichs, für den der Bericht generiert wurde.
+ */
+function _updateReportUI(
+    consumptionData: {
+        productNames: string[],
+        consumptionValuesMl: number[],
+        costValues: number[],
+        consumptionReport: any[]
+    },
+    scopeName: string
+): void {
+    renderCharts(consumptionData.productNames, consumptionData.consumptionValuesMl, consumptionData.costValues);
+
+    const summaryContainer = document.getElementById('report-summary')!;
+    const totalConsumedItemsCount = consumptionData.consumptionReport.reduce((sum, item) => sum + (item.consumedUnits > 0 ? 1 : 0), 0);
+    const totalOverallCost = consumptionData.consumptionReport.reduce((sum, item) => sum + item.costOfConsumption, 0);
+    summaryContainer.innerHTML = `
+        <h3 class="panel-subtitle">Zusammenfassung für: ${scopeName}</h3>
+        <p>Anzahl verschiedener verbrauchter Produkte: ${totalConsumedItemsCount}</p>
+        <p>Gesamtkosten des Verbrauchs: ${totalOverallCost.toFixed(2)} €</p>
+    `;
+    showToast(`Bericht für ${scopeName} generiert.`, "success");
+}
+
+
+/**
+ * Generiert einen Verbrauchs- und Kostenbericht für den aktuell ausgewählten Standort, Tresen oder Bereich und visualisiert die Ergebnisse in Diagrammen.
+ *
+ * Aggregiert die relevanten Inventurdaten, berechnet den Produktverbrauch und die Kosten, filtert nicht konsumierte Produkte heraus und aktualisiert die Diagramme sowie die Zusammenfassung im UI. Bei fehlender Auswahl oder fehlenden Daten werden Hinweise angezeigt und die Anzeige zurückgesetzt.
+ */
+async function generateReport(): Promise<void> {
+    const locationId = (document.getElementById('analytics-location-select') as HTMLSelectElement).value;
+    const counterId = (document.getElementById('analytics-counter-select') as HTMLSelectElement).value;
+    const areaId = (document.getElementById('analytics-area-select') as HTMLSelectElement).value;
+
+    if (!locationId) {
+        showToast("Bitte einen Standort auswählen.", "info");
+        clearReportAndCharts();
+        return;
+    }
+
+    const location = loadedLocations.find(l => l.id === locationId);
+    if (!location) {
+        showToast("Ausgewählter Standort nicht gefunden.", "error");
+        clearReportAndCharts();
+        return;
+    }
+
+    const { itemsToAnalyze, reportScopeName } = _aggregateInventoryData(location, counterId, areaId);
+
     if (itemsToAnalyze.length === 0) {
         showToast("Keine Inventurdaten im ausgewählten Bereich/Standort für die Analyse gefunden.", "info");
         clearReportAndCharts();
         return;
     }
 
-    // This is important if itemsToAnalyze comes from multiple areas,
-    // as a product might appear in several area.inventoryItems lists.
-    const aggregatedInventoryEntries = new Map<string, InventoryEntry>();
-    for (const item of itemsToAnalyze) {
-        if (!aggregatedInventoryEntries.has(item.productId)) {
-            aggregatedInventoryEntries.set(item.productId, { ...item }); // Copy item
-        } else {
-            const existing = aggregatedInventoryEntries.get(item.productId)!;
-            existing.startCrates = (existing.startCrates || 0) + (item.startCrates || 0);
-            existing.startBottles = (existing.startBottles || 0) + (item.startBottles || 0);
-            existing.startOpenVolumeMl = (existing.startOpenVolumeMl || 0) + (item.startOpenVolumeMl || 0);
-            existing.endCrates = (existing.endCrates || 0) + (item.endCrates || 0);
-            existing.endBottles = (existing.endBottles || 0) + (item.endBottles || 0);
-            existing.endOpenVolumeMl = (existing.endOpenVolumeMl || 0) + (item.endOpenVolumeMl || 0);
-        }
-    }
-    const finalItemsToCalculate = Array.from(aggregatedInventoryEntries.values());
-
-
-    const consumptionReport = calculateAreaConsumption(finalItemsToCalculate, loadedProducts);
-
-    // Filter out items with zero or positive consumption for charts to make them cleaner
-    const consumedItemsForChart = consumptionReport.filter(c => c.consumedVolumeMl !== undefined && c.consumedVolumeMl > 0);
-
-    const productNames = consumedItemsForChart.map(c => loadedProducts.find(p => p.id === c.productId)?.name || 'Unbekannt');
-    const consumptionValuesMl = consumedItemsForChart.map(c => c.consumedVolumeMl || 0);
-    const costValues = consumedItemsForChart.map(c => c.costOfConsumption);
-
-    renderCharts(productNames, consumptionValuesMl, costValues);
-
-    // Display summary
-    const summaryContainer = document.getElementById('report-summary')!;
-    const totalConsumedItemsCount = consumptionReport.reduce((sum, item) => sum + (item.consumedUnits > 0 ? 1 : 0), 0);
-    const totalOverallCost = consumptionReport.reduce((sum, item) => sum + item.costOfConsumption, 0);
-    summaryContainer.innerHTML = `
-        <h3 class="panel-subtitle">Zusammenfassung für: ${reportScopeName}</h3>
-        <p>Anzahl verschiedener verbrauchter Produkte: ${totalConsumedItemsCount}</p>
-        <p>Gesamtkosten des Verbrauchs: ${totalOverallCost.toFixed(2)} €</p>
-    `;
-     showToast(`Bericht für ${reportScopeName} generiert.`, "success");
+    const consumptionData = _calculateConsumptionData(itemsToAnalyze, loadedProducts);
+    _updateReportUI(consumptionData, reportScopeName);
 }
 
 
