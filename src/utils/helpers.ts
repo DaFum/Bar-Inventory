@@ -1,11 +1,10 @@
 /**
- * Erzeugt eine einfache, lokal eindeutige ID mit einem angegebenen Präfix.
+ * Generiert eine lokal eindeutige ID mit optionalem Präfix.
  *
- * Die ID besteht aus dem Präfix, gefolgt von einem Unterstrich und einer zufälligen alphanumerischen Zeichenkette.
- * Nicht für kryptografische Zwecke geeignet.
+ * Die ID setzt sich aus dem angegebenen Präfix und einer zufälligen alphanumerischen Zeichenkette zusammen. Nicht für sicherheitskritische oder kryptografische Zwecke geeignet.
  *
- * @param prefix - Das Präfix für die generierte ID (Standard: 'id')
- * @returns Die generierte eindeutige ID als Zeichenkette
+ * @param prefix - Optionales Präfix für die ID (Standard: 'id')
+ * @returns Die generierte ID als Zeichenkette
  */
 export function generateId(prefix: string = 'id'): string {
     const randomPart = Math.random().toString(36).substring(2, 11);
@@ -13,11 +12,11 @@ export function generateId(prefix: string = 'id'): string {
 }
 
 /**
- * Gibt eine entprellte Version der angegebenen Funktion zurück, die erst nach Ablauf der angegebenen Verzögerung nach dem letzten Aufruf ausgeführt wird.
+ * Gibt eine entprellte Version der übergebenen Funktion zurück, die erst nach Ablauf der angegebenen Verzögerung nach dem letzten Aufruf ausgeführt wird.
  *
  * @param func - Die Funktion, die entprellt werden soll
- * @param delay - Die Wartezeit in Millisekunden nach dem letzten Aufruf, bevor die Funktion ausgeführt wird
- * @returns Eine neue Funktion, die das Entprellen übernimmt
+ * @param delay - Die Zeit in Millisekunden, die nach dem letzten Aufruf abgewartet wird, bevor die Funktion ausgeführt wird
+ * @returns Eine Funktion, die das Entprellen übernimmt und die Ausführung von `func` verzögert
  */
 export function debounce<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -35,11 +34,11 @@ export function debounce<T extends (...args: any[]) => any>(func: T, delay: numb
 }
 
 /**
- * Formatiert ein Datum als lokalisierte Zeichenkette mit Jahr, Monat, Tag, Stunde, Minute und Sekunde.
+ * Gibt das angegebene Datum als lokalisierte Zeichenkette mit Jahr, Monat, Tag, Stunde, Minute und Sekunde zurück.
  *
  * @param date - Das zu formatierende Datum
- * @param locale - Die zu verwendende Locale (Standard: 'de-DE')
- * @returns Die formatierte Datums- und Uhrzeitzeichenkette
+ * @param locale - Die gewünschte Locale für die Formatierung (Standard: 'de-DE')
+ * @returns Die formatierte Datums- und Uhrzeitzeichenkette entsprechend der angegebenen Locale
  */
 export function formatDate(date: Date, locale: string = 'de-DE'): string {
     return date.toLocaleString(locale, {

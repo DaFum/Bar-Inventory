@@ -9,13 +9,13 @@ export interface CalculatedConsumption {
 }
 
 /**
- * Berechnet das gesamte Volumen eines Lagerbestandseintrags in Millilitern basierend auf Kistenanzahl, Flaschenanzahl und offenem Volumen.
+ * Berechnet das gesamte Volumen eines Lagerbestandseintrags in Millilitern anhand der angegebenen Kisten, Flaschen und offenem Volumen.
  *
  * @param crates - Anzahl der Kisten im Bestandseintrag
  * @param bottles - Anzahl der einzelnen Flaschen im Bestandseintrag
  * @param openVolumeMl - Offenes Volumen in Millilitern (z. B. angebrochene Flaschen)
- * @param product - Produktdefinition mit Volumenangabe pro Flasche und Stückzahl pro Kiste
- * @returns Gesamtes Volumen in Millilitern für den Bestandseintrag
+ * @param product - Produktdefinition mit Volumen pro Flasche und Stückzahl pro Kiste
+ * @returns Das gesamte Volumen in Millilitern für den Bestandseintrag
  */
 function getTotalVolumeMl(
     crates: number | undefined,
@@ -38,7 +38,7 @@ function getTotalVolumeMl(
 
 
 /**
- * Berechnet den Verbrauch und die Kosten für einen einzelnen Inventarposten anhand von Start- und Endbestand sowie Produktdefinition.
+ * Berechnet den Verbrauch und die Kosten für einen einzelnen Inventarposten auf Basis von Start- und Endbestand sowie Produktinformationen.
  *
  * Ermittelt die verbrauchte Menge in Standard-Einheiten und Millilitern sowie die zugehörigen Kosten. Erkennt negative Verbrauchswerte und fehlende Preisinformationen und gibt entsprechende Hinweise zurück.
  *
@@ -101,9 +101,9 @@ export function calculateSingleItemConsumption(entry: InventoryEntry, product: P
 }
 
 /**
- * Ermittelt den Verbrauch und die Kosten für alle Inventarpositionen eines Bereichs anhand der zugehörigen Produktdefinitionen.
+ * Berechnet den Verbrauch und die Kosten für alle Inventarpositionen eines Bereichs anhand der zugehörigen Produktdefinitionen.
  *
- * Für jede Inventarposition wird der Verbrauch berechnet. Ist keine Produktdefinition vorhanden, wird ein Platzhalterergebnis mit Hinweis zurückgegeben.
+ * Gibt für jede Inventarposition ein Ergebnisobjekt mit Verbrauchsdaten zurück. Fehlt eine Produktdefinition, wird ein Platzhalter mit Hinweis ausgegeben.
  *
  * @returns Ein Array mit berechneten Verbrauchsdaten für jede Inventarposition.
  */

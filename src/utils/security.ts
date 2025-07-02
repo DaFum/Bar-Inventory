@@ -1,9 +1,9 @@
 /**
- * Wandelt HTML-Sonderzeichen in einer Zeichenkette in ihre entsprechenden HTML-Entitäten um, um Cross-Site-Scripting (XSS) zu verhindern.
+ * Maskiert spezielle HTML-Zeichen in einer Zeichenkette durch ihre entsprechenden HTML-Entitäten, um Cross-Site-Scripting (XSS) zu verhindern.
  *
  * Gibt eine leere Zeichenkette zurück, wenn der Eingabewert `undefined` oder `null` ist.
  *
- * @param str - Die zu maskierende Zeichenkette
+ * @param str - Die zu maskierende Zeichenkette, kann auch `undefined` oder `null` sein
  * @returns Die maskierte Zeichenkette mit ersetzten HTML-Sonderzeichen
  */
 export function escapeHtml(str: string | undefined | null): string {
