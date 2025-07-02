@@ -1,186 +1,329 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Instructions - Bar Inventory Management</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
     <script src="https://cdn.jsdelivr.net/npm/vue@3.4.35/dist/vue.global.js"></script>
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-        }
-        .container {
-            max-width: 800px;
-        }
-        .card {
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-        .theme-toggle {
-            position: fixed;
-            top: 16px;
-            right: 16px;
-            cursor: pointer;
-            z-index: 1000;
-        }
-        .tab-active {
-            background-color: #3b82f6;
-            color: #fff;
-        }
-        .bg-dark {
-            background-color: #1a202c;
-            color: #cbd5e0;
-        }
+      body {
+        font-family: "Arial", sans-serif;
+      }
+      .container {
+        max-width: 800px;
+      }
+      .card {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .theme-toggle {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        cursor: pointer;
+        z-index: 1000;
+      }
+      .tab-active {
+        background-color: #3b82f6;
+        color: #fff;
+      }
+      .bg-dark {
+        background-color: #1a202c;
+        color: #cbd5e0;
+      }
     </style>
-</head>
-<body class="bg-base-200">
+  </head>
+  <body class="bg-base-200">
     <div id="app" class="container mx-auto my-8">
-        <i class="fas fa-adjust theme-toggle text-2xl" @click="toggleTheme"></i>
-        <h1 class="text-4xl font-bold mb-4 text-center">Instructions</h1>
-        <div class="tabs mb-4 justify-center">
-            <button @click="currentLanguage = 'english'" :class="{'tab-active': currentLanguage === 'english'}" class="tab tab-bordered">English</button>
-            <button @click="currentLanguage = 'german'" :class="{'tab-active': currentLanguage === 'german'}" class="tab tab-bordered">Deutsch</button>
-        </div>
-        <div v-if="currentLanguage === 'english'" class="card">
-            <h2 class="text-2xl font-bold mb-4"><i class="fas fa-info-circle"></i> How to use the Bar Inventory Management System</h2>
-            <p>Welcome to the Bar Inventory Management System. This guide will help you navigate and use the application effectively.</p>
-            <h3 class="text-xl font-bold mt-4"><i class="fas fa-bars"></i> Main View</h3>
-            <p>Upon starting the app, you will see two tabs: <strong>List View</strong> and <strong>Manage View</strong>.</p>
-            <h4 class="text-lg font-bold mt-2"><i class="fas fa-list"></i> List View</h4>
-            <p>This is where you can manage and view your inventory levels. It is divided into three phases:</p>
-            <ul class="list-disc list-inside">
-                <li><strong>Start</strong>: Record initial inventory levels.</li>
-                <li><strong>End</strong>: Record final inventory levels.</li>
-                <li><strong>Difference</strong>: Display differences between start and end levels.</li>
-            </ul>
-            <p>Buttons in List View:</p>
-            <ul class="list-disc list-inside">
-                <li><strong>Start</strong>: Switch to initial inventory.</li>
-                <li><strong>End</strong>: Switch to final inventory.</li>
-                <li><strong>Difference</strong>: Show differences between start and end levels.</li>
-                <li><strong>Show Formula / Show Sum</strong>: Toggle between entering formulas and displaying sums.</li>
-            </ul>
-            <p>Other functions in List View:</p>
-            <ul class="list-disc list-inside">
-                <li><strong>Save</strong>: Save your entries.</li>
-                <li><strong>Export to CSV</strong>: Export data as a CSV file.</li>
-                <li><strong>Export Inventory</strong>: Export data as a JSON file.</li>
-                <li><strong>Import Inventory</strong>: Import data from a JSON file.</li>
-            </ul>
-            <h4 class="text-lg font-bold mt-2"><i class="fas fa-cogs"></i> Manage View</h4>
-            <p>Here you can manage categories, areas, and items.</p>
-            <p>Buttons and fields in Manage View:</p>
-            <ul class="list-disc list-inside">
-                <li><strong>Add New Category</strong>: Enter a name for a new category and click "Add Category" to add it.</li>
-                <li><strong>Remove</strong>: Remove a category from the list.</li>
-                <li><strong>Add New Area</strong>: Enter a name for a new area and click "Add Area" to add it.</li>
-                <li><strong>Remove</strong>: Remove an area from the list.</li>
-                <li><strong>Name</strong>: Enter the name of a new item.</li>
-                <li><strong>Category</strong>: Select the category of the new item.</li>
-                <li><strong>Add Item</strong>: Add the new item.</li>
-            </ul>
-            <h4 class="text-lg font-bold mt-2"><i class="fas fa-summary"></i> Summary of Buttons and Functions</h4>
-            <ul class="list-disc list-inside">
-                <li><strong>Start</strong>: Record initial inventory levels.</li>
-                <li><strong>End</strong>: Record final inventory levels.</li>
-                <li><strong>Difference</strong>: Display differences between start and end levels.</li>
-                <li><strong>Show Formula / Show Sum</strong>: Toggle between entering formulas and displaying sums.</li>
-                <li><strong>Save</strong>: Save your entries.</li>
-                <li><strong>Export to CSV</strong>: Export data as a CSV file.</li>
-                <li><strong>Export Inventory</strong>: Export data as a JSON file.</li>
-                <li><strong>Import Inventory</strong>: Import data from a JSON file.</li>
-                <li><strong>Add New Category</strong>: Add a new category.</li>
-                <li><strong>Remove</strong>: Remove a category or area.</li>
-                <li><strong>Add New Area</strong>: Add a new area.</li>
-                <li><strong>Add Item</strong>: Add a new item.</li>
-                <li><strong>Edit</strong>: Edit an item.</li>
-                <li><strong>Delete</strong>: Delete an item.</li>
-            </ul>
-        </div>
-        <div v-if="currentLanguage === 'german'" class="card">
-            <h2 class="text-2xl font-bold mb-4"><i class="fas fa-info-circle"></i> Anleitung zur Nutzung des Bar Inventory Management Systems</h2>
-            <p>Willkommen beim Bar Inventory Management System. Diese Anleitung hilft Ihnen, die App effektiv zu nutzen.</p>
-            <h3 class="text-xl font-bold mt-4"><i class="fas fa-bars"></i> Hauptansicht</h3>
-            <p>Beim Starten der App sehen Sie zwei Registerkarten: <strong>List View</strong> und <strong>Manage View</strong>.</p>
-            <h4 class="text-lg font-bold mt-2"><i class="fas fa-list"></i> List View</h4>
-            <p>Hier können Sie die Bestände Ihrer Artikel verwalten und einsehen. Diese Ansicht ist in drei Phasen unterteilt:</p>
-            <ul class="list-disc list-inside">
-                <li><strong>Start</strong>: Anfangsbestände erfassen.</li>
-                <li><strong>End</strong>: Endbestände erfassen.</li>
-                <li><strong>Difference</strong>: Differenzen zwischen Anfangs- und Endbeständen anzeigen.</li>
-            </ul>
-            <p>Schaltflächen in der List View:</p>
-            <ul class="list-disc list-inside">
-                <li><strong>Start</strong>: Wechseln zu den Anfangsbeständen.</li>
-                <li><strong>End</strong>: Wechseln zu den Endbeständen.</li>
-                <li><strong>Difference</strong>: Anzeige der Differenzen zwischen Anfangs- und Endbeständen.</li>
-                <li><strong>Show Formula / Show Sum</strong>: Wechseln zwischen der Eingabe von Formeln und der Anzeige von Summen.</li>
-            </ul>
-            <p>Weitere Funktionen in der List View:</p>
-            <ul class="list-disc list-inside">
-                <li><strong>Save</strong>: Speichert Ihre Eingaben.</li>
-                <li><strong>Export to CSV</strong>: Exportiert Ihre Daten als CSV-Datei.</li>
-                <li><strong>Export Inventory</strong>: Exportiert Ihre Daten als JSON-Datei.</li>
-                <li><strong>Import Inventory</strong>: Importieren Sie eine zuvor exportierte JSON-Datei, um Ihre Bestände wiederherzustellen.</li>
-            </ul>
-            <h4 class="text-lg font-bold mt-2"><i class="fas fa-cogs"></i> Manage View</h4>
-            <p>Hier können Sie Kategorien, Bereiche und Artikel verwalten.</p>
-            <p>Schaltflächen und Felder in der Manage View:</p>
-            <ul class="list-disc list-inside">
-                <li><strong>Add New Category</strong>: Geben Sie einen Namen für eine neue Kategorie ein und klicken Sie auf "Add Category", um sie hinzuzufügen.</li>
-                <li><strong>Remove</strong>: Entfernt eine Kategorie aus der Liste.</li>
-                <li><strong>Add New Area</strong>: Geben Sie einen Namen für einen neuen Bereich ein und klicken Sie auf "Add Area", um ihn hinzuzufügen.</li>
-                <li><strong>Remove</strong>: Entfernt einen Bereich aus der Liste.</li>
-                <li><strong>Name</strong>: Geben Sie den Namen eines neuen Artikels ein.</li>
-                <li><strong>Category</strong>: Wählen Sie die Kategorie des neuen Artikels aus.</li>
-                <li><strong>Add Item</strong>: Fügt den neuen Artikel hinzu.</li>
-            </ul>
-            <h4 class="text-lg font-bold mt-2"><i class="fas fa-summary"></i> Zusammenfassung der Schaltflächen und Funktionen</h4>
-            <ul class="list-disc list-inside">
-                <li><strong>Start</strong>: Erfassen der Anfangsbestände.</li>
-                <li><strong>End</strong>: Erfassen der Endbestände.</li>
-                <li><strong>Difference</strong>: Anzeige der Differenzen zwischen Anfangs- und Endbeständen.</li>
-                <li><strong>Show Formula / Show Sum</strong>: Wechsel zwischen Formel- und Summenansicht.</li>
-                <li><strong>Save</strong>: Speichert Ihre Eingaben.</li>
-                <li><strong>Export to CSV</strong>: Exportiert die Daten als CSV-Datei.</li>
-                <li><strong>Export Inventory</strong>: Exportiert die Daten als JSON-Datei.</li>
-                <li><strong>Import Inventory</strong>: Importiert Daten aus einer JSON-Datei.</li>
-                <li><strong>Add New Category</strong>: Hinzufügen einer neuen Kategorie.</li>
-                <li><strong>Remove</strong>: Entfernt eine Kategorie oder einen Bereich.</li>
-                <li><strong>Add New Area</strong>: Hinzufügen eines neuen Bereichs.</li>
-                <li><strong>Add Item</strong>: Hinzufügen eines neuen Artikels.</li>
-                <li><strong>Edit</strong>: Bearbeiten eines Artikels.</li>
-                <li><strong>Delete</strong>: Löschen eines Artikels.</li>
-            </ul>
-        </div>
+      <i class="fas fa-adjust theme-toggle text-2xl" @click="toggleTheme"></i>
+      <h1 class="text-4xl font-bold mb-4 text-center">Instructions</h1>
+      <div class="tabs mb-4 justify-center">
+        <button
+          @click="currentLanguage = 'english'"
+          :class="{'tab-active': currentLanguage === 'english'}"
+          class="tab tab-bordered"
+        >
+          English
+        </button>
+        <button
+          @click="currentLanguage = 'german'"
+          :class="{'tab-active': currentLanguage === 'german'}"
+          class="tab tab-bordered"
+        >
+          Deutsch
+        </button>
+      </div>
+      <div v-if="currentLanguage === 'english'" class="card">
+        <h2 class="text-2xl font-bold mb-4">
+          <i class="fas fa-info-circle"></i> How to use the Bar Inventory
+          Management System
+        </h2>
+        <p>
+          Welcome to the Bar Inventory Management System. This guide will help
+          you navigate and use the application effectively.
+        </p>
+        <h3 class="text-xl font-bold mt-4">
+          <i class="fas fa-bars"></i> Main View
+        </h3>
+        <p>
+          Upon starting the app, you will see two tabs:
+          <strong>List View</strong> and <strong>Manage View</strong>.
+        </p>
+        <h4 class="text-lg font-bold mt-2">
+          <i class="fas fa-list"></i> List View
+        </h4>
+        <p>
+          This is where you can manage and view your inventory levels. It is
+          divided into three phases:
+        </p>
+        <ul class="list-disc list-inside">
+          <li><strong>Start</strong>: Record initial inventory levels.</li>
+          <li><strong>End</strong>: Record final inventory levels.</li>
+          <li>
+            <strong>Difference</strong>: Display differences between start and
+            end levels.
+          </li>
+        </ul>
+        <p>Buttons in List View:</p>
+        <ul class="list-disc list-inside">
+          <li><strong>Start</strong>: Switch to initial inventory.</li>
+          <li><strong>End</strong>: Switch to final inventory.</li>
+          <li>
+            <strong>Difference</strong>: Show differences between start and end
+            levels.
+          </li>
+          <li>
+            <strong>Show Formula / Show Sum</strong>: Toggle between entering
+            formulas and displaying sums.
+          </li>
+        </ul>
+        <p>Other functions in List View:</p>
+        <ul class="list-disc list-inside">
+          <li><strong>Save</strong>: Save your entries.</li>
+          <li><strong>Export to CSV</strong>: Export data as a CSV file.</li>
+          <li>
+            <strong>Export Inventory</strong>: Export data as a JSON file.
+          </li>
+          <li>
+            <strong>Import Inventory</strong>: Import data from a JSON file.
+          </li>
+        </ul>
+        <h4 class="text-lg font-bold mt-2">
+          <i class="fas fa-cogs"></i> Manage View
+        </h4>
+        <p>Here you can manage categories, areas, and items.</p>
+        <p>Buttons and fields in Manage View:</p>
+        <ul class="list-disc list-inside">
+          <li>
+            <strong>Add New Category</strong>: Enter a name for a new category
+            and click "Add Category" to add it.
+          </li>
+          <li><strong>Remove</strong>: Remove a category from the list.</li>
+          <li>
+            <strong>Add New Area</strong>: Enter a name for a new area and click
+            "Add Area" to add it.
+          </li>
+          <li><strong>Remove</strong>: Remove an area from the list.</li>
+          <li><strong>Name</strong>: Enter the name of a new item.</li>
+          <li>
+            <strong>Category</strong>: Select the category of the new item.
+          </li>
+          <li><strong>Add Item</strong>: Add the new item.</li>
+        </ul>
+        <h4 class="text-lg font-bold mt-2">
+          <i class="fas fa-summary"></i> Summary of Buttons and Functions
+        </h4>
+        <ul class="list-disc list-inside">
+          <li><strong>Start</strong>: Record initial inventory levels.</li>
+          <li><strong>End</strong>: Record final inventory levels.</li>
+          <li>
+            <strong>Difference</strong>: Display differences between start and
+            end levels.
+          </li>
+          <li>
+            <strong>Show Formula / Show Sum</strong>: Toggle between entering
+            formulas and displaying sums.
+          </li>
+          <li><strong>Save</strong>: Save your entries.</li>
+          <li><strong>Export to CSV</strong>: Export data as a CSV file.</li>
+          <li>
+            <strong>Export Inventory</strong>: Export data as a JSON file.
+          </li>
+          <li>
+            <strong>Import Inventory</strong>: Import data from a JSON file.
+          </li>
+          <li><strong>Add New Category</strong>: Add a new category.</li>
+          <li><strong>Remove</strong>: Remove a category or area.</li>
+          <li><strong>Add New Area</strong>: Add a new area.</li>
+          <li><strong>Add Item</strong>: Add a new item.</li>
+          <li><strong>Edit</strong>: Edit an item.</li>
+          <li><strong>Delete</strong>: Delete an item.</li>
+        </ul>
+      </div>
+      <div v-if="currentLanguage === 'german'" class="card">
+        <h2 class="text-2xl font-bold mb-4">
+          <i class="fas fa-info-circle"></i> Anleitung zur Nutzung des Bar
+          Inventory Management Systems
+        </h2>
+        <p>
+          Willkommen beim Bar Inventory Management System. Diese Anleitung hilft
+          Ihnen, die App effektiv zu nutzen.
+        </p>
+        <h3 class="text-xl font-bold mt-4">
+          <i class="fas fa-bars"></i> Hauptansicht
+        </h3>
+        <p>
+          Beim Starten der App sehen Sie zwei Registerkarten:
+          <strong>List View</strong> und <strong>Manage View</strong>.
+        </p>
+        <h4 class="text-lg font-bold mt-2">
+          <i class="fas fa-list"></i> List View
+        </h4>
+        <p>
+          Hier können Sie die Bestände Ihrer Artikel verwalten und einsehen.
+          Diese Ansicht ist in drei Phasen unterteilt:
+        </p>
+        <ul class="list-disc list-inside">
+          <li><strong>Start</strong>: Anfangsbestände erfassen.</li>
+          <li><strong>End</strong>: Endbestände erfassen.</li>
+          <li>
+            <strong>Difference</strong>: Differenzen zwischen Anfangs- und
+            Endbeständen anzeigen.
+          </li>
+        </ul>
+        <p>Schaltflächen in der List View:</p>
+        <ul class="list-disc list-inside">
+          <li><strong>Start</strong>: Wechseln zu den Anfangsbeständen.</li>
+          <li><strong>End</strong>: Wechseln zu den Endbeständen.</li>
+          <li>
+            <strong>Difference</strong>: Anzeige der Differenzen zwischen
+            Anfangs- und Endbeständen.
+          </li>
+          <li>
+            <strong>Show Formula / Show Sum</strong>: Wechseln zwischen der
+            Eingabe von Formeln und der Anzeige von Summen.
+          </li>
+        </ul>
+        <p>Weitere Funktionen in der List View:</p>
+        <ul class="list-disc list-inside">
+          <li><strong>Save</strong>: Speichert Ihre Eingaben.</li>
+          <li>
+            <strong>Export to CSV</strong>: Exportiert Ihre Daten als CSV-Datei.
+          </li>
+          <li>
+            <strong>Export Inventory</strong>: Exportiert Ihre Daten als
+            JSON-Datei.
+          </li>
+          <li>
+            <strong>Import Inventory</strong>: Importieren Sie eine zuvor
+            exportierte JSON-Datei, um Ihre Bestände wiederherzustellen.
+          </li>
+        </ul>
+        <h4 class="text-lg font-bold mt-2">
+          <i class="fas fa-cogs"></i> Manage View
+        </h4>
+        <p>Hier können Sie Kategorien, Bereiche und Artikel verwalten.</p>
+        <p>Schaltflächen und Felder in der Manage View:</p>
+        <ul class="list-disc list-inside">
+          <li>
+            <strong>Add New Category</strong>: Geben Sie einen Namen für eine
+            neue Kategorie ein und klicken Sie auf "Add Category", um sie
+            hinzuzufügen.
+          </li>
+          <li>
+            <strong>Remove</strong>: Entfernt eine Kategorie aus der Liste.
+          </li>
+          <li>
+            <strong>Add New Area</strong>: Geben Sie einen Namen für einen neuen
+            Bereich ein und klicken Sie auf "Add Area", um ihn hinzuzufügen.
+          </li>
+          <li>
+            <strong>Remove</strong>: Entfernt einen Bereich aus der Liste.
+          </li>
+          <li>
+            <strong>Name</strong>: Geben Sie den Namen eines neuen Artikels ein.
+          </li>
+          <li>
+            <strong>Category</strong>: Wählen Sie die Kategorie des neuen
+            Artikels aus.
+          </li>
+          <li><strong>Add Item</strong>: Fügt den neuen Artikel hinzu.</li>
+        </ul>
+        <h4 class="text-lg font-bold mt-2">
+          <i class="fas fa-summary"></i> Zusammenfassung der Schaltflächen und
+          Funktionen
+        </h4>
+        <ul class="list-disc list-inside">
+          <li><strong>Start</strong>: Erfassen der Anfangsbestände.</li>
+          <li><strong>End</strong>: Erfassen der Endbestände.</li>
+          <li>
+            <strong>Difference</strong>: Anzeige der Differenzen zwischen
+            Anfangs- und Endbeständen.
+          </li>
+          <li>
+            <strong>Show Formula / Show Sum</strong>: Wechsel zwischen Formel-
+            und Summenansicht.
+          </li>
+          <li><strong>Save</strong>: Speichert Ihre Eingaben.</li>
+          <li>
+            <strong>Export to CSV</strong>: Exportiert die Daten als CSV-Datei.
+          </li>
+          <li>
+            <strong>Export Inventory</strong>: Exportiert die Daten als
+            JSON-Datei.
+          </li>
+          <li>
+            <strong>Import Inventory</strong>: Importiert Daten aus einer
+            JSON-Datei.
+          </li>
+          <li>
+            <strong>Add New Category</strong>: Hinzufügen einer neuen Kategorie.
+          </li>
+          <li>
+            <strong>Remove</strong>: Entfernt eine Kategorie oder einen Bereich.
+          </li>
+          <li>
+            <strong>Add New Area</strong>: Hinzufügen eines neuen Bereichs.
+          </li>
+          <li><strong>Add Item</strong>: Hinzufügen eines neuen Artikels.</li>
+          <li><strong>Edit</strong>: Bearbeiten eines Artikels.</li>
+          <li><strong>Delete</strong>: Löschen eines Artikels.</li>
+        </ul>
+      </div>
     </div>
 
     <script>
-        const { createApp } = Vue;
+      const { createApp } = Vue;
 
-        createApp({
-            data() {
-                return {
-                    currentLanguage: 'english',
-                    isDarkTheme: false
-                };
-            },
-            methods: {
-                toggleTheme() {
-                    this.isDarkTheme = !this.isDarkTheme;
-                    if (this.isDarkTheme) {
-                        document.body.classList.add('bg-dark');
-                    } else {
-                        document.body.classList.remove('bg-dark');
-                    }
-                }
+      createApp({
+        data() {
+          return {
+            currentLanguage: "english",
+            isDarkTheme: false
+          };
+        },
+        methods: {
+          toggleTheme() {
+            this.isDarkTheme = !this.isDarkTheme;
+            if (this.isDarkTheme) {
+              document.body.classList.add("bg-dark");
+            } else {
+              document.body.classList.remove("bg-dark");
             }
-        }).mount('#app');
+          }
+        }
+      }).mount("#app");
     </script>
-</body>
+  </body>
 </html>
