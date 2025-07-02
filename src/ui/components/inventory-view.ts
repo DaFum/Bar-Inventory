@@ -286,21 +286,20 @@ function prepareInventoryItemsForArea(): void {
             <span class="font-semibold">${escapeHtml(product.name)}</span><br>
             <small class="text-gray-600">${escapeHtml(product.category)} - ${product.volume}ml</small>
         </td>
-`;
-                <td class="px-4 py-2">
-                    <label for="${crateInputId}" class="sr-only">Kästen für ${product.name}</label>
-                    <input type="number" id="${crateInputId}" class="form-control form-control-sm text-center inventory-input" data-field="${cratesKey}" value="${item[cratesKey] || 0}" min="0" ${!product.itemsPerCrate ? 'disabled title="Keine Kasteninfo für Produkt"' : ''} aria-label="Kästen für ${product.name}">
-                </td>
-                <td class="px-4 py-2">
-                    <label for="${bottleInputId}" class="sr-only">Flaschen für ${product.name}</label>
-                    <input type="number" id="${bottleInputId}" class="form-control form-control-sm text-center inventory-input" data-field="${bottlesKey}" value="${item[bottlesKey] || 0}" min="0" aria-label="Flaschen für ${product.name}">
-                </td>
-                <td class="px-4 py-2">
-                    <label for="${openMlInputId}" class="sr-only">Offen (ml) für ${product.name}</label>
-                    <input type="number" id="${openMlInputId}" class="form-control form-control-sm text-center inventory-input" data-field="${openMlKey}" value="${item[openMlKey] || 0}" min="0" step="10" aria-label="Offen (ml) für ${product.name}">
-                </td>
-            </tr>
-        `;
+        <td class="px-4 py-2">
+            <label for="${crateInputId}" class="sr-only">Kästen für ${escapeHtml(product.name)}</label>
+            <input type="number" id="${crateInputId}" class="form-control form-control-sm text-center inventory-input" data-field="${cratesKey}" value="${item[cratesKey] || 0}" min="0" ${!product.itemsPerCrate ? 'disabled title="Keine Kasteninfo für Produkt"' : ''} aria-label="Kästen für ${escapeHtml(product.name)}">
+        </td>
+        <td class="px-4 py-2">
+            <label for="${bottleInputId}" class="sr-only">Flaschen für ${escapeHtml(product.name)}</label>
+            <input type="number" id="${bottleInputId}" class="form-control form-control-sm text-center inventory-input" data-field="${bottlesKey}" value="${item[bottlesKey] || 0}" min="0" aria-label="Flaschen für ${escapeHtml(product.name)}">
+        </td>
+        <td class="px-4 py-2">
+            <label for="${openMlInputId}" class="sr-only">Offen (ml) für ${escapeHtml(product.name)}</label>
+            <input type="number" id="${openMlInputId}" class="form-control form-control-sm text-center inventory-input" data-field="${openMlKey}" value="${item[openMlKey] || 0}" min="0" step="10" aria-label="Offen (ml) für ${escapeHtml(product.name)}">
+        </td>
+    </tr>
+        `; // End of row
     });
 
     tableHTML += `</tbody></table>`;
@@ -498,14 +497,9 @@ function handleInventoryInputChange(event: Event): void {
         if (field in inventoryItem && typeof inventoryItem[field] === 'number') {
             (inventoryItem[field as keyof InventoryEntry] as number) = value;
         }
-        }
-            }
-        // This is to allow multiple changes before a transaction.
-        // Mark location as having unsaved changes (for dbService.saveLocation)
-        if(state.selectedLocation) {
-            // A flag on selectedLocation or a global state could indicate unsaved changes.
-            // For now, this is implicit.
-        }
+        // Note: The comments about marking unsaved changes were here,
+        // but seemed misplaced due to the syntax error.
+        // Proper unsaved changes tracking should be implemented if needed.
     }
 }
 

@@ -5,6 +5,11 @@ import { showToast } from '../ui/components/toast-notifications';
 const DATABASE_NAME = 'BarInventoryDB';
 const DATABASE_VERSION = 1;
 
+// Erweiterte Version von InventoryState für IndexedDB-Speicherung
+interface StoredInventoryState extends InventoryState {
+  key: string;
+}
+
 // Define the database schema using the DBSchema interface from 'idb'
 interface BarInventoryDBSchema extends DBSchema {
   products: {
@@ -16,18 +21,10 @@ interface BarInventoryDBSchema extends DBSchema {
     key: string; // Location.id
     value: Location;
   };
-// Erweiterte Version von InventoryState für IndexedDB-Speicherung
-interface StoredInventoryState extends InventoryState {
-  key: string;
-}
-
-interface BarInventoryDBSchema extends DBSchema {
-  // ...
   inventoryState: {
     key: string; // e.g., 'currentState'
-    value: StoredInventoryState;
+    value: StoredInventoryState; // Use the globally defined StoredInventoryState
   };
-}
   // It might be more granular to store counters and areas if they are frequently accessed/modified independently
   // However, devplan.md implies locations, tresen (counters), and bereiche (areas) are often managed together.
   // For now, keeping them nested within Locations as per current models.
@@ -171,10 +168,7 @@ class IndexedDBService {
    * Saves the overall inventory state.
    */
   async saveInventoryState(state: InventoryState): Promise<string> {
-    // Ensure the key is set for the state object if it's a fixed key store
-    interface StoredInventoryState extends InventoryState {
-      key: string;
-    }
+    // Uses the global StoredInventoryState
     const stateToSave: StoredInventoryState = { ...state, key: 'currentState' };
     return this.put('inventoryState', stateToSave);
   }
@@ -230,10 +224,8 @@ class IndexedDBService {
 
       // === Inventory State ===
       if (data.state) {
-        interface StoredInventoryStateForSave extends InventoryState {
-            key: string;
-        }
-        const stateToSave: StoredInventoryStateForSave = { ...data.state, key: 'currentState' };
+        // Uses the global StoredInventoryState
+        const stateToSave: StoredInventoryState = { ...data.state, key: 'currentState' };
         await stateStore.put(stateToSave);
       } else {
         // If no state is provided, we might want to clear the existing state or leave it.

@@ -255,4 +255,3 @@ async addLocation(locationData: Pick<Location, 'name' | 'address'>): Promise<Loc
 }
 
 export const locationStore = new LocationStore();
-console.log("LocationStore initialized.");
