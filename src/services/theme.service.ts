@@ -75,7 +75,8 @@ export class ThemeService {
         // For scales like x, y axes
         Chart.defaults.scale.ticks.color = fontColor;
         Chart.defaults.scale.grid.color = gridColor;
-        Chart.defaults.scale.title.color = fontColor;
+        // Chart.defaults.scale.title.color = fontColor; // This path is often not standard for all scale types.
+                                                      // General font color should cover most, or specific scale types need targeting.
       }
       if (Chart.defaults.plugins?.legend) {
         Chart.defaults.plugins.legend.labels.color = fontColor;

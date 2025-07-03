@@ -5,6 +5,7 @@ import { InventoryEntry, Product } from '../models';
 const mockProduct: Product = {
   id: 'test-product-1',
   name: 'Test Beer',
+  category: 'Beer', // Added missing category
   volume: 500, // 500ml per bottle
   itemsPerCrate: 24,
   pricePerBottle: 2.5,
@@ -14,6 +15,7 @@ const mockProduct: Product = {
 const mockProductNoPricing: Product = {
   id: 'test-product-2',
   name: 'Test Product No Price',
+  category: 'Misc', // Added missing category
   volume: 330,
   itemsPerCrate: 12,
   pricePerBottle: 0,
@@ -23,6 +25,7 @@ const mockProductNoPricing: Product = {
 const mockProductZeroVolume: Product = {
   id: 'test-product-3',
   name: 'Test Product Zero Volume',
+  category: 'Special', // Added missing category
   volume: 0,
   itemsPerCrate: 10,
   pricePerBottle: 1.0,
@@ -78,12 +81,12 @@ describe('Calculation Service', () => {
     it('should handle undefined values gracefully', () => {
       const partialEntry: InventoryEntry = {
         productId: 'test-product-1',
-        startCrates: undefined,
+        // startCrates is omitted (effectively undefined)
         startBottles: 5,
-        startOpenVolumeMl: undefined,
-        endCrates: undefined,
+        // startOpenVolumeMl is omitted
+        // endCrates is omitted
         endBottles: 2,
-        endOpenVolumeMl: undefined,
+        // endOpenVolumeMl is omitted
       };
 
       const result = calculateSingleItemConsumption(partialEntry, mockProduct);
@@ -139,6 +142,7 @@ describe('Calculation Service', () => {
       const productWithBottlePrice: Product = {
         id: 'test-product-bottle-price',
         name: 'Test Product Bottle Price',
+        category: 'Beer', // Added missing category
         volume: 500,
         itemsPerCrate: 24,
         pricePerBottle: 2.5,
@@ -198,6 +202,7 @@ describe('Calculation Service', () => {
       {
         id: 'test-product-wine',
         name: 'Test Wine',
+        category: 'Wine', // Added missing category
         volume: 750,
         itemsPerCrate: 6,
         pricePerBottle: 15.0,
@@ -231,9 +236,9 @@ describe('Calculation Service', () => {
       const results = calculateAreaConsumption(mockInventoryEntries, mockProducts);
 
       expect(results).toHaveLength(3);
-      expect(results[0].productId).toBe('test-product-1');
-      expect(results[1].productId).toBe('test-product-2');
-      expect(results[2].productId).toBe('test-product-wine');
+      expect(results[0]!.productId).toBe('test-product-1');
+      expect(results[1]!.productId).toBe('test-product-2');
+      expect(results[2]!.productId).toBe('test-product-wine');
     });
 
     it('should handle missing product definitions', () => {
@@ -253,11 +258,11 @@ describe('Calculation Service', () => {
       const results = calculateAreaConsumption(entriesWithMissingProduct, mockProducts);
 
       expect(results).toHaveLength(2);
-      expect(results[1].productId).toBe('non-existent-product');
-      expect(results[1].consumedUnits).toBe(0);
-      expect(results[1].consumedVolumeMl).toBe(0);
-      expect(results[1].costOfConsumption).toBe(0);
-      expect(results[1].notes).toContain('Product definition missing (ID: non-existent-product)');
+      expect(results[1]!.productId).toBe('non-existent-product');
+      expect(results[1]!.consumedUnits).toBe(0);
+      expect(results[1]!.consumedVolumeMl).toBe(0);
+      expect(results[1]!.costOfConsumption).toBe(0);
+      expect(results[1]!.notes).toContain('Product definition missing (ID: non-existent-product)');
     });
 
     it('should handle empty inventory array', () => {
@@ -281,9 +286,9 @@ describe('Calculation Service', () => {
     it('should maintain correct order of results', () => {
       const results = calculateAreaConsumption(mockInventoryEntries, mockProducts);
 
-      expect(results[0].productId).toBe('test-product-1');
-      expect(results[1].productId).toBe('test-product-2');
-      expect(results[2].productId).toBe('test-product-wine');
+      expect(results[0]!.productId).toBe('test-product-1');
+      expect(results[1]!.productId).toBe('test-product-2');
+      expect(results[2]!.productId).toBe('test-product-wine');
     });
 
     it('should handle duplicate product IDs in inventory', () => {
@@ -303,10 +308,10 @@ describe('Calculation Service', () => {
       const results = calculateAreaConsumption(duplicateEntries, mockProducts);
 
       expect(results).toHaveLength(2);
-      expect(results[0].productId).toBe('test-product-1');
-      expect(results[1].productId).toBe('test-product-1');
+      expect(results[0]!.productId).toBe('test-product-1');
+      expect(results[1]!.productId).toBe('test-product-1');
       // Both should have different consumption values
-      expect(results[0].consumedVolumeMl).not.toBe(results[1].consumedVolumeMl);
+      expect(results[0]!.consumedVolumeMl).not.toBe(results[1]!.consumedVolumeMl);
     });
   });
 
@@ -315,6 +320,7 @@ describe('Calculation Service', () => {
       const smallVolumeProduct: Product = {
         id: 'small-volume',
         name: 'Small Volume Product',
+        category: 'Tiny', // Added missing category
         volume: 0.1, // 0.1ml
         itemsPerCrate: 1000,
         pricePerBottle: 0.01,
@@ -345,6 +351,7 @@ describe('Calculation Service', () => {
       const largeVolumeProduct: Product = {
         id: 'large-volume',
         name: 'Large Volume Product',
+        category: 'Bulk', // Added missing category
         volume: 5000, // 5L
         itemsPerCrate: 1,
         pricePerBottle: 50.0,
@@ -395,6 +402,7 @@ describe('Calculation Service', () => {
       const productNoItemsPerCrate: Product = {
         id: 'no-items-per-crate',
         name: 'No Items Per Crate',
+        category: 'Unique', // Added missing category
         volume: 500,
         itemsPerCrate: 0,
         pricePerBottle: 2.5,

@@ -1,6 +1,7 @@
 import { BaseComponent } from '../core/base-component';
 import { Location } from '../../models';
-import { LocationListItemComponent, LocationListItemCallbacks } from './location-list-item.component';
+import { LocationListItemComponent } from './location-list-item.component';
+import type { LocationListItemCallbacks } from './location-list-item.component'; // Import type
 
 /**
  * Component responsible for rendering the list of locations.

@@ -1,7 +1,7 @@
 // This will be the main entry point after app.ts, setting up the UI or core app logic.
 // For now, it can be simple.
 
-import { exampleAppSetup } from "./ui/ui-manager"; // Assuming a UI manager will exist
+import { initializeApp } from "./ui/ui-manager"; // Corrected import
 
 class Application {
   constructor() {
@@ -24,7 +24,7 @@ class Application {
     const appContainer = document.getElementById("app-container");
     if (appContainer) {
       console.log("DOM content loaded, app container found.");
-      exampleAppSetup(appContainer);
+      initializeApp(appContainer); // Corrected function call
     } else {
       console.error("App container not found in HTML.");
     }

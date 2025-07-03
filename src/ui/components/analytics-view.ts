@@ -195,17 +195,14 @@ function clearReportAndCharts(): void {
     if (costChart) costChart.destroy();
     consumptionChart = null;
     costChart = null;
-    document.getElementById('charts-container')!.innerHTML = `
-        <div>
-            <h3 class="panel-subtitle">Verbrauch nach Produkt (Volumen ml)</h3>
-            <canvas id="consumption-chart"></canvas>
-        </div>
-        <div>
-            <h3 class="panel-subtitle">Kosten nach Produkt (€)</h3>
-            <canvas id="cost-chart"></canvas>
-        </div>`; // Re-add canvas elements
+
+    // Instead of replacing innerHTML, which removes buttons,
+    // charts will be re-created on existing canvas elements by renderCharts.
+    // We still need to clear any previous chart-specific content if renderCharts doesn't fully overwrite.
+    // However, Chart.js typically clears the canvas.
+
     document.getElementById('report-summary')!.innerHTML = "";
-     renderCharts([], []); // Re-initialize with empty data
+    renderCharts([], []); // Re-initialize with empty data on existing canvases
 }
 
 

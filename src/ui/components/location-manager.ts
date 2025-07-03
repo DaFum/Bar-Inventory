@@ -5,9 +5,11 @@ import { exportService } from '../../services/export.service'; // Assuming trigg
 import { showToast } from './toast-notifications';
 import { locationStore } from '../../state/location.store';
 
-import { LocationListComponent, LocationListItemCallbacks } from './location-list.component';
+import { LocationListComponent } from './location-list.component';
+import type { LocationListItemCallbacks } from './location-list-item.component'; // Corrected
 import { LocationFormComponent, LocationFormComponentOptions } from './location-form.component';
-import { CounterListComponent, CounterListItemCallbacks } from './counter-list.component';
+import { CounterListComponent } from './counter-list.component';
+import type { CounterListItemCallbacks } from './counter-list-item.component'; // Corrected
 import { CounterFormComponent, CounterFormComponentOptions } from './counter-form.component';
 // AreaList and AreaForm components are managed by CounterListItemComponent internally for this design.
 
@@ -219,12 +221,15 @@ async function handleLocationFormSubmit(locationData: Pick<Location, 'id' | 'nam
             newOrUpdatedLocation = {
                 ...existingLocation,
                 name: locationData.name,
-                address: locationData.address
+                address: locationData.address || undefined // Ensure undefined if falsy
             };
             await locationStore.updateLocation(newOrUpdatedLocation);
             showToast(`Standort "${newOrUpdatedLocation.name}" aktualisiert.`, 'success');
         } else { // Adding new
-            newOrUpdatedLocation = await locationStore.addLocation({name: locationData.name, address: locationData.address});
+            newOrUpdatedLocation = await locationStore.addLocation({
+                name: locationData.name,
+                address: locationData.address || undefined // Ensure undefined if falsy
+            });
             showToast(`Standort "${newOrUpdatedLocation.name}" erstellt.`, 'success');
         }
         activeLocation = newOrUpdatedLocation; // Set context to the new/updated location
@@ -252,7 +257,7 @@ function handleLocationFormCancel(): void {
         }
     }
 }
-}
+// Removed extra closing brace
 
 
 /**
@@ -281,7 +286,7 @@ function renderCountersForLocation(location: Location): void {
 
     if (counterListHostTarget && counterFormComponent && counterFormHostTarget) { // Ensure counterFormComponent is also available
         const counterListCallbacks: CounterListItemCallbacks = {
-            onEditCounter: (counter) => {
+            onEditCounter: (counter: Counter) => { // Added type
                 counterFormComponent.show(counter);
                 if(counterFormHostTarget) {
                     // counterFormComponent.remove(); // Ensure it's not already elsewhere
@@ -290,7 +295,7 @@ function renderCountersForLocation(location: Location): void {
                 }
                 if(counterListComponent) counterListComponent.toggleAreaManagementForCounter(counter.id, true);
             },
-            onDeleteCounter: (counterId, counterName) => handleDeleteCounter(location.id, counterId, counterName)
+            onDeleteCounter: (counterId: string, counterName: string) => handleDeleteCounter(location.id, counterId, counterName) // Added types
         };
 
         if(counterListComponent && counterListComponent.getElement().isConnected) {
@@ -329,13 +334,16 @@ async function handleCounterFormSubmit(counterData: Pick<Counter, 'id' | 'name' 
             const updatedCounterData: Counter = {
                 id: counterData.id,
                 name: counterData.name,
-                description: counterData.description,
+                description: counterData.description || undefined, // Ensure undefined if falsy
                 areas: existingCounter?.areas || []
             };
             await locationStore.updateCounter(activeLocation.id, updatedCounterData);
             showToast(`Tresen "${counterData.name}" aktualisiert.`, 'success');
         } else {
-            await locationStore.addCounter(activeLocation.id, { name: counterData.name, description: counterData.description });
+            await locationStore.addCounter(activeLocation.id, {
+                name: counterData.name,
+                description: counterData.description || undefined // Ensure undefined if falsy
+            });
             showToast(`Tresen "${counterData.name}" hinzugefügt.`, 'success');
         }
         if (counterFormComponent) counterFormComponent.hide();
