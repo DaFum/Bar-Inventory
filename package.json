@@ -1,25 +1,48 @@
 {
-  "name": "app",
-  "version": "1.0.0",
-  "description": "Inventur-App für Bars",
+  "name": "bar-inventory-pwa",
+  "version": "2.0.0",
+  "description": "Professional Bar Inventory Management PWA with TypeScript",
   "main": "dist/app.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
-    "start": "tsc && node dist/app.js"
-  },
-  "keywords": [
-    "inventory",
-    "bar",
-    "pwa"
-  ],
-  "author": "",
-  "license": "MIT",
   "type": "module",
+  "scripts": {
+    "dev": "concurrently \"tsc --watch\" \"live-server --host=localhost --port=8080 --watch=dist,css,*.html\"",
+    "build": "tsc && npm run copy-assets",
+    "copy-assets": "cp -r css dist/ && cp *.html dist/ && cp manifest.json dist/",
+    "start": "npm run build && node dist/app.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write src/**/*.ts",
+    "serve": "live-server dist --host=localhost --port=8080",
+    "clean": "rm -rf dist node_modules"
+  },
+  "keywords": ["inventory", "bar", "pwa", "typescript"],
+  "author": "DaFum",
+  "license": "MIT",
   "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "live-server": "^1.2.2",
+    "prettier": "^3.2.5",
+    "ts-jest": "^29.1.2",
     "typescript": "^5.8.3"
   },
   "dependencies": {
     "chart.js": "^4.5.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "jsdom",
+    "roots": ["<rootDir>/tests"],
+    "testMatch": ["**/__tests__/**/*.ts", "**/?(*.)+(spec|test).ts"],
+    "collectCoverageFrom": ["src/**/*.ts", "!src/**/*.d.ts"]
   }
 }

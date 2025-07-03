@@ -1,4 +1,4 @@
-import { InventoryEntry, Product } from "../models";
+import { InventoryEntry, Product } from '../models';
 
 export interface CalculatedConsumption {
   productId: string;
@@ -58,12 +58,7 @@ export function calculateSingleItemConsumption(
     entry.startOpenVolumeMl,
     product
   );
-  const endMl = getTotalVolumeMl(
-    entry.endCrates,
-    entry.endBottles,
-    entry.endOpenVolumeMl,
-    product
-  );
+  const endMl = getTotalVolumeMl(entry.endCrates, entry.endBottles, entry.endOpenVolumeMl, product);
 
   const consumedVolumeMl = startMl - endMl;
   let consumedUnits = consumedVolumeMl; // Default to ml if volume based
@@ -92,7 +87,7 @@ export function calculateSingleItemConsumption(
     const pricePerMl = product.pricePerBottle / product.volume;
     costOfConsumption = consumedVolumeMl * pricePerMl;
   } else {
-    notes.push("Pricing information incomplete for cost calculation.");
+    notes.push('Pricing information incomplete for cost calculation.');
   }
 
   // If product.volume is 1 (representing a 'piece' rather than ml volume), consumedUnits should be this count.
@@ -103,9 +98,7 @@ export function calculateSingleItemConsumption(
     consumedUnits = consumedVolumeMl / product.volume; // Number of "standard units" (e.g. bottles)
   } else {
     // If volume is zero or negative, keep consumedUnits equal to consumedVolumeMl
-    notes.push(
-      "Invalid product volume detected. Using raw volume for consumption units."
-    );
+    notes.push('Invalid product volume detected. Using raw volume for consumption units.');
   }
 
   return {
@@ -113,7 +106,7 @@ export function calculateSingleItemConsumption(
     consumedUnits: consumedUnits, // This might be in bottles or other units depending on product definition
     consumedVolumeMl: consumedVolumeMl, // Always available
     costOfConsumption: Math.round(costOfConsumption * 100) / 100, // Round to 2 decimal places
-    notes
+    notes,
   };
 }
 
@@ -130,7 +123,7 @@ export function calculateAreaConsumption(
 ): CalculatedConsumption[] {
   const results: CalculatedConsumption[] = [];
   for (const item of inventoryItems) {
-    const product = allProducts.find(p => p.id === item.productId);
+    const product = allProducts.find((p) => p.id === item.productId);
     if (product) {
       results.push(calculateSingleItemConsumption(item, product));
     } else {
@@ -143,11 +136,11 @@ export function calculateAreaConsumption(
         consumedUnits: 0,
         consumedVolumeMl: 0,
         costOfConsumption: 0,
-        notes: [`Product definition missing (ID: ${item.productId})`]
+        notes: [`Product definition missing (ID: ${item.productId})`],
       });
     }
   }
   return results;
 }
 
-console.log("Calculation Service loaded.");
+console.log('Calculation Service loaded.');
