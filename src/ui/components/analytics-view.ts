@@ -41,10 +41,12 @@ export async function initAnalyticsView(container: HTMLElement): Promise<void> {
                 <div>
                     <h3 class="panel-subtitle">Verbrauch nach Produkt (Volumen ml)</h3>
                     <canvas id="consumption-chart"></canvas>
+                    <button id="export-consumption-chart-btn" class="btn btn-secondary btn-sm mt-2">Verbrauchsdiagramm exportieren (PNG)</button>
                 </div>
                 <div>
                     <h3 class="panel-subtitle">Kosten nach Produkt (€)</h3>
                     <canvas id="cost-chart"></canvas>
+                    <button id="export-cost-chart-btn" class="btn btn-secondary btn-sm mt-2">Kostendiagramm exportieren (PNG)</button>
                 </div>
             </div>
             <div id="report-summary" class="mt-4"></div>
@@ -62,9 +64,49 @@ export async function initAnalyticsView(container: HTMLElement): Promise<void> {
     document.getElementById('analytics-area-select')?.addEventListener('change', handleAreaSelectionForAnalytics);
     document.getElementById('generate-report-btn')?.addEventListener('click', generateReport);
 
+    document.getElementById('export-consumption-chart-btn')?.addEventListener('click', () => {
+        exportChartToPNG(consumptionChart, 'consumption-chart.png', 'Verbrauchsdiagramm');
+    });
+    document.getElementById('export-cost-chart-btn')?.addEventListener('click', () => {
+        exportChartToPNG(costChart, 'cost-chart.png', 'Kostendiagramm');
+    });
+
     // Initialize charts with empty data
     renderCharts([], []);
 }
+
+
+/**
+ * Exportiert das angegebene Chart.js-Diagramm als PNG-Datei.
+ * @param chartInstance Das Chart.js-Instanzobjekt.
+ * @param defaultFilename Der Standarddateiname für die heruntergeladene Datei.
+ * @param chartNameForNotification Der Name des Diagramms für Toast-Benachrichtigungen.
+ */
+function exportChartToPNG(chartInstance: Chart | null, defaultFilename: string, chartNameForNotification: string): void {
+    if (!chartInstance || !chartInstance.canvas) {
+        showToast(`Export für ${chartNameForNotification} fehlgeschlagen: Diagramm nicht initialisiert oder nicht sichtbar.`, 'error');
+        console.error('Chart instance or canvas is not available for export.');
+        return;
+    }
+
+    try {
+        const imageBase64 = chartInstance.toBase64Image();
+        const link = document.createElement('a');
+        link.href = imageBase64;
+        link.download = defaultFilename;
+
+        // Append link to body, click it, and remove it
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showToast(`${chartNameForNotification} erfolgreich als PNG exportiert.`, 'success');
+    } catch (error) {
+        showToast(`Export für ${chartNameForNotification} fehlgeschlagen. Details im Log.`, 'error');
+        console.error(`Error exporting chart ${defaultFilename}:`, error);
+    }
+}
+
 
 /**
  * Befüllt das Standort-Auswahlfeld mit allen verfügbaren Standorten und setzt es auf den Standardwert zurück.
