@@ -943,3 +943,17 @@ describe('InventoryService', () => {
     <script type="module" src="dist/app.js"></script>
 </body>
 </html>
+
+```bash
+# Complete Development Setup git clone https://github.com/DaFum/Bar-Inventory.git cd Bar-Inventory
+
+# Install all dependencies npm install
+
+# Development Commands
+
+npm run dev # Start development with live reload and TypeScript watch
+
+npm run build # Production build with asset copying
+
+npm run serve # Serve built application locally
+```
