@@ -94,10 +94,16 @@ export class CounterFormComponent extends BaseComponent<HTMLDivElement> {
             return;
         }
 
+        const descriptionValue = this.descriptionInput.value.trim();
         const counterData: Pick<Counter, 'id' | 'name' | 'description'> = {
             id: this.currentEditingCounter?.id || '',
             name: this.nameInput.value.trim(),
-            description: this.descriptionInput.value.trim() || undefined,
+            // Ensure description is explicitly undefined if empty, otherwise it's a string.
+            // This helps with exactOptionalPropertyTypes if description in Counter is string, not string | undefined.
+            // However, Counter model has description?: string, so string | undefined is fine.
+            // The issue might be how Pick interacts or if a consuming type expects string.
+            // Let's ensure it's truly undefined if meant to be absent.
+            description: descriptionValue === '' ? undefined : descriptionValue,
         };
 
         try {

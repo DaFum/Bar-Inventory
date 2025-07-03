@@ -1,7 +1,8 @@
 import { BaseComponent } from '../core/base-component';
 import { Counter, Location as LocationModel, Area } from '../../models'; // Renamed Location to avoid conflict
 import { escapeHtml } from '../../utils/security';
-import { AreaListComponent, AreaListItemCallbacks } from './area-list.component';
+import { AreaListComponent } from './area-list.component';
+import type { AreaListItemCallbacks } from './area-list-item.component'; // Corrected import
 import { AreaFormComponent, AreaFormComponentOptions } from './area-form.component';
 import { locationStore } from '../../state/location.store'; // To interact with areas
 import { showToast } from './toast-notifications';

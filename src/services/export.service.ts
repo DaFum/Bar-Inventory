@@ -31,10 +31,14 @@ function arrayToCsv(data: Array<Record<string, unknown>>, columns?: string[]): s
     return columns ? columns.join(',') : '';
   }
 
-  const columnHeaders = columns || Object.keys(data[0]);
+  // Ensure data[0] exists before trying to get its keys
+  const columnHeaders = columns || (data[0] ? Object.keys(data[0]) : []);
 
   const csvRows = [];
-  csvRows.push(columnHeaders.join(',')); // Add header row
+  // Only add header row if there are headers
+  if (columnHeaders.length > 0) {
+    csvRows.push(columnHeaders.join(',')); // Add header row
+  }
 
   for (const row of data) {
     const values = columnHeaders.map((header) => {
@@ -89,7 +93,7 @@ export class ExportService {
       'imageUrl',
       'notes',
     ];
-    const csvData = arrayToCsv(products, columns);
+    const csvData = arrayToCsv(products as Array<Record<string, unknown>>, columns);
     triggerDownload(csvData, 'produktkatalog.csv', 'text/csv;charset=utf-8;');
   }
 
@@ -141,7 +145,7 @@ export class ExportService {
         const consumedItem = consumptionData.find((c) => c.productId === product.id);
         if (consumedItem) {
           row.consumedUnits = consumedItem.consumedUnits.toFixed(2);
-          row.consumedVolumeMl = consumedItem.consumedVolumeMl?.toFixed(0) || 0;
+          row.consumedVolumeMl = consumedItem.consumedVolumeMl?.toFixed(0) || ''; // Ensure string
           row.costOfConsumption = consumedItem.costOfConsumption.toFixed(2);
           row.consumptionNotes = consumedItem.notes?.join('; ') || '';
         }
@@ -170,7 +174,7 @@ export class ExportService {
       columns.push('consumedUnits', 'consumedVolumeMl', 'costOfConsumption', 'consumptionNotes');
     }
 
-    const csvData = arrayToCsv(flatData, columns);
+    const csvData = arrayToCsv(flatData as Array<Record<string, unknown>>, columns);
     // Better sanitize user input for file names
     const sanitize = (str: string) => str.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
     const fileName = `inventur_${sanitize(locationName)}_${sanitize(

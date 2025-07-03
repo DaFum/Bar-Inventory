@@ -5,7 +5,8 @@ import { showToast } from './toast-notifications';
 import { exportService } from '../../services/export.service';
 
 import { ProductFormComponent } from './product-form.component';
-import { ProductListComponent, ProductListItemCallbacks } from './product-list.component';
+import { ProductListComponent } from './product-list.component';
+import type { ProductListItemCallbacks } from './product-list-item.component'; // Corrected import
 import { productStore } from '../../state/product.store';
 
 let productManagerContainer: HTMLElement | null = null; // The main container for the product manager view

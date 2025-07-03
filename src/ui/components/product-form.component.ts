@@ -184,13 +184,32 @@ export class ProductFormComponent extends BaseComponent<HTMLDivElement> {
             return;
         }
 
-        const productData: Product = {
-            id: this.currentEditingProduct?.id || generateId('prod'), // Generate ID if new
-            name, category, volume, pricePerBottle, itemsPerCrate, pricePer100ml, supplier, imageUrl, notes
+        const productDataInput: Product = {
+            id: this.currentEditingProduct?.id || generateId('prod'),
+            name,
+            category,
+            volume,
+            pricePerBottle,
         };
 
+        if (itemsPerCrate !== undefined) {
+            productDataInput.itemsPerCrate = itemsPerCrate;
+        }
+        if (pricePer100ml !== undefined) {
+            productDataInput.pricePer100ml = pricePer100ml;
+        }
+        if (supplier !== undefined) {
+            productDataInput.supplier = supplier;
+        }
+        if (imageUrl !== undefined) {
+            productDataInput.imageUrl = imageUrl;
+        }
+        if (notes !== undefined) {
+            productDataInput.notes = notes;
+        }
+
         try {
-            await this.onSubmitCallback(productData);
+            await this.onSubmitCallback(productDataInput);
             // Hiding is usually done by the manager after successful store update & notification cycle
             // For now, we can hide it here optimistically, or let manager do it.
             // Manager should hide it to ensure it's hidden after store confirmation.
@@ -214,7 +233,7 @@ export class ProductFormComponent extends BaseComponent<HTMLDivElement> {
         const isEditing = !!product;
 
         this.nameInput.value = product?.name || '';
-        this.categorySelect.value = product?.category || PREDEFINED_CATEGORIES[0]; // Default to first category
+        this.categorySelect.value = product?.category || PREDEFINED_CATEGORIES[0] || 'Sonstiges'; // Default to first category or a fallback
         this.volumeInput.value = product?.volume?.toString() || '';
         this.pricePerBottleInput.value = product?.pricePerBottle?.toString() || '';
         this.itemsPerCrateInput.value = product?.itemsPerCrate?.toString() || '';
@@ -245,7 +264,7 @@ export class ProductFormComponent extends BaseComponent<HTMLDivElement> {
         if (this.formElement) this.formElement.reset(); // Resets to initial values from HTML or empty
         this.currentEditingProduct = null; // Clear editing state
         // Ensure category is reset to the default if formElement.reset() doesn't handle select properly
-        if(this.categorySelect) this.categorySelect.value = PREDEFINED_CATEGORIES[0];
+        if(this.categorySelect) this.categorySelect.value = PREDEFINED_CATEGORIES[0] || 'Sonstiges';
         // Explicitly clear values that reset() might not handle for non-standard "empty"
         this.nameInput.value = '';
         this.volumeInput.value = '';

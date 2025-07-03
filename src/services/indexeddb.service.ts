@@ -6,12 +6,14 @@ const DATABASE_NAME = 'BarInventoryDB';
 const DATABASE_VERSION = 1;
 
 // Erweiterte Version von InventoryState für IndexedDB-Speicherung
-interface StoredInventoryState extends InventoryState {
+// Export for use in test files
+export interface StoredInventoryState extends InventoryState {
   key: string;
 }
 
 // Define the database schema using the DBSchema interface from 'idb'
-interface BarInventoryDBSchema extends DBSchema {
+// Export for use in test files
+export interface BarInventoryDBSchema extends DBSchema {
   products: {
     key: string; // Product.id
     value: Product;
@@ -31,7 +33,7 @@ interface BarInventoryDBSchema extends DBSchema {
   // If performance or complexity demands, these could be broken out into their own stores.
 }
 
-class IndexedDBService {
+export class IndexedDBService {
   private dbPromise: Promise<IDBPDatabase<BarInventoryDBSchema>>;
 
   constructor() {
@@ -101,48 +103,48 @@ class IndexedDBService {
   }
 
   // Generic CRUD operations
-  async getAll<T extends keyof BarInventoryDBSchema>(
-    storeName: T
-  ): Promise<BarInventoryDBSchema[T]['value'][]> {
+  async getAll<StoreName extends keyof BarInventoryDBSchema>(
+    storeName: StoreName
+  ): Promise<BarInventoryDBSchema[StoreName]['value'][]> {
     const db = await this.dbPromise;
-    return db.getAll(storeName);
+    return db.getAll(storeName as any); // Cast to any or ensure type compatibility
   }
 
-  async get<T extends keyof BarInventoryDBSchema>(
-    storeName: T,
-    key: BarInventoryDBSchema[T]['key']
-  ): Promise<BarInventoryDBSchema[T]['value'] | undefined> {
+  async get<StoreName extends keyof BarInventoryDBSchema>(
+    storeName: StoreName,
+    key: BarInventoryDBSchema[StoreName]['key']
+  ): Promise<BarInventoryDBSchema[StoreName]['value'] | undefined> {
     const db = await this.dbPromise;
-    return db.get(storeName, key);
+    return db.get(storeName as any, key as any); // Cast to any or ensure type compatibility
   }
 
-  async put<T extends keyof BarInventoryDBSchema>(
-    storeName: T,
-    value: BarInventoryDBSchema[T]['value']
-  ): Promise<BarInventoryDBSchema[T]['key']> {
+  async put<StoreName extends keyof BarInventoryDBSchema>(
+    storeName: StoreName,
+    value: BarInventoryDBSchema[StoreName]['value']
+  ): Promise<BarInventoryDBSchema[StoreName]['key']> {
     const db = await this.dbPromise;
-    return db.put(storeName, value);
+    return db.put(storeName as any, value); // Cast to any or ensure type compatibility
   }
 
-  async add<T extends keyof BarInventoryDBSchema>(
-    storeName: T,
-    value: BarInventoryDBSchema[T]['value']
-  ): Promise<BarInventoryDBSchema[T]['key']> {
+  async add<StoreName extends keyof BarInventoryDBSchema>(
+    storeName: StoreName,
+    value: BarInventoryDBSchema[StoreName]['value']
+  ): Promise<BarInventoryDBSchema[StoreName]['key']> {
     const db = await this.dbPromise;
-    return db.add(storeName, value);
+    return db.add(storeName as any, value); // Cast to any or ensure type compatibility
   }
 
-  async delete<T extends keyof BarInventoryDBSchema>(
-    storeName: T,
-    key: BarInventoryDBSchema[T]['key']
+  async delete<StoreName extends keyof BarInventoryDBSchema>(
+    storeName: StoreName,
+    key: BarInventoryDBSchema[StoreName]['key']
   ): Promise<void> {
     const db = await this.dbPromise;
-    return db.delete(storeName, key);
+    return db.delete(storeName as any, key as any); // Cast to any or ensure type compatibility
   }
 
   async clearStore(storeName: keyof BarInventoryDBSchema): Promise<void> {
     const db = await this.dbPromise;
-    return db.clear(storeName);
+    return db.clear(storeName as any); // Cast to any or ensure type compatibility
   }
 
   // Specific methods for `loadItems` and `saveItems` (as per dev/improve.md)
@@ -283,11 +285,11 @@ class IndexedDBService {
   async loadAllApplicationData(): Promise<{
     products: Product[];
     locations: Location[];
-    state?: InventoryState;
+    state: StoredInventoryState | undefined; // Corrected return type for state
   }> {
     const products = await this.getAll('products');
     const locations = await this.getAll('locations');
-    const state = await this.get('inventoryState', 'currentState');
+    const state = await this.get('inventoryState', 'currentState'); // This returns StoredInventoryState | undefined
     return { products, locations, state };
   }
 }

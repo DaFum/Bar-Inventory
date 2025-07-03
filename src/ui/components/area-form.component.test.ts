@@ -15,14 +15,28 @@ jest.mock('./toast-notifications', () => ({
     showToast: jest.fn()
 }));
 
-jest.mock('../core/base-component', () => ({
-    BaseComponent: class MockBaseComponent {
-        element: HTMLDivElement;
-        constructor(tagName: string) {
-            this.element = document.createElement(tagName);
+jest.mock('../core/base-component', () => {
+    return {
+        BaseComponent: class MockBaseComponent<T extends HTMLElement = HTMLElement> {
+            element: T;
+            constructor(tagName: string) {
+                let createdElement: HTMLElement;
+                if (tagName.toLowerCase() === 'div') {
+                    createdElement = document.createElement('div');
+                    // HTMLDivElement does have an align property, though it's obsolete.
+                    // To satisfy stricter type checks if they arise for HTMLDivElement specifically:
+                    // (createdElement as HTMLDivElement).align = '';
+                } else {
+                    createdElement = document.createElement(tagName);
+                }
+                this.element = createdElement as T;
+            }
+            getElement(): T { return this.element; }
+            appendChild(child: Node): void { this.element.appendChild(child); }
+            remove(): void { this.element.remove(); }
         }
-    }
-}));
+    };
+});
 
 import { escapeHtml } from '../../utils/security';
 import { showToast } from './toast-notifications';
@@ -49,12 +63,13 @@ describe('AreaFormComponent', () => {
             id: 'test-area-1',
             name: 'Test Area',
             description: 'Test Description',
-            displayOrder: 10
+            displayOrder: 10,
+            inventoryItems: [], // Added missing property
         };
     });
 
     afterEach(() => {
-        component?.element?.remove();
+        component?.getElement()?.remove(); // Use getElement()
         jest.clearAllMocks();
     });
 
@@ -69,8 +84,8 @@ describe('AreaFormComponent', () => {
             
             expect(component).toBeTruthy();
             expect(component.currentEditingArea).toBeNull();
-            expect(component.element).toBeTruthy();
-            expect(component.element.tagName).toBe('DIV');
+            expect(component.getElement()).toBeTruthy(); // Use getElement()
+            expect(component.getElement().tagName).toBe('DIV'); // Use getElement()
         });
 
         it('should create component with area for editing', () => {
@@ -106,22 +121,23 @@ describe('AreaFormComponent', () => {
                 onCancel: mockOnCancel
             };
             component = new AreaFormComponent(options);
+            document.body.appendChild(component.getElement()); // Ensure it's in DOM for querySelector
         });
 
         it('should render form for new area creation', () => {
-            expect(component.element.innerHTML).toContain('Neuen Bereich erstellen');
-            expect(component.element.innerHTML).toContain('Bereich erstellen');
-            expect(component.element.querySelector('#area-name-form-comp')).toBeTruthy();
-            expect(component.element.querySelector('#area-description-form-comp')).toBeTruthy();
-            expect(component.element.querySelector('#area-display-order-form-comp')).toBeTruthy();
+            expect(component.getElement().innerHTML).toContain('Neuen Bereich erstellen');
+            expect(component.getElement().innerHTML).toContain('Bereich erstellen');
+            expect(component.getElement().querySelector('#area-name-form-comp')).toBeTruthy();
+            expect(component.getElement().querySelector('#area-description-form-comp')).toBeTruthy();
+            expect(component.getElement().querySelector('#area-display-order-form-comp')).toBeTruthy();
         });
 
         it('should render form for area editing', () => {
             component.currentEditingArea = mockArea;
-            component.render();
+            component.render(); // render will re-attach event listeners if it rebuilds DOM
             
-            expect(component.element.innerHTML).toContain('Bereich bearbeiten');
-            expect(component.element.innerHTML).toContain('Änderungen speichern');
+            expect(component.getElement().innerHTML).toContain('Bereich bearbeiten');
+            expect(component.getElement().innerHTML).toContain('Änderungen speichern');
         });
 
         it('should escape HTML in area values', () => {
@@ -149,13 +165,15 @@ describe('AreaFormComponent', () => {
             component.currentEditingArea = incompleteArea;
             
             expect(() => component.render()).not.toThrow();
-            expect(escapeHtml).toHaveBeenCalledWith('');
+            expect(escapeHtml).toHaveBeenCalledWith(''); // For name
+            // Description is null, so escapeHtml would be called with null, returning ''
+            // DisplayOrder is undefined, so no value is directly passed to escapeHtml for it in the template string.
         });
 
         it('should create form with proper accessibility attributes', () => {
-            const form = component.element.querySelector('form');
-            const title = component.element.querySelector('#area-form-title-comp');
-            const nameInput = component.element.querySelector('#area-name-form-comp');
+            const form = component.getElement().querySelector('form');
+            const title = component.getElement().querySelector('#area-form-title-comp');
+            const nameInput = component.getElement().querySelector('#area-name-form-comp');
             
             expect(form?.getAttribute('aria-labelledby')).toBe('area-form-title-comp');
             expect(title).toBeTruthy();
@@ -181,28 +199,28 @@ describe('AreaFormComponent', () => {
 
         it('should throw error if form element not found', () => {
             // Remove form element
-            const form = component.element.querySelector('#area-form-actual');
+            const form = component.getElement().querySelector('#area-form-actual');
             form?.remove();
             
             expect(() => component['bindElements']()).toThrow('Area form element not found during bind');
         });
 
         it('should throw error if name input not found', () => {
-            const nameInput = component.element.querySelector('#area-name-form-comp');
+            const nameInput = component.getElement().querySelector('#area-name-form-comp');
             nameInput?.remove();
             
             expect(() => component['bindElements']()).toThrow('Area name input not found');
         });
 
         it('should throw error if description input not found', () => {
-            const descInput = component.element.querySelector('#area-description-form-comp');
+            const descInput = component.getElement().querySelector('#area-description-form-comp');
             descInput?.remove();
             
             expect(() => component['bindElements']()).toThrow('Area description input not found');
         });
 
         it('should throw error if display order input not found', () => {
-            const orderInput = component.element.querySelector('#area-display-order-form-comp');
+            const orderInput = component.getElement().querySelector('#area-display-order-form-comp');
             orderInput?.remove();
             
             expect(() => component['bindElements']()).toThrow('Area display order input not found');
@@ -406,7 +424,7 @@ describe('AreaFormComponent', () => {
             const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
             
             // Remove cancel button
-            const cancelButton = component.element.querySelector('#cancel-area-edit-form-comp');
+            const cancelButton = component.getElement().querySelector('#cancel-area-edit-form-comp');
             cancelButton?.remove();
             
             // Re-attach event listeners
@@ -433,7 +451,7 @@ describe('AreaFormComponent', () => {
             component.show();
             
             expect(component.currentEditingArea).toBeNull();
-            expect(component.element.style.display).toBe('block');
+            expect(component.getElement().style.display).toBe('block');
             expect(component['nameInput'].value).toBe('');
             expect(component['descriptionInput'].value).toBe('');
             expect(component['displayOrderInput'].value).toBe('');
@@ -446,7 +464,7 @@ describe('AreaFormComponent', () => {
             component.show(mockArea);
             
             expect(component.currentEditingArea).toEqual(mockArea);
-            expect(component.element.style.display).toBe('block');
+            expect(component.getElement().style.display).toBe('block');
             expect(component['nameInput'].value).toBe('Test Area');
             expect(component['descriptionInput'].value).toBe('Test Description');
             expect(component['displayOrderInput'].value).toBe('10');
@@ -456,19 +474,25 @@ describe('AreaFormComponent', () => {
         it('should update form title when showing for edit', () => {
             component.show(mockArea);
             
-            const titleElement = component.element.querySelector('#area-form-title-comp');
+            const titleElement = component.getElement().querySelector('#area-form-title-comp');
             expect(titleElement?.textContent).toBe('Bereich bearbeiten');
         });
 
         it('should update submit button text when showing for edit', () => {
             component.show(mockArea);
             
-            const submitButton = component.element.querySelector('button[type="submit"]');
+            const submitButton = component.getElement().querySelector('button[type="submit"]');
             expect(submitButton?.textContent).toBe('Änderungen speichern');
         });
 
-        it('should handle area with undefined display order', () => {
-            const areaWithoutOrder = { ...mockArea, displayOrder: undefined };
+        it('should handle area with undefined displayOrder', () => {
+            const areaWithoutOrder: Area = {
+                id: 'area-no-order',
+                name: 'No Order Area',
+                description: 'An area without a display order',
+                inventoryItems: []
+                // displayOrder is omitted here, so it will be undefined
+            };
             
             component.show(areaWithoutOrder);
             
@@ -477,11 +501,11 @@ describe('AreaFormComponent', () => {
 
         it('should hide form and reset editing state', () => {
             component.currentEditingArea = mockArea;
-            component.element.style.display = 'block';
+            component.getElement().style.display = 'block'; // Use getElement()
             
             component.hide();
             
-            expect(component.element.style.display).toBe('none');
+            expect(component.getElement().style.display).toBe('none'); // Use getElement()
             expect(component.currentEditingArea).toBeNull();
         });
     });
