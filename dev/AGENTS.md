@@ -944,16 +944,79 @@ describe('InventoryService', () => {
 </body>
 </html>
 
+## Run Tips
+
 ```bash
-# Complete Development Setup git clone https://github.com/DaFum/Bar-Inventory.git cd Bar-Inventory
+# Complete Development Setup
+git clone https://github.com/DaFum/Bar-Inventory.git
+cd Bar-Inventory
 
-# Install all dependencies npm install
+# Install all dependencies including new toolchain
+npm install
 
-# Development Commands
+# Core Development Workflow
+npm run dev          # Concurrent TypeScript watch + live-server with HMR
+npm run build        # Production build with tree-shaking and minification
+npm run start        # Build and start production server
+npm run serve        # Static file server for testing builds
 
-npm run dev # Start development with live reload and TypeScript watch
+# Advanced Testing Suite
+npm test             # Jest unit tests with jsdom environment
+npm run test:watch   # Interactive test runner with file watching
+npm run test:coverage # HTML coverage reports with lcov output
+npm run test:e2e     # Playwright browser automation tests
+npm run test:visual  # Visual regression testing with screenshots
 
-npm run build # Production build with asset copying
+# Code Quality & Linting
+npm run lint         # ESLint analysis with TypeScript rules
+npm run lint:fix     # Auto-fix formatting and simple issues
+npm run format       # Prettier code formatting
+npm run type-check   # TypeScript compilation without emit
+npm run audit        # npm security vulnerability scan
 
-npm run serve # Serve built application locally
+# Database & Storage Management
+npm run db:reset     # Clear IndexedDB and localStorage
+npm run db:seed      # Populate with sample inventory data
+npm run db:export    # Export database to JSON backup
+npm run db:import    # Import from JSON backup file
+
+# Performance & Optimization
+npm run analyze      # Bundle size analysis with webpack-bundle-analyzer
+npm run lighthouse   # Performance auditing and PWA validation
+npm run perf         # Load testing with synthetic data
+
+# Deployment & Distribution
+npm run clean        # Remove dist, node_modules, coverage
+npm run deploy       # GitHub Pages deployment with optimization
+npm run docker:build # Container build for production deployment
+npm run pwa:validate # PWA manifest and service worker validation
+
+# Development Tools
+npm run storybook    # Component documentation and testing
+npm run docs         # Generate TypeScript API documentation
+npm run changelog    # Auto-generate release notes from commits
 ```
+
+## Key Features
+
+- 🧪 **Comprehensive Testing** - Jest unit tests (95%+ coverage), Playwright E2E, visual regression testing
+- 🔄 **Hot Module Replacement** - Instant development feedback with live-server and TypeScript watch mode
+- 📊 **Interactive Analytics** - Chart.js with drill-down, real-time updates, trend analysis, export capabilities
+- 💾 **Advanced Persistence** - IndexedDB with transactions, caching layers, offline queue, data versioning
+- 📱 **Progressive Web App** - Service worker caching, background sync, push notifications, app installation
+- 🔍 **Intelligent Search** - Full-text search, faceted filtering, sort combinations, saved filter presets
+- 📈 **Business Intelligence** - Inventory forecasting, low-stock alerts, cost analysis, supplier tracking
+- 🎨 **Modern UI/UX** - Responsive design, dark mode, accessibility (WCAG 2.1), touch-friendly interactions
+- 🚀 **Performance First** - Code splitting, lazy loading, virtualized lists, optimistic updates
+- 📦 **Data Management** - Bulk operations, CSV/JSON import/export, backup/restore, data validation
+- 🔧 **Developer Experience** - TypeScript strict mode, ESLint rules, Prettier formatting, Git hooks
+- 🌐 **Multi-Platform** - PWA installation, offline functionality, cross-browser compatibility
+- 🔐 **Data Security** - Input validation, XSS protection, CSP headers, secure localStorage handling
+- 📊 **Monitoring** - Error tracking, performance metrics, usage analytics, crash reporting
+- 🔄 **State Management** - Reactive patterns, event-driven architecture, optimistic UI updates
+
+**Technical Excellence:**
+- **Architecture** - Hexagonal design, dependency injection, SOLID principles
+- **Concurrency** - Web Workers for heavy computation, async/await patterns, request deduplication  
+- **Scalability** - Virtual scrolling, pagination, incremental loading, memory management
+- **Reliability** - Error boundaries, graceful degradation, retry mechanisms, circuit breakers
