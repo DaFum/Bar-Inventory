@@ -1,18 +1,21 @@
-import { showToast, ToastType } from './toast-notifications';
+import { ToastType } from './toast-notifications'; // Add ToastType back
 
 describe('Toast Notifications', () => {
-  let toastContainer: HTMLElement | null;
+  let showToast: typeof import('./toast-notifications').showToast;
+  // ToastType can still be imported at top for type annotations if needed, or use import('./module').ToastType
 
   beforeEach(() => {
-    // Ensure a clean slate for the toast container for each test
-    toastContainer = document.getElementById('toast-notifications-container');
-    toastContainer?.remove();
-    toastContainer = null; // Reset module-level variable if possible, or ensure tests don't rely on it persisting
+    // Reset modules to ensure toast-notifications.ts gets a fresh internal state (toastContainer = null)
+    jest.resetModules();
 
-    // Resetting the module-level toastContainer variable within toast-notifications.ts
-    // requires more complex module manipulation or making it exportable for testing.
-    // For now, we assume each call to showToast will correctly ensure/create the container.
-    // jest.resetModules(); // This was likely causing issues with the module-level toastContainer variable.
+    // Re-require the module to get the fresh version with reset internal state
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const toastModule = require('./toast-notifications');
+    showToast = toastModule.showToast;
+
+    // Ensure a clean DOM slate for the toast container for each test
+    const existingDomContainer = document.getElementById('toast-notifications-container');
+    existingDomContainer?.remove();
   });
 
   afterEach(() => {
@@ -84,7 +87,7 @@ describe('Toast Notifications', () => {
     // Check style after animation trigger timeout
     // Note: JSDOM doesn't actually run CSS transitions, so we check the style property directly.
     // This relies on the implementation detail of setting transform directly.
-    expect(toastElement.style.transform).toBe('translateX(0px)'); // Or 'translateX(0)'
+    expect(toastElement.style.transform).toMatch(/^translateX\(0(px)?\)$/);
 
     jest.useRealTimers(); // Restore real timers before done()
     done();

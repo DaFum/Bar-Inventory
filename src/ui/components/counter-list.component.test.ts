@@ -127,7 +127,16 @@ describe('CounterListComponent', () => {
   });
 
   test('updateCounter should update the corresponding item and re-sort if name changes', () => {
-    const updatedCounter: Counter = { ...initialCounters[0]!, id: initialCounters[0]!.id, name: 'ZZZ Counter Updated', description: initialCounters[0]!.description, areas: initialCounters[0]!.areas }; // Ensure all required fields
+    const initialCounter = initialCounters[0]!;
+    const updatedCounter: Counter = {
+        ...initialCounter,
+        id: initialCounter.id,
+        name: 'ZZZ Counter Updated',
+        areas: initialCounter.areas
+    };
+    if (initialCounter.description !== undefined) {
+        updatedCounter.description = initialCounter.description;
+    }
     counterListComponent.updateCounter(updatedCounter);
 
     const mockItemInstance = (CounterListItemComponent as jest.Mock).mock.results.find(

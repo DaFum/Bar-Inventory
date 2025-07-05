@@ -172,8 +172,10 @@ export class CounterListComponent extends BaseComponent<HTMLDivElement> {
             return;
         }
 
-        const oldCounter = this.counters[index];
-        this.counters[index] = counter;
+        const oldCounterAtIndex = this.counters[index]!; // Assert non-null
+        const oldName = oldCounterAtIndex.name; // Store old name
+
+        this.counters[index] = counter; // Update in the internal array
 
         const itemComponent = this.listItemComponents.get(counter.id);
         if (!itemComponent) {
@@ -183,7 +185,7 @@ export class CounterListComponent extends BaseComponent<HTMLDivElement> {
 
         itemComponent.update(this.location, counter);
 
-        if (oldCounter.name.localeCompare(counter.name) !== 0) { // Name is the sort key
+        if (oldName.localeCompare(counter.name) !== 0) { // Name is the sort key
             this.counters = this.sortCounters(this.counters);
             const currentElement = itemComponent.getElement();
             currentElement.remove();

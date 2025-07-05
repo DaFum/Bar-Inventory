@@ -151,14 +151,16 @@ describe('LocationFormComponent', () => {
         }));
       });
 
-    test('should set address to undefined if empty after trim', async () => {
+    test('should omit address if empty after trim', async () => {
         nameInput.value = 'Test Location';
         addressInput.value = '   '; // Only whitespace
         form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-        await Promise.resolve();
-        expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
-          address: undefined,
-        }));
+        await Promise.resolve(); // Wait for async handleSubmit
+
+        expect(mockOnSubmit).toHaveBeenCalledTimes(1);
+        const submittedData = mockOnSubmit.mock.calls[0][0];
+        expect(submittedData.name).toBe('Test Location');
+        expect(submittedData.address).toBeUndefined();
       });
 
     test('should log error if onSubmitCallback fails', async () => {

@@ -96,24 +96,20 @@ export class LocationFormComponent extends BaseComponent<HTMLDivElement> {
         const name = this.nameInput.value.trim();
         const addressValue = this.addressInput.value.trim();
 
-        const locationDataPartial: Partial<Location> = {
-            id: this.currentEditingLocation?.id || '', // ID is always present or empty string for new
-            name: name,
+        const dataForCallback: Pick<Location, 'id' | 'name' | 'address'> = {
+            id: this.currentEditingLocation?.id || '',
+            name: name, // Uses existing 'name'
+            // 'address' will be added conditionally
         };
-        if (addressValue) {
-            locationDataPartial.address = addressValue;
-        }
-        // The callback onSubmit expects Pick<Location, 'id' | 'name' | 'address'>
-        // If address is truly optional on Location model (address?: string),
-        // then sending {id, name, address: undefined} is fine.
-        // If address must be string, then an empty string '' might be better than undefined.
-        // Given model `address?: string`, `undefined` is fine.
-        const locationData = locationDataPartial as Pick<Location, 'id' | 'name' | 'address'>;
-        locationData.address = addressValue || undefined;
 
+        if (addressValue) { // Uses existing 'addressValue'; only add 'address' if it's not an empty string
+            dataForCallback.address = addressValue;
+        }
+        // If addressValue is empty, dataForCallback.address remains undefined (omitted property),
+        // which is correct for an optional property under exactOptionalPropertyTypes.
 
         try {
-            await this.onSubmitCallback(locationData);
+            await this.onSubmitCallback(dataForCallback);
         } catch (error) {
             console.error("LocationFormComponent: Error during submission callback", error);
         }

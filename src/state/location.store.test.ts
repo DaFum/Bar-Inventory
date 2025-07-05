@@ -48,9 +48,8 @@ describe('LocationStore', () => {
     (generateId as jest.Mock).mockClear().mockImplementation((prefix: string) => `${prefix}-mock-id-${Date.now()}`);
 
 
-    // Reset internal store state
-    locationStore['locations'] = [];
-    locationStore['subscribers'] = [];
+    // Reset internal store state using the public reset method
+    locationStore.reset();
   });
 
   describe('loadLocations', () => {
@@ -127,7 +126,7 @@ describe('LocationStore', () => {
       await locationStore.loadLocations();
       const subscriber = jest.fn();
       locationStore.subscribe(subscriber);
-      const idToDelete = initialMockLocations[0].id;
+      const idToDelete = initialMockLocations[0]!.id;
 
       await locationStore.deleteLocation(idToDelete);
 
@@ -244,6 +243,367 @@ describe('LocationStore', () => {
         await locationStore.loadLocations();
         const notFound = locationStore.getLocationById('non-existent-id');
         expect(notFound).toBeUndefined();
+    });
+  });
+});
+
+  describe('Error Handling', () => {
+    it('should handle dbService.loadLocations failure', async () => {
+      const error = new Error('Database connection failed');
+      (dbService.loadLocations as jest.Mock).mockRejectedValueOnce(error);
+      
+      await expect(locationStore.loadLocations()).rejects.toThrow('Database connection failed');
+    });
+
+    it('should handle dbService.saveLocation failure in addLocation', async () => {
+      const error = new Error('Save operation failed');
+      (dbService.saveLocation as jest.Mock).mockRejectedValueOnce(error);
+      
+      await expect(locationStore.addLocation({ name: 'Test Location' })).rejects.toThrow('Save operation failed');
+    });
+
+    it('should handle dbService.saveLocation failure in updateLocation', async () => {
+      await locationStore.loadLocations();
+      const error = new Error('Update operation failed');
+      (dbService.saveLocation as jest.Mock).mockRejectedValueOnce(error);
+      
+      await expect(locationStore.updateLocation(initialMockLocations[0]!)).rejects.toThrow('Update operation failed');
+    });
+
+    it('should handle dbService.delete failure', async () => {
+      await locationStore.loadLocations();
+      const error = new Error('Delete operation failed');
+      (dbService.delete as jest.Mock).mockRejectedValueOnce(error);
+      
+      await expect(locationStore.deleteLocation(initialMockLocations[0]!.id)).rejects.toThrow('Delete operation failed');
+    });
+  });
+
+  describe('Input Validation', () => {
+    it('should throw error for null location name', async () => {
+      await expect(locationStore.addLocation({ name: null as any })).rejects.toThrow();
+    });
+
+    it('should throw error for undefined location name', async () => {
+      await expect(locationStore.addLocation({ name: undefined as any })).rejects.toThrow();
+    });
+
+    it('should throw error for location name with only whitespace', async () => {
+      await expect(locationStore.addLocation({ name: '   \t\n   ' })).rejects.toThrow('Standortname darf nicht leer sein');
+    });
+
+    it('should handle empty address gracefully', async () => {
+      const newLocation = await locationStore.addLocation({ name: 'Test Location', address: '' });
+      expect(newLocation.address).toBe('');
+    });
+
+    it('should handle missing address gracefully', async () => {
+      const newLocation = await locationStore.addLocation({ name: 'Test Location' });
+      expect(newLocation.address).toBeUndefined();
+    });
+
+    it('should throw error for counter name with only whitespace', async () => {
+      await locationStore.loadLocations();
+      await expect(locationStore.addCounter(mockLocation1.id, { name: '   ' })).rejects.toThrow();
+    });
+
+    it('should throw error for area name with only whitespace', async () => {
+      await locationStore.loadLocations();
+      const counterId = mockLocation1.counters[0]!.id;
+      await expect(locationStore.addArea(mockLocation1.id, counterId, { name: '   ' })).rejects.toThrow();
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle updating non-existent location', async () => {
+      await locationStore.loadLocations();
+      const nonExistentLocation: Location = {
+        id: 'non-existent-id',
+        name: 'Non-existent Location',
+        address: 'Nowhere',
+        counters: []
+      };
+      
+      await expect(locationStore.updateLocation(nonExistentLocation)).rejects.toThrow();
+    });
+
+    it('should handle deleting non-existent location', async () => {
+      await locationStore.loadLocations();
+      await expect(locationStore.deleteLocation('non-existent-id')).rejects.toThrow();
+    });
+
+    it('should handle adding counter to non-existent location', async () => {
+      await locationStore.loadLocations();
+      await expect(locationStore.addCounter('non-existent-id', { name: 'Test Counter' })).rejects.toThrow();
+    });
+
+    it('should handle updating non-existent counter', async () => {
+      await locationStore.loadLocations();
+      const nonExistentCounter: Counter = {
+        id: 'non-existent-counter',
+        name: 'Non-existent Counter',
+        description: 'Does not exist',
+        areas: []
+      };
+      
+      await expect(locationStore.updateCounter(mockLocation1.id, nonExistentCounter)).rejects.toThrow();
+    });
+
+    it('should handle deleting non-existent counter', async () => {
+      await locationStore.loadLocations();
+      await expect(locationStore.deleteCounter(mockLocation1.id, 'non-existent-counter')).rejects.toThrow();
+    });
+
+    it('should handle adding area to non-existent counter', async () => {
+      await locationStore.loadLocations();
+      await expect(locationStore.addArea(mockLocation1.id, 'non-existent-counter', { name: 'Test Area' })).rejects.toThrow();
+    });
+
+    it('should handle updating non-existent area', async () => {
+      await locationStore.loadLocations();
+      const counterId = mockLocation1.counters[0]!.id;
+      const nonExistentArea: Area = {
+        id: 'non-existent-area',
+        name: 'Non-existent Area',
+        displayOrder: 1,
+        inventoryItems: []
+      };
+      
+      await expect(locationStore.updateArea(mockLocation1.id, counterId, nonExistentArea)).rejects.toThrow();
+    });
+
+    it('should handle deleting non-existent area', async () => {
+      await locationStore.loadLocations();
+      const counterId = mockLocation1.counters[0]!.id;
+      await expect(locationStore.deleteArea(mockLocation1.id, counterId, 'non-existent-area')).rejects.toThrow();
+    });
+  });
+
+  describe('Subscription Management', () => {
+    it('should handle multiple subscribers', async () => {
+      const subscriber1 = jest.fn();
+      const subscriber2 = jest.fn();
+      const subscriber3 = jest.fn();
+      
+      locationStore.subscribe(subscriber1);
+      locationStore.subscribe(subscriber2);
+      locationStore.subscribe(subscriber3);
+      
+      await locationStore.loadLocations();
+      
+      expect(subscriber1).toHaveBeenCalledWith(initialMockLocations);
+      expect(subscriber2).toHaveBeenCalledWith(initialMockLocations);
+      expect(subscriber3).toHaveBeenCalledWith(initialMockLocations);
+    });
+
+    it('should handle unsubscribe functionality', async () => {
+      const subscriber = jest.fn();
+      const unsubscribe = locationStore.subscribe(subscriber);
+      
+      await locationStore.loadLocations();
+      expect(subscriber).toHaveBeenCalledTimes(1);
+      
+      unsubscribe();
+      await locationStore.addLocation({ name: 'New Location' });
+      
+      // Should not be called again after unsubscribe
+      expect(subscriber).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle subscriber throwing error', async () => {
+      const goodSubscriber = jest.fn();
+      const badSubscriber = jest.fn().mockImplementation(() => {
+        throw new Error('Subscriber error');
+      });
+      
+      locationStore.subscribe(goodSubscriber);
+      locationStore.subscribe(badSubscriber);
+      
+      // Should not throw even if one subscriber fails
+      await expect(locationStore.loadLocations()).resolves.not.toThrow();
+      expect(goodSubscriber).toHaveBeenCalled();
+    });
+  });
+
+  describe('Data Consistency', () => {
+    it('should maintain proper area display order after multiple operations', async () => {
+      await locationStore.loadLocations();
+      const locId = mockLocation1.id;
+      const counterId = mockLocation1.counters[0]!.id;
+      
+      // Add multiple areas with different display orders
+      await locationStore.addArea(locId, counterId, { name: 'Area 2', displayOrder: 2 });
+      await locationStore.addArea(locId, counterId, { name: 'Area 0', displayOrder: 0 });
+      await locationStore.addArea(locId, counterId, { name: 'Area 3', displayOrder: 3 });
+      
+      const location = locationStore.getLocationById(locId);
+      const counter = location?.counters.find(c => c.id === counterId);
+      const areaNames = counter?.areas.map(a => a.name);
+      
+      expect(areaNames).toEqual(['Area 0', 'Top Shelf', 'Area 2', 'Area 3']);
+    });
+
+    it('should preserve inventory items when updating areas', async () => {
+      await locationStore.loadLocations();
+      const locId = mockLocation1.id;
+      const counterId = mockLocation1.counters[0]!.id;
+      const areaId = mockLocation1.counters[0]!.areas[0]!.id;
+      
+      // Add inventory items to the area
+      const location = locationStore.getLocationById(locId)!;
+      const counter = location.counters.find(c => c.id === counterId)!;
+      const area = counter.areas.find(a => a.id === areaId)!;
+      
+      area.inventoryItems.push({ id: 'item1', name: 'Test Item' } as any);
+      await locationStore.updateLocation(location);
+      
+      // Update area name
+      const updatedArea: Area = {
+        ...area,
+        name: 'Updated Area Name'
+      };
+      await locationStore.updateArea(locId, counterId, updatedArea);
+      
+      const updatedLocation = locationStore.getLocationById(locId);
+      const updatedCounter = updatedLocation?.counters.find(c => c.id === counterId);
+      const finalArea = updatedCounter?.areas.find(a => a.id === areaId);
+      
+      expect(finalArea?.inventoryItems).toHaveLength(1);
+      expect(finalArea?.inventoryItems[0]?.name).toBe('Test Item');
+    });
+  });
+
+  describe('Complex Operations', () => {
+    it('should handle rapid consecutive operations', async () => {
+      await locationStore.loadLocations();
+      
+      // Perform multiple operations in quick succession
+      const operations = [
+        locationStore.addLocation({ name: 'Location 1' }),
+        locationStore.addLocation({ name: 'Location 2' }),
+        locationStore.addLocation({ name: 'Location 3' }),
+      ];
+      
+      const results = await Promise.all(operations);
+      
+      expect(results).toHaveLength(3);
+      expect(locationStore.getLocations()).toHaveLength(5); // 2 initial + 3 new
+    });
+
+    it('should handle location with deeply nested structure', async () => {
+      const complexLocation = {
+        name: 'Complex Location',
+        address: '123 Complex St',
+        counters: []
+      };
+      
+      const newLocation = await locationStore.addLocation(complexLocation);
+      
+      // Add multiple counters with multiple areas each
+      const counter1 = await locationStore.addCounter(newLocation.id, { name: 'Counter 1' });
+      const counter2 = await locationStore.addCounter(newLocation.id, { name: 'Counter 2' });
+      
+      await locationStore.addArea(newLocation.id, counter1.id, { name: 'Area 1-1', displayOrder: 1 });
+      await locationStore.addArea(newLocation.id, counter1.id, { name: 'Area 1-2', displayOrder: 2 });
+      await locationStore.addArea(newLocation.id, counter2.id, { name: 'Area 2-1', displayOrder: 1 });
+      
+      const finalLocation = locationStore.getLocationById(newLocation.id);
+      
+      expect(finalLocation?.counters).toHaveLength(2);
+      expect(finalLocation?.counters[0]?.areas).toHaveLength(2);
+      expect(finalLocation?.counters[1]?.areas).toHaveLength(1);
+    });
+  });
+
+  describe('State Management', () => {
+    it('should return immutable data from getLocations', async () => {
+      await locationStore.loadLocations();
+      const locations1 = locationStore.getLocations();
+      const locations2 = locationStore.getLocations();
+      
+      // Should return different array instances
+      expect(locations1).not.toBe(locations2);
+      expect(locations1).toEqual(locations2);
+    });
+
+    it('should return immutable data from getLocationById', async () => {
+      await locationStore.loadLocations();
+      const location1 = locationStore.getLocationById(mockLocation1.id);
+      const location2 = locationStore.getLocationById(mockLocation1.id);
+      
+      // Should return different object instances
+      expect(location1).not.toBe(location2);
+      expect(location1).toEqual(location2);
+    });
+
+    it('should not allow external modification of returned data', async () => {
+      await locationStore.loadLocations();
+      const locations = locationStore.getLocations();
+      
+      // Attempt to modify returned data
+      locations.push({ id: 'hacked', name: 'Hacked Location', address: '', counters: [] });
+      
+      // Should not affect internal state
+      const freshLocations = locationStore.getLocations();
+      expect(freshLocations).toHaveLength(2);
+      expect(freshLocations.find(l => l.id === 'hacked')).toBeUndefined();
+    });
+  });
+
+  describe('ID Generation', () => {
+    it('should generate unique IDs for locations', async () => {
+      const location1 = await locationStore.addLocation({ name: 'Location 1' });
+      const location2 = await locationStore.addLocation({ name: 'Location 2' });
+      
+      expect(location1.id).not.toBe(location2.id);
+      expect(location1.id).toMatch(/^loc-/);
+      expect(location2.id).toMatch(/^loc-/);
+    });
+
+    it('should generate unique IDs for counters', async () => {
+      await locationStore.loadLocations();
+      const counter1 = await locationStore.addCounter(mockLocation1.id, { name: 'Counter 1' });
+      const counter2 = await locationStore.addCounter(mockLocation1.id, { name: 'Counter 2' });
+      
+      expect(counter1.id).not.toBe(counter2.id);
+      expect(counter1.id).toMatch(/^ctr-/);
+      expect(counter2.id).toMatch(/^ctr-/);
+    });
+
+    it('should generate unique IDs for areas', async () => {
+      await locationStore.loadLocations();
+      const counterId = mockLocation1.counters[0]!.id;
+      const area1 = await locationStore.addArea(mockLocation1.id, counterId, { name: 'Area 1' });
+      const area2 = await locationStore.addArea(mockLocation1.id, counterId, { name: 'Area 2' });
+      
+      expect(area1.id).not.toBe(area2.id);
+      expect(area1.id).toMatch(/^area-/);
+      expect(area2.id).toMatch(/^area-/);
+    });
+  });
+
+  describe('Reset Functionality', () => {
+    it('should clear all data when reset is called', async () => {
+      await locationStore.loadLocations();
+      expect(locationStore.getLocations()).toHaveLength(2);
+      
+      locationStore.reset();
+      
+      expect(locationStore.getLocations()).toHaveLength(0);
+    });
+
+    it('should clear subscribers when reset is called', async () => {
+      const subscriber = jest.fn();
+      locationStore.subscribe(subscriber);
+      
+      await locationStore.loadLocations();
+      expect(subscriber).toHaveBeenCalledTimes(1);
+      
+      locationStore.reset();
+      await locationStore.addLocation({ name: 'Test Location' });
+      
+      // Subscriber should not be called after reset
+      expect(subscriber).toHaveBeenCalledTimes(1);
     });
   });
 });

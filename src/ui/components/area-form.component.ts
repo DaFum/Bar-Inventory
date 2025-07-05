@@ -114,15 +114,23 @@ export class AreaFormComponent extends BaseComponent<HTMLDivElement> {
             }
         }
 
-        const areaData: Pick<Area, 'id' | 'name' | 'description' | 'displayOrder'> = {
-            id: this.currentEditingArea?.id || '',
-            name: this.nameInput.value.trim(),
-            description: this.descriptionInput.value.trim() || undefined,
-            displayOrder: displayOrderNum
+        const nameValue = this.nameInput.value.trim();
+        const descriptionValue = this.descriptionInput.value.trim();
+
+        const areaDataToSubmit: Pick<Area, 'id' | 'name' | 'description' | 'displayOrder'> = {
+            id: this.currentEditingArea?.id || '', // Consumer (e.g., location-manager) handles ID for new vs update
+            name: nameValue,
         };
 
+        if (descriptionValue) {
+            areaDataToSubmit.description = descriptionValue;
+        }
+        if (displayOrderNum !== undefined) {
+            areaDataToSubmit.displayOrder = displayOrderNum;
+        }
+
         try {
-            await this.onSubmitCallback(areaData);
+            await this.onSubmitCallback(areaDataToSubmit);
         } catch (error) {
             console.error("AreaFormComponent: Error during submission callback", error);
             const errorMessage = error instanceof Error ? error.message : String(error);

@@ -18,10 +18,10 @@ export function generateId(prefix: string = 'id'): string {
  * @param delay - Die Zeit in Millisekunden, die nach dem letzten Aufruf abgewartet wird, bevor die Funktion ausgeführt wird
  * @returns Eine Funktion, die das Entprellen übernimmt und die Ausführung von `func` verzögert
  */
-export function debounce<T extends (...args: unknown[]) => unknown>(
+export function debounce<T extends (...args: Parameters<T>) => any>( // Use Parameters<T> for stricter typing
   func: T,
   delay: number
-): (...args: Parameters<T>) => void {
+): (...args: Parameters<T>) => void { // Return type's params still derived from T
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   return function (this: ThisParameterType<T>, ...args: Parameters<T>) {

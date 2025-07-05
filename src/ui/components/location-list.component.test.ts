@@ -95,7 +95,7 @@ describe('LocationListComponent', () => {
   });
 
   test('addLocation should add a location and insert it sorted into the DOM', () => {
-    const newLocation: Location = { id: 'locD', name: 'Location Delta', address:'', counters: [], products: [], inventoryEntries: [] };
+    const newLocation: Location = { id: 'locD', name: 'Location Delta', address:'', counters: [] };
     locationListComponent.addLocation(newLocation);
 
     const ulElement = locationListComponent.getElement().querySelector('ul.list-group');
@@ -122,7 +122,7 @@ describe('LocationListComponent', () => {
     expect(ulElement).not.toBeNull();
     const items = ulElement!.children;
     expect(items.length).toBe(1);
-    expect(items[0].textContent).toBe('First Location');
+    expect(items[0]!.textContent).toBe('First Location');
   });
 
   test('updateLocation should update the corresponding item and re-sort if name changes', () => {

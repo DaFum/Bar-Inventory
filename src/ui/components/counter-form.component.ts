@@ -94,20 +94,20 @@ export class CounterFormComponent extends BaseComponent<HTMLDivElement> {
             return;
         }
 
+        const nameValue = this.nameInput.value.trim();
         const descriptionValue = this.descriptionInput.value.trim();
-        const counterData: Pick<Counter, 'id' | 'name' | 'description'> = {
+
+        const counterDataToSubmit: Pick<Counter, 'id' | 'name' | 'description'> = {
             id: this.currentEditingCounter?.id || '',
-            name: this.nameInput.value.trim(),
-            // Ensure description is explicitly undefined if empty, otherwise it's a string.
-            // This helps with exactOptionalPropertyTypes if description in Counter is string, not string | undefined.
-            // However, Counter model has description?: string, so string | undefined is fine.
-            // The issue might be how Pick interacts or if a consuming type expects string.
-            // Let's ensure it's truly undefined if meant to be absent.
-            description: descriptionValue === '' ? undefined : descriptionValue,
+            name: nameValue,
         };
 
+        if (descriptionValue) { // Only add if not an empty string
+            counterDataToSubmit.description = descriptionValue;
+        }
+
         try {
-            await this.onSubmitCallback(counterData);
+            await this.onSubmitCallback(counterDataToSubmit);
         } catch (error) {
             // User feedback for store errors should be handled by the caller of the store method.
             console.error("CounterFormComponent: Error during submission callback", error);

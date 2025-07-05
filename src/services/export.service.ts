@@ -93,7 +93,7 @@ export class ExportService {
       'imageUrl',
       'notes',
     ];
-    const csvData = arrayToCsv(products as Array<Record<string, unknown>>, columns);
+    const csvData = arrayToCsv(products as unknown as Array<Record<string, unknown>>, columns);
     triggerDownload(csvData, 'produktkatalog.csv', 'text/csv;charset=utf-8;');
   }
 
@@ -174,7 +174,7 @@ export class ExportService {
       columns.push('consumedUnits', 'consumedVolumeMl', 'costOfConsumption', 'consumptionNotes');
     }
 
-    const csvData = arrayToCsv(flatData as Array<Record<string, unknown>>, columns);
+    const csvData = arrayToCsv(flatData as unknown as Array<Record<string, unknown>>, columns);
     // Better sanitize user input for file names
     const sanitize = (str: string) => str.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
     const fileName = `inventur_${sanitize(locationName)}_${sanitize(

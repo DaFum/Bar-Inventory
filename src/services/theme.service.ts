@@ -21,13 +21,26 @@ export class ThemeService {
     this.applyTheme();
 
     // Listen for system theme changes
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const systemThemeChangeHandler = (e: MediaQueryListEvent | Event) => { // Event for older addListener
+      // Check type of event if needed, or rely on e.matches if available on Event for older browsers
+      const eventMatches = (e as MediaQueryListEvent).matches;
       // Only update if no theme explicitly set by user
       if (!localStorage.getItem(THEME_KEY)) {
-        this.currentTheme = e.matches ? 'dark' : 'light';
+        this.currentTheme = eventMatches ? 'dark' : 'light';
         this.applyTheme();
       }
-    });
+    };
+
+    // Use addEventListener if available, otherwise fall back to addListener
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', systemThemeChangeHandler);
+    } else if (mediaQuery.addListener) { // Deprecated but necessary for older browsers
+      mediaQuery.addListener(systemThemeChangeHandler);
+    }
+    // Storing mediaQuery and systemThemeChangeHandler on the instance would be necessary
+    // if we implement a cleanup/dispose method to call removeEventListener/removeListener.
+    // For now, this addresses the compatibility issue.
   }
 
   public toggleTheme(): void {

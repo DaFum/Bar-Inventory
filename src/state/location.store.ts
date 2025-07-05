@@ -87,9 +87,12 @@ class LocationStore {
       const newLocation: Location = {
         id: generateId('loc'),
         name: locationData.name.trim(),
-        address: locationData.address,
         counters: [],
+        // Conditionally add address if provided, to comply with exactOptionalPropertyTypes
       };
+      if (locationData.address !== undefined) {
+        newLocation.address = locationData.address;
+      }
       await dbService.saveLocation(newLocation);
       this.locations.push(newLocation); // Add to local cache
       this.notifySubscribers();
@@ -164,9 +167,11 @@ class LocationStore {
     const newCounter: Counter = {
       id: generateId('ctr'),
       name: counterData.name,
-      description: counterData.description,
       areas: [],
     };
+    if (counterData.description !== undefined) {
+      newCounter.description = counterData.description;
+    }
     location.counters.push(newCounter);
     // The whole location object is saved, so this implicitly saves the new counter.
     await this.updateLocation(location); // This will also notify subscribers.
@@ -210,10 +215,14 @@ class LocationStore {
     const newArea: Area = {
       id: generateId('area'),
       name: areaData.name,
-      description: areaData.description,
       inventoryItems: [], // Initialize with empty inventoryItems
-      displayOrder: areaData.displayOrder,
     };
+    if (areaData.description !== undefined) {
+      newArea.description = areaData.description;
+    }
+    if (areaData.displayOrder !== undefined) {
+      newArea.displayOrder = areaData.displayOrder;
+    }
     counter.areas.push(newArea);
     this.sortAreas(counter); // Sort areas after adding
     await this.updateLocation(location); // Saves the whole location and notifies
@@ -264,6 +273,17 @@ class LocationStore {
       // Fallback to name sorting if displayOrder is the same or not defined for one/both
       return a.name.localeCompare(b.name);
     });
+  }
+
+  /**
+   * Resets the store to its initial empty state.
+   * Primarily for use in testing environments.
+   */
+  public reset(): void {
+    this.locations = [];
+    this.subscribers = [];
+    // Note: This does not clear the database, only the in-memory state.
+    // Tests that mock dbService should also clear their dbService mocks if needed.
   }
 }
 
