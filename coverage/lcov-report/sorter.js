@@ -1,6 +1,13 @@
 /* eslint-disable */
 var addSorting = (function() {
     'use strict';
+
+    // Utility function to sanitize input and prevent XSS
+    function sanitizeValue(value) {
+        const div = document.createElement('div');
+        div.textContent = value; // Escapes HTML meta-characters
+        return div.innerHTML;
+    }
     var cols,
         currentSort = {
             index: 0,
@@ -86,6 +93,7 @@ var addSorting = (function() {
             colNode = tableCols[i];
             col = cols[i];
             val = colNode.getAttribute('data-value');
+            val = sanitizeValue(val); // Sanitize the value to prevent XSS
             if (col.type === 'number') {
                 val = Number(val);
             }
