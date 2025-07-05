@@ -332,10 +332,9 @@ describe('Location Manager (location-manager.ts)', () => {
     // global.URL.createObjectURL = originalCreateObjectURL;
     // global.URL.revokeObjectURL = originalRevokeObjectURL;
     // For simplicity of this fix, given they were not present in JSDOM:
-    // @ts-ignore
-    delete global.URL.createObjectURL;
-    // @ts-ignore
-    delete global.URL.revokeObjectURL;
+    // Restore original references after the test
+    global.URL.createObjectURL = originalCreateObjectURL;
+    global.URL.revokeObjectURL = originalRevokeObjectURL;
   });
 
   test('store subscription should refresh counter list if active location is updated', () => {
