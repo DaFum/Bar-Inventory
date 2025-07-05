@@ -1119,13 +1119,18 @@ describe('AreaFormComponent', () => {
             const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
             
             const nameInput = component['nameInput'];
-            nameInput.value = 'Test Area';
-            
+            const initialValue = 'Test Area';
+            nameInput.value = initialValue;
+    
             const event = new Event('submit');
             await expect(component['handleSubmit'](event)).rejects.toThrow('Validation failed on server');
-            
+    
             expect(consoleSpy).toHaveBeenCalledWith('AreaFormComponent: Error during submission callback', partialError);
-            
+    
+            // Verify form remains in a valid state with user input preserved
+            expect(nameInput.value).toBe(initialValue);
+            expect(component.getElement().style.display).not.toBe('none');
+    
             consoleSpy.mockRestore();
         });
     });
