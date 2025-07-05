@@ -678,26 +678,43 @@ const DATABASE_VERSION = 1;
 
   describe('Database Schema Evolution', () => {
     test('should handle schema upgrade from version 0 to 1', async () => {
-      const mockCreateObjectStore = jest.fn().mockReturnValue({ 
-        createIndex: jest.fn() 
+      // Reset the service to test initialization again
+      await jest.isolateModulesAsync(async () => {
+        const { IndexedDBService: ServiceClass } = await import('./indexeddb.service');
+    
+        // Capture the upgrade callback when openDB is called
+        let capturedUpgradeCallback: Function | undefined;
+        (openDB as jest.Mock).mockImplementationOnce((name, version, options) => {
+          capturedUpgradeCallback = options.upgrade;
+          return mockDb;
+        });
+    
+        // Create new service instance which will trigger openDB
+        const service = new ServiceClass();
+    
+        // Now test the upgrade callback
+        const mockCreateObjectStore = jest.fn().mockReturnValue({ 
+          createIndex: jest.fn() 
+        });
+        const mockUpgradeDb = {
+          objectStoreNames: {
+            contains: jest.fn().mockReturnValue(false),
+          },
+          createObjectStore: mockCreateObjectStore,
+        } as unknown as IDBPDatabase<BarInventoryDBSchemaType>;
+    
+        // Use the captured callback
+        if (capturedUpgradeCallback) {
+          capturedUpgradeCallback(mockUpgradeDb, 0, 1, mockTransaction);
+      
+          expect(mockCreateObjectStore).toHaveBeenCalledTimes(3);
+          expect(mockCreateObjectStore).toHaveBeenCalledWith('products', { keyPath: 'id' });
+          expect(mockCreateObjectStore).toHaveBeenCalledWith('locations', { keyPath: 'id' });
+          expect(mockCreateObjectStore).toHaveBeenCalledWith('inventoryState', { keyPath: 'key' });
+        } else {
+          fail('Upgrade callback was not captured');
+        }
       });
-      const mockUpgradeDb = {
-        objectStoreNames: {
-          contains: jest.fn().mockReturnValue(false),
-        },
-        createObjectStore: mockCreateObjectStore,
-      } as unknown as IDBPDatabase<BarInventoryDBSchemaType>;
-
-      await dbService['dbPromise'];
-      const openDbArgs = (openDB as jest.Mock).mock.calls[0];
-      const upgradeCallback = openDbArgs[2].upgrade;
-
-      upgradeCallback(mockUpgradeDb, 0, 1, mockTransaction);
-
-      expect(mockCreateObjectStore).toHaveBeenCalledTimes(3);
-      expect(mockCreateObjectStore).toHaveBeenCalledWith('products', { keyPath: 'id' });
-      expect(mockCreateObjectStore).toHaveBeenCalledWith('locations', { keyPath: 'id' });
-      expect(mockCreateObjectStore).toHaveBeenCalledWith('inventoryState', { keyPath: 'key' });
     });
 
     test('should handle partial schema upgrade', async () => {
