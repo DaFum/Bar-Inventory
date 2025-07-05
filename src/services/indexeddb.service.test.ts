@@ -399,27 +399,25 @@ describe('IndexedDBService', () => {
         expect(showToast).toHaveBeenCalledWith(expect.stringContaining('Datenbankverbindung unerwartet beendet'), 'error');
     });
 
-    test('constructor should throw if IndexedDB is not supported', () => {
-        const originalIndexedDB = window.indexedDB;
-        (window as any).indexedDB = undefined; // Simulate no IndexedDB support
-
-        try {
-            const newServiceInstance = new (dbService.constructor as any)();
-            // This is tricky because dbService is a singleton. We'd ideally test a fresh construction.
-            // The current test structure will test the already constructed singleton's init phase.
-            // For a true test of this, the singleton pattern would need to be reset or the class re-imported.
-            // However, the check is in the constructor, so it should have been caught if openDB wasn't mocked
-            // and we could force a re-evaluation of the constructor.
-            // Given the mock of openDB, this path is hard to hit without more complex jest module manipulation.
-            // For now, we assume the check exists and would work.
-            // A better approach would be to inject `window.indexedDB` or a wrapper.
-        } catch (e: any) {
-            expect(e.message).toBe('IndexedDB not supported');
-            expect(showToast).toHaveBeenCalledWith(expect.stringContaining('IndexedDB wird nicht unterstützt'), 'error');
-        }
-        (window as any).indexedDB = originalIndexedDB; // Restore
+    test('constructor should throw if IndexedDB is not supported', async () => {
+      const originalIndexedDB = window.indexedDB;
+      
+      await jest.isolateModulesAsync(async () => {
+        // IndexedDB vor dem Import entfernen
+        (window as any).indexedDB = undefined;
+        
+        const { IndexedDBService } = await import('./indexeddb.service');
+        
+        expect(() => new IndexedDBService()).toThrow('IndexedDB not supported');
+        expect(showToast).toHaveBeenCalledWith(
+          expect.stringContaining('IndexedDB wird nicht unterstützt'),
+          'error'
+        );
       });
-  });
+      
+      // IndexedDB wiederherstellen
+      (window as any).indexedDB = originalIndexedDB;
+    });
 
 });
 
