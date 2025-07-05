@@ -189,11 +189,8 @@ describe('UI Manager (ui-manager.ts)', () => {
       expect(inventoryButton).not.toBeNull(); // Ensure the button is found
       if (!inventoryButton) return; // Guard for TS
 
-      // Force navigation to inventory again at the start of this specific test
-      // initializeApp in the main beforeEach should have already done this. This is for diagnosis/forcing state.
-      inventoryButton.click();
-
-
+      // Ensure the test starts with the correct initial state set by initializeApp.
+      // The active state for inventory should already be set by initializeApp in the main beforeEach.
       // Initial state (inventory is active from initializeApp / click)
       expect(inventoryButton.classList.contains('active')).toBe(true);
       expect(locationsButton!.classList.contains('active')).toBe(false);
