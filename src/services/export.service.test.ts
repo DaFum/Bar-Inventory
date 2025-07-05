@@ -193,17 +193,19 @@ describe('ExportService', () => {
   describe('Error handling and edge cases', () => {
     it('should handle Blob creation failure gracefully', () => {
       const originalBlob = global.Blob;
-      (global as any).Blob = jest.fn(() => {
-        throw new Error('Blob creation failed');
-      });
-      
-      expect(() => exportService.exportProductsToCsv(mockProducts)).not.toThrow();
-      expect(ToastNotifications.showToast).toHaveBeenCalledWith(
-        expect.stringContaining('Fehler beim Erstellen der Exportdatei'),
-        'error'
-      );
-      
-      (global as any).Blob = originalBlob;
+      try {
+        (global as any).Blob = jest.fn(() => {
+          throw new Error('Blob creation failed');
+        });
+    
+        expect(() => exportService.exportProductsToCsv(mockProducts)).not.toThrow();
+        expect(ToastNotifications.showToast).toHaveBeenCalledWith(
+          expect.stringContaining('Fehler beim Erstellen der Exportdatei'),
+          'error'
+        );
+      } finally {
+        (global as any).Blob = originalBlob;
+      }
     });
 
     it('should handle URL.createObjectURL failure gracefully', () => {
