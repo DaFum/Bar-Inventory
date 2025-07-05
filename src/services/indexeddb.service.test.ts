@@ -695,29 +695,14 @@ const DATABASE_VERSION = 1;
         const { IndexedDBService: ServiceClass } = await import('./indexeddb.service');
     
         // Capture the upgrade callback when openDB is called
-        let capturedUpgradeCallback: Function | undefined;
+        // Capture the upgrade callback with a precise signature
+-        let capturedUpgradeCallback: Function | undefined;
++        let capturedUpgradeCallback: ((db: IDBPDatabase<BarInventoryDBSchemaType>, oldVersion: number, newVersion: number, transaction: any) => void) | undefined;
+
         (openDB as jest.Mock).mockImplementationOnce((name, version, options) => {
           capturedUpgradeCallback = options.upgrade;
           return mockDb;
         });
-    
-        // Create new service instance which will trigger openDB
-        const service = new ServiceClass();
-    
-        // Now test the upgrade callback
-        const mockCreateObjectStore = jest.fn().mockReturnValue({ 
-          createIndex: jest.fn() 
-        });
-        const mockUpgradeDb = {
-          objectStoreNames: {
-            contains: jest.fn().mockReturnValue(false),
-          },
-          createObjectStore: mockCreateObjectStore,
-        } as unknown as IDBPDatabase<BarInventoryDBSchemaType>;
-    
-        // Use the captured callback
-        if (capturedUpgradeCallback) {
-          capturedUpgradeCallback(mockUpgradeDb, 0, 1, mockTransaction);
       
           expect(mockCreateObjectStore).toHaveBeenCalledTimes(3);
           expect(mockCreateObjectStore).toHaveBeenCalledWith('products', { keyPath: 'id' });
