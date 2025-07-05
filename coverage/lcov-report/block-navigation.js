@@ -21,6 +21,10 @@ var jumpToCode = (function init() {
 
     var currentIndex;
 
+    /**
+     * Hebt das aktuell hervorgehobene Element auf und markiert das Element am angegebenen Index als hervorgehoben.
+     * @param {number} index - Der Index des Elements, das hervorgehoben werden soll.
+     */
     function toggleClass(index) {
         missingCoverageElements
             .item(currentIndex)
@@ -28,6 +32,11 @@ var jumpToCode = (function init() {
         missingCoverageElements.item(index).classList.add('highlighted');
     }
 
+    /**
+     * Hebt das Element mit dem angegebenen Index hervor und scrollt es zentriert in den sichtbaren Bereich.
+     * 
+     * @param {number} index - Der Index des zu markierenden Elements in der Liste der fehlenden Coverage-Elemente.
+     */
     function makeCurrent(index) {
         toggleClass(index);
         currentIndex = index;
@@ -38,6 +47,10 @@ var jumpToCode = (function init() {
         });
     }
 
+    /**
+     * Hebt das vorherige Element mit fehlender Coverage hervor und scrollt es in den sichtbaren Bereich.
+     * Wenn das aktuell hervorgehobene Element das erste ist oder noch keines ausgewählt wurde, wird zum letzten Element gesprungen.
+     */
     function goToPrevious() {
         var nextIndex = 0;
         if (typeof currentIndex !== 'number' || currentIndex === 0) {
@@ -49,6 +62,9 @@ var jumpToCode = (function init() {
         makeCurrent(nextIndex);
     }
 
+    /**
+     * Hebt das nächste Element mit fehlender Coverage hervor und scrollt es in den sichtbaren Bereich. Springt zum ersten Element zurück, wenn das Ende erreicht ist.
+     */
     function goToNext() {
         var nextIndex = 0;
 

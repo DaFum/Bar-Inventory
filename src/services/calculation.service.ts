@@ -37,9 +37,9 @@ function getTotalVolumeMl(
 }
 
 /**
- * Berechnet den Verbrauch und die Kosten für einen einzelnen Inventarposten auf Basis von Start- und Endbestand sowie Produktinformationen.
+ * Berechnet den Verbrauch und die Kosten für einen einzelnen Inventarposten anhand von Start- und Endbestand sowie Produktinformationen.
  *
- * Ermittelt die verbrauchte Menge in Standard-Einheiten und Millilitern sowie die zugehörigen Kosten. Erkennt negative Verbrauchswerte und fehlende Preisinformationen und gibt entsprechende Hinweise zurück.
+ * Ermittelt die verbrauchte Menge in Standard-Einheiten und Millilitern sowie die zugehörigen Kosten. Erkennt negative Verbrauchswerte, fehlende Preisinformationen oder ungültige Produktvolumen und gibt entsprechende Hinweise zurück.
  *
  * @param entry - Inventareintrag mit Start- und Endbestand eines Produkts
  * @param product - Produktdefinition mit Volumen- und Preisinformationen
@@ -111,9 +111,9 @@ export function calculateSingleItemConsumption(
 }
 
 /**
- * Berechnet den Verbrauch und die Kosten für alle Inventarpositionen eines Bereichs anhand der zugehörigen Produktdefinitionen.
+ * Ermittelt den Verbrauch und die Kosten für alle Inventarpositionen eines Bereichs anhand der zugehörigen Produktdefinitionen.
  *
- * Gibt für jede Inventarposition ein Ergebnisobjekt mit Verbrauchsdaten zurück. Fehlt eine Produktdefinition, wird ein Platzhalter mit Hinweis ausgegeben.
+ * Für jede Inventarposition wird ein Ergebnisobjekt mit berechneten Verbrauchsdaten zurückgegeben. Ist keine passende Produktdefinition vorhanden, wird ein Platzhalter mit Hinweis erstellt.
  *
  * @returns Ein Array mit berechneten Verbrauchsdaten für jede Inventarposition.
  */
