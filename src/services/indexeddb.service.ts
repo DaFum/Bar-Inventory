@@ -296,7 +296,6 @@ export class IndexedDBService {
 
 // Export a singleton instance of the service
 export const dbService = new IndexedDBService();
-console.log('IndexedDB Service initialized.');
 
 // The testDB() function and its call have been removed.
 // AGENTS.md: "Move demo/test routines to a dedicated test script or dev-only module."
