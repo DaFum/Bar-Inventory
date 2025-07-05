@@ -20,11 +20,13 @@ interface AreaInventoryRow {
 }
 
 /**
- * Wandelt ein Array von Objekten in einen CSV-formatierten String um.
+ * Konvertiert ein Array von Objekten in einen CSV-formatierten String.
  *
- * @param data - Die zu exportierenden Objekte
- * @param columns - Optional: Zu verwendende Spaltenüberschriften; falls nicht angegeben, werden die Schlüssel des ersten Objekts verwendet
- * @returns Den erzeugten CSV-Inhalt als String; gibt einen leeren String zurück, wenn keine Daten vorhanden sind
+ * Erstellt eine CSV-Zeichenkette mit optionalen Spaltenüberschriften. Werte werden in doppelte Anführungszeichen gesetzt und enthaltene Anführungszeichen werden maskiert. Gibt einen leeren String zurück, wenn keine Daten vorhanden sind.
+ *
+ * @param data - Die zu konvertierenden Objekte
+ * @param columns - Optional: Zu verwendende Spaltenüberschriften; werden die nicht angegeben, werden die Schlüssel des ersten Objekts verwendet
+ * @returns Der erzeugte CSV-Inhalt als String oder ein leerer String, falls keine Daten vorhanden sind
  */
 function arrayToCsv(data: Array<Record<string, unknown>>, columns?: string[]): string {
   if (!data || data.length === 0) {
@@ -54,11 +56,11 @@ function arrayToCsv(data: Array<Record<string, unknown>>, columns?: string[]): s
 }
 
 /**
- * Löst im Browser den Download einer Datei mit dem angegebenen Inhalt, Dateinamen und MIME-Typ aus.
+ * Startet im Browser den Download einer Datei mit dem angegebenen Inhalt, Dateinamen und MIME-Typ.
  *
- * @param content - Der zu speichernde Dateinhalt
- * @param fileName - Der gewünschte Name der herunterzuladenden Datei
- * @param contentType - Der MIME-Typ des Inhalts (z.B. "text/csv" oder "application/json")
+ * @param content - Der Inhalt der herunterzuladenden Datei
+ * @param fileName - Der gewünschte Dateiname
+ * @param contentType - Der MIME-Typ des Inhalts (z.B. 'text/csv' oder 'application/json')
  */
 function triggerDownload(content: string, fileName: string, contentType: string): void {
   const blob = new Blob([content], { type: contentType });

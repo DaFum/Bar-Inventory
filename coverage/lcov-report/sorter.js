@@ -2,7 +2,11 @@
 var addSorting = (function() {
     'use strict';
 
-    // Utility function to sanitize input and prevent XSS
+    /**
+     * Wandelt einen Eingabewert in eine HTML-sichere Zeichenkette um, indem HTML-Metazeichen maskiert werden.
+     * @param {string} value - Der zu maskierende Eingabewert.
+     * @return {string} Die HTML-sichere Zeichenkette.
+     */
     function sanitizeValue(value) {
         const div = document.createElement('div');
         div.textContent = value; // Escapes HTML meta-characters
@@ -14,23 +18,41 @@ var addSorting = (function() {
             desc: false
         };
 
-    // returns the summary table element
+    /**
+     * Gibt das erste DOM-Element mit der Klasse `.coverage-summary` zurück, das die Zusammenfassungstabelle repräsentiert.
+     * @return {Element|null} Das Tabellen-Element oder `null`, falls keines gefunden wurde.
+     */
     function getTable() {
         return document.querySelector('.coverage-summary');
     }
-    // returns the thead element of the summary table
+    /**
+     * Gibt die erste Tabellenkopfzeile (<tr> im <thead>) der Coverage-Summary-Tabelle zurück.
+     * @return {HTMLTableRowElement|null} Die Tabellenkopfzeile oder null, falls nicht gefunden.
+     */
     function getTableHeader() {
         return getTable().querySelector('thead tr');
     }
-    // returns the tbody element of the summary table
+    /**
+     * Gibt das `<tbody>`-Element der Coverage-Summary-Tabelle zurück.
+     * @return {HTMLElement} Das `<tbody>`-Element der Tabelle oder `null`, falls nicht gefunden.
+     */
     function getTableBody() {
         return getTable().querySelector('tbody');
     }
-    // returns the th element for nth column
+    /**
+     * Gibt das <th>-Element der n-ten Spalte im Tabellenkopf zurück.
+     * @param {number} n - Der Index der gewünschten Spalte (beginnend bei 0).
+     * @return {HTMLElement} Das <th>-Element der angegebenen Spalte.
+     */
     function getNthColumn(n) {
         return getTableHeader().querySelectorAll('th')[n];
     }
 
+    /**
+     * Filtert die Zeilen der Tabelle basierend auf dem aktuellen Suchbegriff im Eingabefeld mit der ID 'fileSearch'.
+     *
+     * Zeigt nur die Zeilen an, deren Textinhalt den Suchbegriff (Groß-/Kleinschreibung wird ignoriert) enthält.
+     */
     function onFilterInput() {
         const searchValue = document.getElementById('fileSearch').value;
         const rows = document.getElementsByTagName('tbody')[0].children;
@@ -48,7 +70,9 @@ var addSorting = (function() {
         }
     }
 
-    // loads the search box
+    /**
+     * Fügt eine Suchbox oberhalb der Tabelle hinzu, um das Filtern der Tabelleneinträge zu ermöglichen.
+     */
     function addSearchBox() {
         var template = document.getElementById('filterTemplate');
         var templateClone = template.content.cloneNode(true);
@@ -56,7 +80,10 @@ var addSorting = (function() {
         template.parentElement.appendChild(templateClone);
     }
 
-    // loads all columns
+    /**
+ * Lädt alle Spaltenköpfe der Tabelle und gibt ein Array von Spaltenmetadaten zurück.
+ * @return {Array} Ein Array mit Metadatenobjekten für jede Spalte.
+ */
 function loadColumns() {
     var colNodes = getTableHeader().querySelectorAll('th'),
         colNode,
@@ -74,7 +101,13 @@ function loadColumns() {
 }
 
     // attaches a data attribute to every tr element with an object
-    // of data values keyed by column name
+    /**
+     * Extrahiert die Daten einer Tabellenzeile und gibt ein Objekt mit den Werten, nach Spaltennamen geordnet, zurück.
+     * 
+     * Für jede Zelle der Zeile wird der Wert aus dem Attribut `data-value` gelesen und entsprechend dem Spaltentyp konvertiert.
+     * @param {HTMLTableRowElement} tableRow - Die Tabellenzeile, deren Daten extrahiert werden sollen.
+     * @return {Object} Ein Objekt, das die Spaltennamen als Schlüssel und die extrahierten Werte als Werte enthält.
+     */
     function loadRowData(tableRow) {
         var tableCols = tableRow.querySelectorAll('td'),
             colNode,
@@ -95,7 +128,9 @@ function loadColumns() {
         }
         return data;
     }
-    // loads all row data
+    /**
+     * Lädt die Daten aller Tabellenzeilen und speichert sie als Objekteigenschaft in jeder Zeile.
+     */
     function loadData() {
         var rows = getTableBody().querySelectorAll('tr'),
             i;
@@ -104,7 +139,12 @@ function loadColumns() {
             rows[i].data = loadRowData(rows[i]);
         }
     }
-    // sorts the table using the data for the ith column
+    /**
+     * Sortiert die Zeilen der Tabelle anhand der Daten der angegebenen Spalte neu.
+     * 
+     * @param {number} index - Der Index der Spalte, nach der sortiert werden soll.
+     * @param {boolean} desc - Gibt an, ob absteigend (true) oder aufsteigend (false) sortiert werden soll.
+     */
     function sortByIndex(index, desc) {
         var key = cols[index].key,
             sorter = function(a, b) {
@@ -135,7 +175,9 @@ function loadColumns() {
             tableBody.appendChild(rows[i]);
         }
     }
-    // removes sort indicators for current column being sorted
+    /**
+     * Entfernt die Sortierindikatoren (CSS-Klassen) vom aktuell sortierten Tabellenspaltenkopf.
+     */
     function removeSortIndicators() {
         var col = getNthColumn(currentSort.index),
             cls = col.className;
@@ -143,13 +185,19 @@ function loadColumns() {
         cls = cls.replace(/ sorted$/, '').replace(/ sorted-desc$/, '');
         col.className = cls;
     }
-    // adds sort indicators for current column being sorted
+    /**
+     * Fügt dem aktuell sortierten Tabellenspaltenkopf CSS-Klassen hinzu, um die Sortierrichtung visuell anzuzeigen.
+     */
     function addSortIndicators() {
         getNthColumn(currentSort.index).className += currentSort.desc
             ? ' sorted-desc'
             : ' sorted';
     }
-    // adds event listeners for all sorter widgets
+    /**
+     * Aktiviert die Sortierfunktion für alle sortierbaren Tabellenspalten, indem Klick-Event-Handler an die jeweiligen Spaltenköpfe gebunden werden.
+     * 
+     * Beim Klicken auf einen sortierbaren Spaltenkopf wird die Tabelle nach dieser Spalte sortiert und die Sortierrichtung (auf- oder absteigend) entsprechend umgeschaltet. Die aktuellen Sortierindikatoren werden dabei aktualisiert.
+     */
     function enableUI() {
         var i,
             el,
