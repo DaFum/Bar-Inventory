@@ -367,11 +367,13 @@ class ProductStore {
     return [...products].sort((a, b) =&gt; {
       const catA = a.category.toLowerCase();
       const catB = b.category.toLowerCase();
-      if (catA &lt; catB) return -1;
-      if (catA &gt; catB) return 1;
-<span class="cstat-no" title="statement not covered" >      return a.name.toLowerCase() &lt; b.name.toLowerCase() ? -1 : 1;</span>
-    });
-  }
+      if (catA < catB) return -1;
+      if (catA > catB) return 1;
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
+      if (nameA < nameB) return -1;
+      if (nameA > nameB) return 1;
+      return 0;
 &nbsp;
   private notifySubscribers(): void {
     const sortedProducts = this.sortProducts(this.products);
