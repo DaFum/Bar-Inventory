@@ -21,17 +21,28 @@ export class ThemeService {
     this.applyTheme();
 
     // Listen for system theme changes
-  // add these fields to the class
+export class ThemeService {
+  private currentTheme: 'light' | 'dark';
   private mediaQuery?: MediaQueryList;
   private systemThemeChangeHandler?: (e: MediaQueryListEvent | Event) => void;
 
   constructor() {
-    // ... existing code ...
+    const storedTheme = localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null;
+    // Prefer system theme if no theme is stored, otherwise use stored theme.
+    // Default to 'light' if system preference is not dark and nothing is stored.
+    const systemPrefersDark =
+      window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    // set up and store the media query + handler
+    if (storedTheme) {
+      this.currentTheme = storedTheme;
+    } else {
+      this.currentTheme = systemPrefersDark ? 'dark' : 'light';
+    }
+    this.applyTheme();
+
+    // Listen for system theme changes
     this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     this.systemThemeChangeHandler = (e: MediaQueryListEvent | Event) => {
-      // Check type of event if needed, or rely on e.matches if available on Event for older browsers
       const eventMatches = (e as MediaQueryListEvent).matches;
       // Only update if no theme explicitly set by user
       if (!localStorage.getItem(THEME_KEY)) {
@@ -40,7 +51,7 @@ export class ThemeService {
       }
     };
 
-    // register listener with fallback
+    // Register listener with fallback
     if (this.mediaQuery.addEventListener) {
       this.mediaQuery.addEventListener('change', this.systemThemeChangeHandler);
     } else if (this.mediaQuery.addListener) {
@@ -48,7 +59,6 @@ export class ThemeService {
     }
   }
 
-  // new dispose method to clean up the listener
   public dispose(): void {
     if (this.mediaQuery && this.systemThemeChangeHandler) {
       if (this.mediaQuery.removeEventListener) {
@@ -58,6 +68,7 @@ export class ThemeService {
       }
     }
   }
+}
   }
 
   public toggleTheme(): void {
