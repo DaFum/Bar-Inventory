@@ -33,11 +33,7 @@ Object.defineProperty(window, 'indexedDB', {
 
 
 const mockProduct: Product = { id: 'prod1', name: 'Test Product', category: 'Test Category', itemsPerCrate: 10, pricePer100ml: 1, pricePerBottle: 10, volume: 750 };
-// Corrected mockLocation: 'areas' is not a direct property of Location. Counters have areas.
 const mockLocation: Location = { id: 'loc1', name: 'Test Location', counters: [] };
-// Corrected mockInventoryState: Based on the current model, it has fewer properties.
-// Assuming InventoryState might be { unsyncedChanges: boolean } based on usage in service.
-// If it's truly empty, then mockInventoryState = {};
 const mockInventoryState: InventoryState = {
     locations: [],
     products: [],
