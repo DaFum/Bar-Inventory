@@ -441,3 +441,565 @@ const DATABASE_VERSION = 1;
 // the service in each test, or make the `openDB` call injectable for easier mocking.
 // The current tests primarily mock the `openDB` function itself from the 'idb' library,
 // which the singleton instance will use.
+
+  describe('Error Handling and Edge Cases', () => {
+    test('should handle database initialization failure', async () => {
+      const { showToast } = jest.requireMock('../ui/components/toast-notifications');
+      const dbError = new Error('Database initialization failed');
+      
+      (openDB as jest.Mock).mockRejectedValueOnce(dbError);
+      
+      await jest.isolateModulesAsync(async () => {
+        const { IndexedDBService: ServiceClass } = await import('./indexeddb.service');
+        const failingService = new ServiceClass();
+        
+        await expect(failingService.getAll('products')).rejects.toThrow();
+        expect(showToast).toHaveBeenCalledWith(expect.stringContaining('Datenbankfehler'), 'error');
+      });
+    });
+
+    test('should handle transaction failures gracefully', async () => {
+      const transactionError = new Error('Transaction failed');
+      mockDb.transaction.mockImplementation(() => {
+        throw transactionError;
+      });
+
+      await expect(dbService.saveAllApplicationData({ 
+        products: [mockProduct], 
+        locations: [mockLocation], 
+        state: mockInventoryState 
+      })).rejects.toThrow(transactionError);
+    });
+
+    test('should handle corrupted data gracefully', async () => {
+      const corruptedData = { id: 'corrupt', invalidField: 'test' };
+      mockDb.get.mockResolvedValue(corruptedData);
+      
+      const result = await dbService.get('products', 'corrupt');
+      expect(result).toEqual(corruptedData);
+    });
+
+    test('should handle empty database operations', async () => {
+      mockDb.getAll.mockResolvedValue([]);
+      
+      const result = await dbService.getAll('products');
+      expect(result).toEqual([]);
+      expect(mockDb.getAll).toHaveBeenCalledWith('products');
+    });
+
+    test('should handle non-existent key in get operation', async () => {
+      mockDb.get.mockResolvedValue(undefined);
+      
+      const result = await dbService.get('products', 'nonexistent');
+      expect(result).toBeUndefined();
+    });
+
+    test('should handle duplicate key in add operation', async () => {
+      const duplicateError = new Error('Key already exists');
+      mockDb.add.mockRejectedValue(duplicateError);
+      
+      await expect(dbService.add('products', mockProduct)).rejects.toThrow(duplicateError);
+    });
+
+    test('should handle invalid store names', async () => {
+      const invalidStore = 'invalidStore' as any;
+      mockDb.getAll.mockRejectedValue(new Error('Invalid store name'));
+      
+      await expect(dbService.getAll(invalidStore)).rejects.toThrow();
+    });
+
+    test('should handle null/undefined values in CRUD operations', async () => {
+      mockDb.put.mockResolvedValue('key');
+      
+      await expect(dbService.put('products', null as any)).resolves.not.toThrow();
+      await expect(dbService.put('products', undefined as any)).resolves.not.toThrow();
+    });
+
+    test('should handle database connection loss during operation', async () => {
+      const connectionError = new Error('Database connection lost');
+      mockDb.get.mockRejectedValue(connectionError);
+      
+      await expect(dbService.get('products', 'prod1')).rejects.toThrow(connectionError);
+    });
+
+    test('should handle quota exceeded error', async () => {
+      const quotaError = new DOMException('Quota exceeded', 'QuotaExceededError');
+      mockDb.put.mockRejectedValue(quotaError);
+      
+      await expect(dbService.put('products', mockProduct)).rejects.toThrow(quotaError);
+    });
+  });
+
+  describe('Data Validation and Integrity', () => {
+    test('should handle products with missing required fields', async () => {
+      const incompleteProduct = { id: 'incomplete' } as Product;
+      mockDb.put.mockResolvedValue('incomplete');
+      
+      await expect(dbService.saveProduct(incompleteProduct)).resolves.not.toThrow();
+      expect(mockDb.put).toHaveBeenCalledWith('products', incompleteProduct);
+    });
+
+    test('should handle locations with empty counters array', async () => {
+      const emptyLocation: Location = { id: 'empty', name: 'Empty Location', counters: [] };
+      mockDb.put.mockResolvedValue('empty');
+      
+      await dbService.saveLocation(emptyLocation);
+      expect(mockDb.put).toHaveBeenCalledWith('locations', emptyLocation);
+    });
+
+    test('should handle complex nested location data', async () => {
+      const complexLocation: Location = {
+        id: 'complex',
+        name: 'Complex Location',
+        counters: [
+          {
+            id: 'counter1',
+            name: 'Main Counter',
+            areas: [
+              {
+                id: 'area1',
+                name: 'Bar Area',
+                inventoryItems: [
+                  {
+                    id: 'item1',
+                    productId: 'prod1',
+                    quantity: 10,
+                    unit: 'bottles'
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      };
+      
+      mockDb.put.mockResolvedValue('complex');
+      await dbService.saveLocation(complexLocation);
+      expect(mockDb.put).toHaveBeenCalledWith('locations', complexLocation);
+    });
+
+    test('should handle inventory state with large datasets', async () => {
+      const largeInventoryState: InventoryState = {
+        locations: Array.from({ length: 1000 }, (_, i) => ({
+          id: `loc${i}`,
+          name: `Location ${i}`,
+          counters: []
+        })),
+        products: Array.from({ length: 1000 }, (_, i) => ({
+          id: `prod${i}`,
+          name: `Product ${i}`,
+          category: 'Test',
+          itemsPerCrate: 10,
+          pricePer100ml: 1,
+          pricePerBottle: 10,
+          volume: 750
+        })),
+        unsyncedChanges: true
+      };
+      
+      jest.spyOn(dbService, 'put').mockResolvedValue(undefined);
+      await dbService.saveInventoryState(largeInventoryState);
+      expect(dbService.put).toHaveBeenCalledWith('inventoryState', { ...largeInventoryState, key: 'currentState' });
+    });
+
+    test('should handle special characters in IDs and names', async () => {
+      const specialProduct: Product = {
+        id: 'prod-特殊字符-123',
+        name: 'Product with émoji 🍺 and special chars',
+        category: 'Çategory with àccénts',
+        itemsPerCrate: 10,
+        pricePer100ml: 1.5,
+        pricePerBottle: 15,
+        volume: 750
+      };
+      
+      mockDb.put.mockResolvedValue(specialProduct.id);
+      await dbService.saveProduct(specialProduct);
+      expect(mockDb.put).toHaveBeenCalledWith('products', specialProduct);
+    });
+
+    test('should handle numeric precision edge cases', async () => {
+      const precisionProduct: Product = {
+        id: 'precision-test',
+        name: 'Precision Test Product',
+        category: 'Test',
+        itemsPerCrate: 1,
+        pricePer100ml: 0.001,
+        pricePerBottle: 999.999,
+        volume: 0.5
+      };
+      
+      mockDb.put.mockResolvedValue(precisionProduct.id);
+      await dbService.saveProduct(precisionProduct);
+      expect(mockDb.put).toHaveBeenCalledWith('products', precisionProduct);
+    });
+  });
+
+  describe('Concurrency and Performance', () => {
+    test('should handle concurrent read operations', async () => {
+      mockDb.get.mockResolvedValue(mockProduct);
+      
+      const concurrentReads = Array.from({ length: 10 }, (_, i) => 
+        dbService.get('products', `prod${i}`)
+      );
+      
+      const results = await Promise.all(concurrentReads);
+      expect(results).toHaveLength(10);
+      expect(mockDb.get).toHaveBeenCalledTimes(10);
+    });
+
+    test('should handle concurrent write operations', async () => {
+      mockDb.put.mockResolvedValue('key');
+      
+      const concurrentWrites = Array.from({ length: 10 }, (_, i) => 
+        dbService.put('products', { ...mockProduct, id: `prod${i}` })
+      );
+      
+      await Promise.all(concurrentWrites);
+      expect(mockDb.put).toHaveBeenCalledTimes(10);
+    });
+
+    test('should handle mixed read/write operations', async () => {
+      mockDb.get.mockResolvedValue(mockProduct);
+      mockDb.put.mockResolvedValue('key');
+      
+      const mixedOperations = [
+        dbService.get('products', 'prod1'),
+        dbService.put('products', mockProduct),
+        dbService.get('locations', 'loc1'),
+        dbService.put('locations', mockLocation)
+      ];
+      
+      await Promise.all(mixedOperations);
+      expect(mockDb.get).toHaveBeenCalledTimes(2);
+      expect(mockDb.put).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Database Schema Evolution', () => {
+    test('should handle schema upgrade from version 0 to 1', async () => {
+      const mockCreateObjectStore = jest.fn().mockReturnValue({ 
+        createIndex: jest.fn() 
+      });
+      const mockUpgradeDb = {
+        objectStoreNames: {
+          contains: jest.fn().mockReturnValue(false),
+        },
+        createObjectStore: mockCreateObjectStore,
+      } as unknown as IDBPDatabase<BarInventoryDBSchemaType>;
+
+      await dbService['dbPromise'];
+      const openDbArgs = (openDB as jest.Mock).mock.calls[0];
+      const upgradeCallback = openDbArgs[2].upgrade;
+
+      upgradeCallback(mockUpgradeDb, 0, 1, mockTransaction);
+
+      expect(mockCreateObjectStore).toHaveBeenCalledTimes(3);
+      expect(mockCreateObjectStore).toHaveBeenCalledWith('products', { keyPath: 'id' });
+      expect(mockCreateObjectStore).toHaveBeenCalledWith('locations', { keyPath: 'id' });
+      expect(mockCreateObjectStore).toHaveBeenCalledWith('inventoryState', { keyPath: 'key' });
+    });
+
+    test('should handle partial schema upgrade', async () => {
+      const mockCreateObjectStore = jest.fn().mockReturnValue({ 
+        createIndex: jest.fn() 
+      });
+      const mockUpgradeDb = {
+        objectStoreNames: {
+          contains: jest.fn()
+            .mockReturnValueOnce(true)  // products exists
+            .mockReturnValueOnce(false) // locations doesn't exist
+            .mockReturnValueOnce(false) // inventoryState doesn't exist
+        },
+        createObjectStore: mockCreateObjectStore,
+      } as unknown as IDBPDatabase<BarInventoryDBSchemaType>;
+
+      await dbService['dbPromise'];
+      const openDbArgs = (openDB as jest.Mock).mock.calls[0];
+      const upgradeCallback = openDbArgs[2].upgrade;
+
+      upgradeCallback(mockUpgradeDb, 0, 1, mockTransaction);
+
+      expect(mockCreateObjectStore).toHaveBeenCalledTimes(2);
+      expect(mockCreateObjectStore).not.toHaveBeenCalledWith('products', { keyPath: 'id' });
+      expect(mockCreateObjectStore).toHaveBeenCalledWith('locations', { keyPath: 'id' });
+      expect(mockCreateObjectStore).toHaveBeenCalledWith('inventoryState', { keyPath: 'key' });
+    });
+  });
+
+  describe('Memory Management and Cleanup', () => {
+    test('should properly clean up resources after operations', async () => {
+      mockDb.getAll.mockResolvedValue([mockProduct]);
+      
+      await dbService.getAll('products');
+      
+      // Verify that no lingering references or listeners remain
+      expect(mockDb.close).not.toHaveBeenCalled(); // Service should keep connection open
+    });
+
+    test('should handle large data cleanup in saveAllApplicationData', async () => {
+      const largeProductList = Array.from({ length: 1000 }, (_, i) => ({
+        ...mockProduct,
+        id: `prod${i}`
+      }));
+      
+      mockProductStore.getAllKeys.mockResolvedValue([]);
+      mockLocationStore.getAllKeys.mockResolvedValue([]);
+      mockProductStore.put.mockResolvedValue('key' as any);
+      mockLocationStore.put.mockResolvedValue('key' as any);
+      mockInventoryStateStore.put.mockResolvedValue('key' as any);
+      
+      await dbService.saveAllApplicationData({
+        products: largeProductList,
+        locations: [mockLocation],
+        state: mockInventoryState
+      });
+      
+      expect(mockProductStore.put).toHaveBeenCalledTimes(1000);
+    });
+  });
+
+  describe('Transaction Management', () => {
+    test('should handle transaction abort scenarios', async () => {
+      const abortError = new Error('Transaction aborted');
+      mockTransaction.done = Promise.reject(abortError);
+      
+      await expect(dbService.saveAllApplicationData({
+        products: [mockProduct],
+        locations: [mockLocation],
+        state: mockInventoryState
+      })).rejects.toThrow(abortError);
+    });
+
+    test('should properly handle nested transaction scenarios', async () => {
+      // Simulate a scenario where multiple operations are called simultaneously
+      const operation1 = dbService.saveAllApplicationData({
+        products: [mockProduct],
+        locations: [],
+        state: mockInventoryState
+      });
+      
+      const operation2 = dbService.saveAllApplicationData({
+        products: [],
+        locations: [mockLocation],
+        state: mockInventoryState
+      });
+      
+      await Promise.all([operation1, operation2]);
+      
+      // Each operation should get its own transaction
+      expect(mockDb.transaction).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Browser Compatibility Edge Cases', () => {
+    test('should handle missing IndexedDB features gracefully', async () => {
+      const limitedMockDb = {
+        ...mockDb,
+        count: undefined, // Some browsers might not support all features
+      };
+      
+      (openDB as jest.Mock).mockResolvedValue(limitedMockDb);
+      
+      await jest.isolateModulesAsync(async () => {
+        const { IndexedDBService: ServiceClass } = await import('./indexeddb.service');
+        const service = new ServiceClass();
+        
+        // Basic operations should still work
+        await expect(service.getAll('products')).resolves.not.toThrow();
+      });
+    });
+
+    test('should handle browser storage quota scenarios', async () => {
+      const quotaError = new DOMException('Storage quota exceeded', 'QuotaExceededError');
+      mockDb.put.mockRejectedValue(quotaError);
+      
+      const { showToast } = jest.requireMock('../ui/components/toast-notifications');
+      
+      await expect(dbService.put('products', mockProduct)).rejects.toThrow(quotaError);
+    });
+  });
+
+  describe('Data Migration and Backward Compatibility', () => {
+    test('should handle loading data from older schema versions', async () => {
+      // Simulate loading legacy data that might have different structure
+      const legacyProduct = {
+        id: 'legacy',
+        name: 'Legacy Product',
+        // Missing some modern fields
+        category: 'Legacy',
+        price: 10 // Old price field instead of pricePer100ml/pricePerBottle
+      };
+      
+      mockDb.get.mockResolvedValue(legacyProduct);
+      
+      const result = await dbService.get('products', 'legacy');
+      expect(result).toEqual(legacyProduct);
+    });
+
+    test('should handle inventory state migration', async () => {
+      const legacyState = {
+        key: 'currentState',
+        locations: [],
+        products: [],
+        // Missing unsyncedChanges field
+      };
+      
+      jest.spyOn(dbService, 'get').mockResolvedValue(legacyState);
+      
+      const result = await dbService.getInventoryState();
+      expect(result).toEqual(legacyState);
+    });
+  });
+
+  describe('Real-world Usage Patterns', () => {
+    test('should handle rapid successive updates', async () => {
+      mockDb.put.mockResolvedValue('key');
+      
+      // Simulate rapid updates like user typing or bulk operations
+      const updates = Array.from({ length: 50 }, (_, i) => 
+        dbService.put('products', { ...mockProduct, id: `rapid${i}` })
+      );
+      
+      await Promise.all(updates);
+      expect(mockDb.put).toHaveBeenCalledTimes(50);
+    });
+
+    test('should handle app state restoration after crash', async () => {
+      // Simulate app restart where we need to load all data
+      const mockProducts = Array.from({ length: 100 }, (_, i) => ({
+        ...mockProduct,
+        id: `prod${i}`
+      }));
+      
+      const mockLocations = Array.from({ length: 20 }, (_, i) => ({
+        ...mockLocation,
+        id: `loc${i}`
+      }));
+      
+      jest.spyOn(dbService, 'getAll')
+        .mockResolvedValueOnce(mockProducts)
+        .mockResolvedValueOnce(mockLocations);
+      jest.spyOn(dbService, 'get').mockResolvedValue(mockStoredInventoryState);
+      
+      const result = await dbService.loadAllApplicationData();
+      
+      expect(result.products).toHaveLength(100);
+      expect(result.locations).toHaveLength(20);
+      expect(result.state).toBeTruthy();
+    });
+  });
+
+  describe('Performance Edge Cases', () => {
+    test('should handle operations with extremely large strings', async () => {
+      const largeString = 'x'.repeat(1000000); // 1MB string
+      const largeProduct = {
+        ...mockProduct,
+        name: largeString,
+        category: largeString
+      };
+      
+      mockDb.put.mockResolvedValue('large');
+      
+      await expect(dbService.put('products', largeProduct)).resolves.not.toThrow();
+    });
+
+    test('should handle operations with deeply nested objects', async () => {
+      const createNestedObject = (depth: number): any => {
+        if (depth === 0) return { value: 'leaf' };
+        return { nested: createNestedObject(depth - 1) };
+      };
+      
+      const deepObject = {
+        ...mockLocation,
+        metadata: createNestedObject(100) // 100 levels deep
+      };
+      
+      mockDb.put.mockResolvedValue('deep');
+      
+      await expect(dbService.put('locations', deepObject)).resolves.not.toThrow();
+    });
+  });
+
+  describe('Security and Data Integrity', () => {
+    test('should handle malformed data without crashing', async () => {
+      const malformedData = {
+        id: 'malformed',
+        name: null,
+        category: undefined,
+        itemsPerCrate: 'not-a-number',
+        pricePer100ml: {},
+        pricePerBottle: [],
+        volume: 'invalid'
+      };
+      
+      mockDb.put.mockResolvedValue('malformed');
+      
+      await expect(dbService.put('products', malformedData as any)).resolves.not.toThrow();
+    });
+
+    test('should handle XSS attempts in string fields', async () => {
+      const xssProduct = {
+        ...mockProduct,
+        name: '<script>alert("xss")</script>',
+        category: 'javascript:alert(1)'
+      };
+      
+      mockDb.put.mockResolvedValue('xss');
+      
+      await dbService.put('products', xssProduct);
+      expect(mockDb.put).toHaveBeenCalledWith('products', xssProduct);
+    });
+  });
+
+  describe('Type Safety and Validation', () => {
+    test('should handle operations with correct TypeScript types', async () => {
+      const typedProduct: Product = {
+        id: 'typed',
+        name: 'Typed Product',
+        category: 'Category',
+        itemsPerCrate: 24,
+        pricePer100ml: 2.5,
+        pricePerBottle: 18.75,
+        volume: 750
+      };
+      
+      mockDb.put.mockResolvedValue('typed');
+      
+      await dbService.saveProduct(typedProduct);
+      expect(mockDb.put).toHaveBeenCalledWith('products', typedProduct);
+    });
+
+    test('should handle location with complete counter structure', async () => {
+      const completeLocation: Location = {
+        id: 'complete',
+        name: 'Complete Location',
+        counters: [
+          {
+            id: 'counter1',
+            name: 'Bar Counter',
+            areas: [
+              {
+                id: 'area1',
+                name: 'Main Bar',
+                inventoryItems: [
+                  {
+                    id: 'item1',
+                    productId: 'prod1',
+                    quantity: 10,
+                    unit: 'bottles'
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      };
+      
+      mockDb.put.mockResolvedValue('complete');
+      
+      await dbService.saveLocation(completeLocation);
+      expect(mockDb.put).toHaveBeenCalledWith('locations', completeLocation);
+    });
+  });
+

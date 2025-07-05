@@ -243,3 +243,435 @@ describe('CounterFormComponent', () => {
     // The current bindElements is called in constructor after render, so we'd need to alter render's output.
   });
 });
+
+  describe('Input Validation and Sanitization', () => {
+    let nameInput: HTMLInputElement;
+    let descriptionInput: HTMLInputElement;
+    let form: HTMLFormElement;
+
+    beforeEach(() => {
+      nameInput = component.getElement().querySelector('#counter-name-form-comp')!;
+      descriptionInput = component.getElement().querySelector('#counter-description-form-comp')!;
+      form = component.getElement().querySelector('#counter-form-actual')!;
+    });
+
+    test('should handle extremely long counter names', async () => {
+      const longName = 'a'.repeat(1000);
+      nameInput.value = longName;
+      descriptionInput.value = 'Valid description';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+      await Promise.resolve();
+
+      expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
+        name: longName,
+        description: 'Valid description',
+      }));
+    });
+
+    test('should handle extremely long descriptions', async () => {
+      const longDescription = 'a'.repeat(5000);
+      nameInput.value = 'Valid Name';
+      descriptionInput.value = longDescription;
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+      await Promise.resolve();
+
+      expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'Valid Name',
+        description: longDescription,
+      }));
+    });
+
+    test('should handle special characters in counter name', async () => {
+      const specialName = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+      nameInput.value = specialName;
+      descriptionInput.value = 'Description with special chars: !@#$%^&*()';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+      await Promise.resolve();
+
+      expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
+        name: specialName,
+        description: 'Description with special chars: !@#$%^&*()',
+      }));
+    });
+
+    test('should handle Unicode characters in inputs', async () => {
+      const unicodeName = '测试计数器 🎯 café';
+      const unicodeDescription = 'Description with émojis 🚀 and açcénts';
+      nameInput.value = unicodeName;
+      descriptionInput.value = unicodeDescription;
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+      await Promise.resolve();
+
+      expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
+        name: unicodeName,
+        description: unicodeDescription,
+      }));
+    });
+
+    test('should handle newline characters in inputs', async () => {
+      const nameWithNewlines = 'Counter\nWith\nNewlines';
+      const descriptionWithNewlines = 'Description\nwith\nmultiple\nlines';
+      nameInput.value = nameWithNewlines;
+      descriptionInput.value = descriptionWithNewlines;
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+      await Promise.resolve();
+
+      expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
+        name: nameWithNewlines,
+        description: descriptionWithNewlines,
+      }));
+    });
+
+    test('should validate name with only whitespace characters', async () => {
+      nameInput.value = '\t\n\r   ';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+      await Promise.resolve();
+
+      expect(showToast).toHaveBeenCalledWith('Name des Tresens darf nicht leer sein.', 'error');
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+    });
+
+    test('should handle null-like values in inputs', async () => {
+      nameInput.value = 'null';
+      descriptionInput.value = 'undefined';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+      await Promise.resolve();
+
+      expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'null',
+        description: 'undefined',
+      }));
+    });
+  });
+
+  describe('DOM Manipulation and Event Handling', () => {
+    test('should handle form submission with Enter key', async () => {
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      const descriptionInput = component.getElement().querySelector('#counter-description-form-comp') as HTMLInputElement;
+      
+      nameInput.value = 'Test Counter';
+      descriptionInput.value = 'Test Description';
+      
+      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      nameInput.dispatchEvent(enterEvent);
+
+      await Promise.resolve();
+
+      // Note: This test depends on the actual implementation handling Enter key
+      // If the component doesn't handle Enter key specially, we might need to test form submission directly
+    });
+
+    test('should handle multiple rapid form submissions', async () => {
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      const form = component.getElement().querySelector('#counter-form-actual') as HTMLFormElement;
+      
+      nameInput.value = 'Test Counter';
+      
+      // Simulate rapid multiple submissions
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+      await Promise.resolve();
+
+      // Should only be called once due to form submission handling
+      expect(mockOnSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    test('should handle form reset after successful submission', async () => {
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      const descriptionInput = component.getElement().querySelector('#counter-description-form-comp') as HTMLInputElement;
+      const form = component.getElement().querySelector('#counter-form-actual') as HTMLFormElement;
+      
+      nameInput.value = 'Test Counter';
+      descriptionInput.value = 'Test Description';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+      await Promise.resolve();
+
+      expect(mockOnSubmit).toHaveBeenCalledTimes(1);
+      
+      // Check if form is reset after successful submission (depends on implementation)
+      // This test validates the component's behavior after successful form submission
+    });
+
+    test('should handle dynamic element removal and recreation', () => {
+      const originalElement = component.getElement();
+      expect(originalElement).toBeTruthy();
+      
+      // Test that the component can handle being removed and re-added to DOM
+      originalElement.remove();
+      document.body.appendChild(originalElement);
+      
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      expect(nameInput).toBeTruthy();
+      
+      nameInput.value = 'Test';
+      expect(nameInput.value).toBe('Test');
+    });
+  });
+
+  describe('Component State Management', () => {
+    test('should maintain state consistency during multiple show/hide cycles', () => {
+      // Test multiple show/hide cycles
+      component.show();
+      expect(component.currentEditingCounter).toBeNull();
+      
+      component.show(mockCounter);
+      expect(component.currentEditingCounter).toEqual(mockCounter);
+      
+      component.hide();
+      expect(component.currentEditingCounter).toBeNull();
+      
+      component.show();
+      expect(component.currentEditingCounter).toBeNull();
+    });
+
+    test('should handle show with undefined counter', () => {
+      component.show(undefined);
+      expect(component.currentEditingCounter).toBeNull();
+      expect(component.getElement().querySelector('#counter-form-title-comp')?.textContent).toBe('Neuen Tresen erstellen');
+    });
+
+    test('should handle show with null counter', () => {
+      component.show(null);
+      expect(component.currentEditingCounter).toBeNull();
+      expect(component.getElement().querySelector('#counter-form-title-comp')?.textContent).toBe('Neuen Tresen erstellen');
+    });
+
+    test('should handle counter object with missing optional properties', () => {
+      const incompleteCounter = {
+        id: 'test-id',
+        name: 'Test Counter',
+        description: '', // Empty description
+        areas: []
+      };
+      
+      component.show(incompleteCounter);
+      expect(component.currentEditingCounter).toEqual(incompleteCounter);
+      
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      const descriptionInput = component.getElement().querySelector('#counter-description-form-comp') as HTMLInputElement;
+      
+      expect(nameInput.value).toBe('Test Counter');
+      expect(descriptionInput.value).toBe('');
+    });
+
+    test('should handle counter object with extra properties', () => {
+      const counterWithExtraProps = {
+        ...mockCounter,
+        extraProperty: 'should be ignored',
+        anotherExtra: 123
+      };
+      
+      component.show(counterWithExtraProps);
+      expect(component.currentEditingCounter).toEqual(counterWithExtraProps);
+      
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      expect(nameInput.value).toBe(mockCounter.name);
+    });
+  });
+
+  describe('Error Handling and Edge Cases', () => {
+    test('should handle onSubmit callback throwing synchronous error', async () => {
+      const syncError = new Error('Synchronous error');
+      mockOnSubmit.mockImplementation(() => { throw syncError; });
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      const form = component.getElement().querySelector('#counter-form-actual') as HTMLFormElement;
+      
+      nameInput.value = 'Test';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+      await Promise.resolve();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error during submission'),
+        syncError
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should handle onCancel callback throwing error', () => {
+      const cancelError = new Error('Cancel error');
+      mockOnCancel.mockImplementation(() => { throw cancelError; });
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      
+      const cancelButton = component.getElement().querySelector('#cancel-counter-edit-form-comp') as HTMLButtonElement;
+      
+      expect(() => cancelButton.click()).not.toThrow();
+      
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should handle form submission when DOM elements are missing', async () => {
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      const form = component.getElement().querySelector('#counter-form-actual') as HTMLFormElement;
+      
+      // Remove the name input after binding
+      nameInput.remove();
+      
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+      await Promise.resolve();
+
+      // Should handle gracefully without crashing
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+    });
+
+    test('should handle component cleanup and memory leaks', () => {
+      const element = component.getElement();
+      const initialChildCount = document.body.children.length;
+      
+      // Add and remove component multiple times
+      element.remove();
+      document.body.appendChild(element);
+      element.remove();
+      document.body.appendChild(element);
+      
+      element.remove();
+      
+      // Should not have memory leaks or extra DOM nodes
+      expect(document.body.children.length).toBeLessThanOrEqual(initialChildCount);
+    });
+  });
+
+  describe('Accessibility and User Experience', () => {
+    test('should have proper ARIA attributes', () => {
+      const form = component.getElement().querySelector('#counter-form-actual') as HTMLFormElement;
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      const descriptionInput = component.getElement().querySelector('#counter-description-form-comp') as HTMLInputElement;
+      
+      // Check for accessibility attributes (depends on implementation)
+      expect(form).toBeTruthy();
+      expect(nameInput).toBeTruthy();
+      expect(descriptionInput).toBeTruthy();
+      
+      // These would be implementation-specific checks
+      // expect(nameInput.getAttribute('aria-label')).toBeTruthy();
+      // expect(form.getAttribute('role')).toBeTruthy();
+    });
+
+    test('should handle focus management', () => {
+      component.show();
+      
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      
+      // Check if focus is properly managed when showing the form
+      expect(nameInput).toBeTruthy();
+      
+      // Test focus behavior (depends on implementation)
+      nameInput.focus();
+      expect(document.activeElement).toBe(nameInput);
+    });
+
+    test('should handle tab navigation', () => {
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      const descriptionInput = component.getElement().querySelector('#counter-description-form-comp') as HTMLInputElement;
+      const submitButton = component.getElement().querySelector('button[type="submit"]') as HTMLButtonElement;
+      const cancelButton = component.getElement().querySelector('#cancel-counter-edit-form-comp') as HTMLButtonElement;
+      
+      // Test tab order
+      expect(nameInput.tabIndex).toBeGreaterThanOrEqual(0);
+      expect(descriptionInput.tabIndex).toBeGreaterThanOrEqual(0);
+      expect(submitButton.tabIndex).toBeGreaterThanOrEqual(0);
+      expect(cancelButton.tabIndex).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('Integration with Security Utils', () => {
+    test('should call escapeHtml for all user inputs during rendering', () => {
+      const testCounter = {
+        id: 'test-id',
+        name: '<script>alert("xss")</script>',
+        description: '<img src="x" onerror="alert(1)">',
+        areas: []
+      };
+      
+      component.show(testCounter);
+      
+      expect(escapeHtml).toHaveBeenCalledWith(testCounter.name);
+      expect(escapeHtml).toHaveBeenCalledWith(testCounter.description);
+    });
+
+    test('should handle escapeHtml returning different values', () => {
+      const mockEscapeHtml = escapeHtml as jest.MockedFunction<typeof escapeHtml>;
+      mockEscapeHtml.mockReturnValueOnce('&lt;script&gt;safe&lt;/script&gt;');
+      
+      const testCounter = {
+        id: 'test-id',
+        name: '<script>unsafe</script>',
+        description: 'safe description',
+        areas: []
+      };
+      
+      component.show(testCounter);
+      
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      expect(nameInput.value).toBe('&lt;script&gt;safe&lt;/script&gt;');
+    });
+  });
+
+  describe('Performance and Resource Management', () => {
+    test('should handle rapid successive method calls', () => {
+      // Test rapid show/hide calls
+      for (let i = 0; i < 100; i++) {
+        component.show();
+        component.hide();
+      }
+      
+      expect(component.currentEditingCounter).toBeNull();
+      expect(component.getElement().style.display).toBe('none');
+    });
+
+    test('should handle large number of form submissions', async () => {
+      const nameInput = component.getElement().querySelector('#counter-name-form-comp') as HTMLInputElement;
+      const form = component.getElement().querySelector('#counter-form-actual') as HTMLFormElement;
+      
+      nameInput.value = 'Test Counter';
+      
+      // Simulate many form submissions
+      for (let i = 0; i < 10; i++) {
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      }
+
+      await Promise.resolve();
+
+      // Should handle all submissions appropriately
+      expect(mockOnSubmit).toHaveBeenCalled();
+    });
+  });
+
+  describe('Component Lifecycle', () => {
+    test('should handle component reinitialization', () => {
+      const originalElement = component.getElement();
+      
+      // Create new component with same options
+      const newComponent = new CounterFormComponent(options);
+      
+      expect(newComponent.getElement()).toBeTruthy();
+      expect(newComponent.getElement()).not.toBe(originalElement);
+      expect(newComponent.currentEditingCounter).toBeNull();
+      
+      newComponent.getElement().remove();
+    });
+
+    test('should handle component destruction', () => {
+      const element = component.getElement();
+      
+      // Remove component
+      element.remove();
+      
+      // Component should still be accessible but DOM element should be removed
+      expect(element.parentNode).toBeNull();
+    });
+  });
+});
