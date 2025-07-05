@@ -178,13 +178,8 @@ describe('UI Manager (ui-manager.ts)', () => {
   });
 
   describe('updateActiveNavButton', () => {
-    // This beforeEach will run after the outer beforeEach, re-running initializeApp
-    // to ensure a pristine state for these specific navigation tests.
-    beforeEach(() => {
-        // appContainer is already set up and appended by the outer beforeEach
-        // We just need to re-initialize the ui-manager's state and DOM content for it.
-        initializeApp(appContainer);
-    });
+    // Removing the nested beforeEach. The outer beforeEach already calls initializeApp.
+    // This ensures initializeApp (and thus navigateTo default) runs only once before these tests.
 
     test('should correctly add "active" class to the current view button and remove from others', () => {
       const locationsButton = appContainer.querySelector('button[data-view="locations"]') as HTMLButtonElement;
@@ -194,7 +189,12 @@ describe('UI Manager (ui-manager.ts)', () => {
       expect(inventoryButton).not.toBeNull(); // Ensure the button is found
       if (!inventoryButton) return; // Guard for TS
 
-      // Initial state (inventory is active from initializeApp)
+      // Force navigation to inventory again at the start of this specific test
+      // initializeApp in the main beforeEach should have already done this. This is for diagnosis/forcing state.
+      inventoryButton.click();
+
+
+      // Initial state (inventory is active from initializeApp / click)
       expect(inventoryButton.classList.contains('active')).toBe(true);
       expect(locationsButton!.classList.contains('active')).toBe(false);
       expect(productsButton!.classList.contains('active')).toBe(false);

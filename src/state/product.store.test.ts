@@ -50,9 +50,15 @@ describe('ProductStore', () => {
 
       expect(dbService.loadProducts).toHaveBeenCalledTimes(1);
       const expectedSortedProducts = [...mockProductsList].sort((a,b) => {
-        if (a.category.toLowerCase() < b.category.toLowerCase()) return -1;
-        if (a.category.toLowerCase() > b.category.toLowerCase()) return 1;
-        return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+        const catA = a.category.toLowerCase();
+        const catB = b.category.toLowerCase();
+        if (catA < catB) return -1;
+        if (catA > catB) return 1;
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+        if (nameA < nameB) return -1;
+        if (nameA > nameB) return 1;
+        return 0;
       });
       expect(productStore.getProducts()).toEqual(expectedSortedProducts);
       expect(subscriber).toHaveBeenCalledWith(expectedSortedProducts);
@@ -195,6 +201,57 @@ describe('ProductStore', () => {
       expect(retrievedProducts[0]!.name).toBe('Test Product A'); // Cat A
       expect(retrievedProducts[1]!.name).toBe('Test Product B'); // Cat Z
       expect(retrievedProducts).not.toBe(productStore['products']); // Ensure it's a copy
+    });
+
+    it('should correctly sort products with the same category by name', () => {
+      const productsSameCategory: Product[] = [
+        { id: 'p1', name: 'Banana', category: 'Fruit', volume: 1, pricePerBottle: 1 },
+        { id: 'p2', name: 'Apple', category: 'Fruit', volume: 1, pricePerBottle: 1 },
+        { id: 'p3', name: 'Cherry', category: 'Fruit', volume: 1, pricePerBottle: 1 },
+      ];
+      productStore['products'] = [...productsSameCategory];
+      const sorted = productStore.getProducts();
+      expect(sorted.map(p => p.name)).toEqual(['Apple', 'Banana', 'Cherry']);
+    });
+
+    it('should maintain order for products with identical category and name (stability not guaranteed by sort, but 0 return value is correct)', () => {
+      // This test primarily ensures the comparator returns 0 for identical items,
+      // which is important for the contract of a comparator.
+      // The actual order of identical items might vary depending on JS engine's sort stability.
+      const productsIdentical: Product[] = [
+        { id: 'p1', name: 'Apple', category: 'Fruit', volume: 1, pricePerBottle: 1, notes: 'First Apple' },
+        { id: 'p2', name: 'Banana', category: 'Fruit', volume: 1, pricePerBottle: 1 },
+        { id: 'p3', name: 'Apple', category: 'Fruit', volume: 1, pricePerBottle: 1, notes: 'Second Apple' },
+      ];
+      productStore['products'] = [...productsIdentical];
+      // We expect p1 and p3 (Apples) to be together, before Banana.
+      // Their internal order (p1 vs p3) might vary if sort is unstable, but the fix ensures comparator returns 0.
+      const sorted = productStore.getProducts();
+      const appleCount = sorted.filter(p => p.name === 'Apple').length;
+      const bananaIndex = sorted.findIndex(p => p.name === 'Banana');
+
+      expect(appleCount).toBe(2);
+      expect(sorted[0]?.name).toBe('Apple');
+      expect(sorted[1]?.name).toBe('Apple');
+      expect(bananaIndex).toBe(2); // Banana should come after all Apples
+      expect(sorted[bananaIndex]?.name).toBe('Banana');
+    });
+
+    it('should sort products by category first, then by name', () => {
+      const productsMixed: Product[] = [
+        { id: 'p1', name: 'Milk', category: 'Dairy', volume: 1, pricePerBottle: 1 },
+        { id: 'p2', name: 'Apple', category: 'Fruit', volume: 1, pricePerBottle: 1 },
+        { id: 'p3', name: 'Cheese', category: 'Dairy', volume: 1, pricePerBottle: 1 },
+        { id: 'p4', name: 'Banana', category: 'Fruit', volume: 1, pricePerBottle: 1 },
+      ];
+      productStore['products'] = [...productsMixed];
+      const sorted = productStore.getProducts();
+      expect(sorted.map(p => `${p.category}-${p.name}`)).toEqual([
+        'Dairy-Cheese',
+        'Dairy-Milk',
+        'Fruit-Apple',
+        'Fruit-Banana',
+      ]);
     });
   });
 });

@@ -64,7 +64,7 @@ function renderSelectionBar(): void {
     // Location Selector
     let locationOptions = '<option value="">Standort wählen...</option>';
     state.loadedLocations.forEach(loc => {
--        locationOptions += `<option value="${loc.id}" ${state.selectedLocation?.id === loc.id ? 'selected' : ''}>${loc.name}</option>`;
+        locationOptions += `<option value="${loc.id}" ${state.selectedLocation?.id === loc.id ? 'selected' : ''}>${escapeHtml(loc.name)}</option>`;
     });
 
     // Counter Selector (depends on location)
@@ -138,6 +138,7 @@ function switchInventoryPhase(phase: InventoryPhase): void {
     renderSelectionBar(); // Re-render to update button styles
     if (state.selectedArea) {
         renderInventoryTable(); // Re-render table for the new phase
+        renderInventoryActions(); // Also re-render actions for the new phase
     }
 }
 
@@ -365,28 +366,33 @@ function addInputEventListeners(): void {
         const debouncedHandler = debounce(handleInventoryInputChange, 300);
         inputEl.addEventListener('input', debouncedHandler);
         inputEl.addEventListener('focus', (e) => (e.target as HTMLInputElement).select());
-        inputEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+        inputEl.addEventListener('keydown', (e: Event) => { // Type e as KeyboardEvent
+            const keyboardEvent = e as KeyboardEvent;
+            if (keyboardEvent.key === 'Enter') {
                 e.preventDefault();
                 const allInputs = Array.from(document.querySelectorAll('.inventory-table .inventory-input:not([disabled])')) as HTMLInputElement[];
                 const currentIndex = allInputs.indexOf(e.target as HTMLInputElement);
                 if (currentIndex !== -1 && currentIndex < allInputs.length - 1) {
-                    allInputs[currentIndex + 1].focus();
+                    allInputs[currentIndex + 1]?.focus(); // Add null check
                 } else if (currentIndex === allInputs.length - 1) {
                     document.getElementById('save-inventory-btn')?.focus();
                 }
-            } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            } else if (keyboardEvent.key === 'ArrowDown' || keyboardEvent.key === 'ArrowUp') {
                 e.preventDefault();
                 const allRows = Array.from(document.querySelectorAll('.inventory-table .inventory-item-row')) as HTMLElement[];
                 const currentRow = (e.target as HTMLInputElement).closest('.inventory-item-row') as HTMLElement;
                 const currentInputIndexInRow = Array.from(currentRow.querySelectorAll('.inventory-input:not([disabled])')).indexOf(e.target as HTMLInputElement);
                 let targetRowIndex = allRows.indexOf(currentRow);
-                if (e.key === 'ArrowDown') targetRowIndex++;
-                else if (e.key === 'ArrowUp') targetRowIndex--;
+                if (keyboardEvent.key === 'ArrowDown') targetRowIndex++;
+                else if (keyboardEvent.key === 'ArrowUp') targetRowIndex--;
+
                 if (targetRowIndex >= 0 && targetRowIndex < allRows.length) {
-                    const targetInputs = Array.from(allRows[targetRowIndex].querySelectorAll('.inventory-input:not([disabled])')) as HTMLInputElement[];
-                    if (targetInputs[currentInputIndexInRow]) {
-                        targetInputs[currentInputIndexInRow].focus();
+                    const targetRowElement = allRows[targetRowIndex];
+                    if (targetRowElement) {
+                        const targetInputs = Array.from(targetRowElement.querySelectorAll('.inventory-input:not([disabled])')) as HTMLInputElement[];
+                        if (targetInputs[currentInputIndexInRow]) {
+                            targetInputs[currentInputIndexInRow]?.focus(); // Add null check
+                        }
                     }
                 }
             }

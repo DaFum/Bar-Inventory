@@ -192,6 +192,26 @@ describe('Product Manager (initProductManager)', () => {
     expect(currentShowToast).toHaveBeenCalledWith(expect.stringContaining('erfolgreich als CSV exportiert'), 'success');
   });
 
+  test('should show info toast when exporting empty product catalog', () => {
+    // Ensure product store returns an empty list for this test
+    if (currentProductStore && currentProductStore._setInitialMockProducts) {
+        currentProductStore._setInitialMockProducts([]);
+        // The getProducts mock will now return [] because currentProducts is updated by _setInitialMockProducts
+    }
+
+    const exportBtn = container.querySelector('#export-products-csv-btn') as HTMLButtonElement;
+    expect(exportBtn).not.toBeNull(); // Ensure button exists
+    exportBtn.click();
+
+    // Verify toast is shown with the correct message and type
+    expect(currentShowToast).toHaveBeenCalledWith(
+      "Keine Produkte zum Exportieren vorhanden.",
+      "info"
+    );
+    // Also ensure that exportProductsToCsv was NOT called
+    expect(currentExportService.exportProductsToCsv).not.toHaveBeenCalled();
+  });
+
   test('handleEditProduct callback should show ProductFormComponent with product data', () => {
     const productListCtorArgs = (currentProductListComponent as jest.Mock).mock.calls[0];
     const listItemCallbacks = productListCtorArgs[1];

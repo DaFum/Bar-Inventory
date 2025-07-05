@@ -57,17 +57,37 @@ describe('ExportService', () => {
     } as any);
     appendChildSpy = jest.spyOn(document.body, 'appendChild').mockImplementation(node => node);
     removeChildSpy = jest.spyOn(document.body, 'removeChild').mockImplementation(node => node);
-    createObjectURLSpy = jest.spyOn(URL, 'createObjectURL').mockReturnValue('blob:http://localhost/mock-url');
+
+    // Ensure URL static methods are defined before spying
+    if (typeof URL.createObjectURL === 'undefined') {
+      URL.createObjectURL = jest.fn().mockReturnValue('blob:http://localhost/mock-url-default');
+    }
+    if (typeof URL.revokeObjectURL === 'undefined') {
+      URL.revokeObjectURL = jest.fn();
+    }
+
+    createObjectURLSpy = jest.spyOn(URL, 'createObjectURL').mockReturnValue('blob:http://localhost/mock-url-spy');
     revokeObjectURLSpy = jest.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
   });
 
   afterEach(() => {
     // Restore original implementations
-    createElementSpy.mockRestore();
-    appendChildSpy.mockRestore();
-    removeChildSpy.mockRestore();
-    createObjectURLSpy.mockRestore();
-    revokeObjectURLSpy.mockRestore();
+    if (createElementSpy) createElementSpy.mockRestore();
+    if (appendChildSpy) appendChildSpy.mockRestore();
+    if (removeChildSpy) removeChildSpy.mockRestore();
+    if (createObjectURLSpy) createObjectURLSpy.mockRestore();
+    if (revokeObjectURLSpy) revokeObjectURLSpy.mockRestore();
+
+    // Clean up potentially added URL methods to avoid interference if they were added by these tests
+    // This is a bit simplistic; a more robust way would be to store original and restore.
+    // However, spyOn should handle restoring the original if it existed.
+    // If we added them as jest.fn(), they might persist if not part of a class/object Jest fully manages.
+    // For now, let's assume mockRestore is enough for spied methods.
+    // If URL.createObjectURL was originally undefined and we set it to jest.fn(),
+    // mockRestore on a spy of that jest.fn() might not remove it.
+    // A safer cleanup would be:
+    // delete (URL as any).createObjectURL; // if we knew we added it.
+    // For simplicity, we'll rely on mockRestore for now.
   });
 
 
@@ -127,7 +147,8 @@ describe('ExportService', () => {
       expect(CalculationService.calculateAreaConsumption).toHaveBeenCalledWith(mockArea.inventoryItems, mockProducts);
       expect(createObjectURLSpy).toHaveBeenCalled();
       const downloadCall = createElementSpy.mock.results[0]!.value; // Added non-null assertion
-      expect(downloadCall.download).toBe(`inventur_${mockLocation.name}_${mockCounter.name}_${mockArea.name}.csv`);
+      const expectedFileName = `inventur_${mockLocation.name.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_')}_${mockCounter.name.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_')}_${mockArea.name.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_')}.csv`;
+      expect(downloadCall.download).toBe(expectedFileName);
 
       const blobContent = (global.Blob as any).mock.calls[0][0][0];
       expect(blobContent).toContain('consumedUnits,consumedVolumeMl,costOfConsumption,consumptionNotes');

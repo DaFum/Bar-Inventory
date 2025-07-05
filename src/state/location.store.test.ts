@@ -48,9 +48,8 @@ describe('LocationStore', () => {
     (generateId as jest.Mock).mockClear().mockImplementation((prefix: string) => `${prefix}-mock-id-${Date.now()}`);
 
 
-    // Reset internal store state
-    locationStore['locations'] = [];
-    locationStore['subscribers'] = [];
+    // Reset internal store state using the public reset method
+    locationStore.reset();
   });
 
   describe('loadLocations', () => {
@@ -127,7 +126,7 @@ describe('LocationStore', () => {
       await locationStore.loadLocations();
       const subscriber = jest.fn();
       locationStore.subscribe(subscriber);
-      const idToDelete = initialMockLocations[0].id;
+      const idToDelete = initialMockLocations[0]!.id;
 
       await locationStore.deleteLocation(idToDelete);
 

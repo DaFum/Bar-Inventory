@@ -24,7 +24,12 @@ class ProductStore {
       const catB = b.category.toLowerCase();
       if (catA < catB) return -1;
       if (catA > catB) return 1;
-      return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+      // If categories are the same, sort by name
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
+      if (nameA < nameB) return -1;
+      if (nameA > nameB) return 1;
+      return 0; // Products are identical for sorting purposes
     });
   }
 

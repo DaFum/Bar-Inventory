@@ -218,18 +218,28 @@ async function handleLocationFormSubmit(locationData: Pick<Location, 'id' | 'nam
         if (locationData.id) { // Editing existing
             const existingLocation = locationStore.getLocationById(locationData.id);
             if (!existingLocation) throw new Error("Zu bearbeitender Standort nicht im Store gefunden.");
-            newOrUpdatedLocation = {
+
+            const updatedLocationData: Location = {
                 ...existingLocation,
                 name: locationData.name,
-                address: locationData.address || undefined // Ensure undefined if falsy
+                // address will be handled next
             };
-            await locationStore.updateLocation(newOrUpdatedLocation);
+            if (locationData.address !== undefined && locationData.address.trim() !== '') {
+                updatedLocationData.address = locationData.address;
+            } else {
+                delete updatedLocationData.address; // Explicitly remove if cleared or empty
+            }
+            await locationStore.updateLocation(updatedLocationData);
+            newOrUpdatedLocation = updatedLocationData; // Use the data that was sent for update
             showToast(`Standort "${newOrUpdatedLocation.name}" aktualisiert.`, 'success');
         } else { // Adding new
-            newOrUpdatedLocation = await locationStore.addLocation({
+            const newLocationPayload: Pick<Location, 'name' | 'address'> = {
                 name: locationData.name,
-                address: locationData.address || undefined // Ensure undefined if falsy
-            });
+            };
+            if (locationData.address !== undefined && locationData.address.trim() !== '') {
+                newLocationPayload.address = locationData.address;
+            }
+            newOrUpdatedLocation = await locationStore.addLocation(newLocationPayload);
             showToast(`Standort "${newOrUpdatedLocation.name}" erstellt.`, 'success');
         }
         activeLocation = newOrUpdatedLocation; // Set context to the new/updated location
@@ -287,10 +297,10 @@ function renderCountersForLocation(location: Location): void {
     if (counterListHostTarget && counterFormComponent && counterFormHostTarget) { // Ensure counterFormComponent is also available
         const counterListCallbacks: CounterListItemCallbacks = {
             onEditCounter: (counter: Counter) => { // Added type
-                counterFormComponent.show(counter);
+                counterFormComponent!.show(counter); // Use non-null assertion due to outer check
                 if(counterFormHostTarget) {
                     // counterFormComponent.remove(); // Ensure it's not already elsewhere
-                    counterFormComponent.appendTo(counterFormHostTarget);
+                    counterFormComponent!.appendTo(counterFormHostTarget); // Use non-null assertion
                     counterFormHostTarget.style.display = 'block';
                 }
                 if(counterListComponent) counterListComponent.toggleAreaManagementForCounter(counter.id, true);
@@ -331,19 +341,26 @@ async function handleCounterFormSubmit(counterData: Pick<Counter, 'id' | 'name' 
     try {
         if (counterData.id) {
             const existingCounter = activeLocation.counters.find(c => c.id === counterData.id);
-            const updatedCounterData: Counter = {
-                id: counterData.id,
+            const updatedCounterPayload: Counter = {
+                id: counterData.id, // id is definitely present here
                 name: counterData.name,
-                description: counterData.description || undefined, // Ensure undefined if falsy
-                areas: existingCounter?.areas || []
+                areas: existingCounter?.areas || [] // Preserve existing areas
             };
-            await locationStore.updateCounter(activeLocation.id, updatedCounterData);
+            if (counterData.description !== undefined && counterData.description.trim() !== '') {
+                updatedCounterPayload.description = counterData.description;
+            } else {
+                delete updatedCounterPayload.description; // Explicitly remove if cleared
+            }
+            await locationStore.updateCounter(activeLocation.id, updatedCounterPayload);
             showToast(`Tresen "${counterData.name}" aktualisiert.`, 'success');
         } else {
-            await locationStore.addCounter(activeLocation.id, {
+            const newCounterPayload: Pick<Counter, 'name' | 'description'> = {
                 name: counterData.name,
-                description: counterData.description || undefined // Ensure undefined if falsy
-            });
+            };
+            if (counterData.description !== undefined && counterData.description.trim() !== '') {
+                newCounterPayload.description = counterData.description;
+            }
+            await locationStore.addCounter(activeLocation.id, newCounterPayload);
             showToast(`Tresen "${counterData.name}" hinzugefügt.`, 'success');
         }
         if (counterFormComponent) counterFormComponent.hide();

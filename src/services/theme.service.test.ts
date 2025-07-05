@@ -1,4 +1,4 @@
-import { ThemeService } from './theme.service';
+import type { ThemeService as ThemeServiceType } from './theme.service'; // Type-only import
 import { Chart } from 'chart.js';
 
 // Mock localStorage
@@ -20,7 +20,8 @@ const localStorageMock = (() => {
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 // Mock window.matchMedia
-const matchMediaMock = (query: string) => ({
+let systemPrefersDark = false; // Controllable for tests
+const defaultMatchMediaImplementation = (query: string) => ({
   matches: query === '(prefers-color-scheme: dark)' ? systemPrefersDark : false,
   media: query,
   onchange: null,
@@ -30,8 +31,10 @@ const matchMediaMock = (query: string) => ({
   removeEventListener: jest.fn(),
   dispatchEvent: jest.fn(),
 });
-Object.defineProperty(window, 'matchMedia', { value: matchMediaMock });
-let systemPrefersDark = false; // Controllable for tests
+
+const matchMediaMock = jest.fn(defaultMatchMediaImplementation);
+Object.defineProperty(window, 'matchMedia', { value: matchMediaMock, writable: true, configurable: true });
+
 
 // Mock Chart.js global and instances
 jest.mock('chart.js', () => {
@@ -70,10 +73,11 @@ const THEME_KEY = 'app-theme';
 const DARK_MODE_CLASS = 'dark-mode';
 
 describe('ThemeService', () => {
-  let themeServiceInstance: ThemeService;
+  let themeServiceInstance: ThemeServiceType;
   let mockHtmlElement: HTMLElement;
+  let ActualThemeServiceClass: new () => ThemeServiceType; // To store the dynamically imported class
 
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorageMock.clear();
     systemPrefersDark = false; // Default to light system theme
     document.body.classList.remove(DARK_MODE_CLASS);
@@ -95,8 +99,14 @@ describe('ThemeService', () => {
     if (ChartMock.defaults.plugins?.title) ChartMock.defaults.plugins.title.color = '';
     ChartMock.instances = {}; // Reset instances on the mock for each test
 
-    // Create a new instance for each test to ensure clean state
-    themeServiceInstance = new ThemeService();
+    // Dynamically import the ThemeService class within an isolated module context
+    // This ensures it picks up the mocks defined at the top of this test file.
+    await jest.isolateModulesAsync(async () => {
+      const themeServiceModule = await import('./theme.service');
+      ActualThemeServiceClass = themeServiceModule.ThemeService;
+    });
+
+    themeServiceInstance = new ActualThemeServiceClass();
   });
 
   afterEach(() => {
@@ -107,7 +117,7 @@ describe('ThemeService', () => {
     test('should initialize to "light" theme if no stored theme and system prefers light', () => {
       systemPrefersDark = false;
       localStorageMock.clear();
-      const service = new ThemeService(); // Re-instantiate for this specific scenario
+      const service = new ActualThemeServiceClass();
       expect(service.getCurrentTheme()).toBe('light');
       expect(document.body.classList.contains(DARK_MODE_CLASS)).toBe(false);
       expect(mockHtmlElement.setAttribute).toHaveBeenCalledWith('data-theme', 'light');
@@ -116,7 +126,7 @@ describe('ThemeService', () => {
     test('should initialize to "dark" theme if no stored theme and system prefers dark', () => {
       systemPrefersDark = true;
       localStorageMock.clear();
-      const service = new ThemeService();
+      const service = new ActualThemeServiceClass();
       expect(service.getCurrentTheme()).toBe('dark');
       expect(document.body.classList.contains(DARK_MODE_CLASS)).toBe(true);
       expect(mockHtmlElement.setAttribute).toHaveBeenCalledWith('data-theme', 'dark');
@@ -125,7 +135,7 @@ describe('ThemeService', () => {
     test('should initialize to stored theme ("light") if it exists, ignoring system preference', () => {
       systemPrefersDark = true; // System prefers dark
       localStorageMock.setItem(THEME_KEY, 'light'); // But stored is light
-      const service = new ThemeService();
+      const service = new ActualThemeServiceClass();
       expect(service.getCurrentTheme()).toBe('light');
       expect(document.body.classList.contains(DARK_MODE_CLASS)).toBe(false);
     });
@@ -133,15 +143,17 @@ describe('ThemeService', () => {
     test('should initialize to stored theme ("dark") if it exists, ignoring system preference', () => {
       systemPrefersDark = false; // System prefers light
       localStorageMock.setItem(THEME_KEY, 'dark'); // But stored is dark
-      const service = new ThemeService();
+      const service = new ActualThemeServiceClass();
       expect(service.getCurrentTheme()).toBe('dark');
       expect(document.body.classList.contains(DARK_MODE_CLASS)).toBe(true);
     });
 
     test('should apply theme and update chart defaults on initialization', () => {
-        const chartUpdateSpy = jest.spyOn(themeServiceInstance as any, 'updateChartDefaults');
-        themeServiceInstance = new ThemeService(); // Trigger constructor logic again
-        expect(chartUpdateSpy).toHaveBeenCalled();
+        // Spy on the prototype method before instantiation
+        const updateChartDefaultsSpy = jest.spyOn(ActualThemeServiceClass.prototype as any, 'updateChartDefaults');
+        new ActualThemeServiceClass(); // Instantiate
+        expect(updateChartDefaultsSpy).toHaveBeenCalled();
+        updateChartDefaultsSpy.mockRestore(); // Clean up spy
       });
   });
 
@@ -158,7 +170,7 @@ describe('ThemeService', () => {
     test('should switch from dark to light theme', () => {
       // Set initial to dark
       localStorageMock.setItem(THEME_KEY, 'dark');
-      const serviceInDark = new ThemeService();
+      const serviceInDark = new ActualThemeServiceClass();
 
       serviceInDark.toggleTheme(); // Toggle to light
       expect(serviceInDark.getCurrentTheme()).toBe('light');
@@ -186,74 +198,167 @@ describe('ThemeService', () => {
 
   describe('System Theme Change Listener', () => {
     let mediaQueryListener: ((event: { matches: boolean }) => void) | null = null;
+    let inspectableMq: any; // To hold the specific MQL object for dark scheme
+    const originalMatchMediaImpl = matchMediaMock.getMockImplementation() || defaultMatchMediaImplementation;
 
     beforeEach(() => {
-      // Capture the event listener
-      const mockAddEventListener = window.matchMedia('(prefers-color-scheme: dark)')
-        .addEventListener as jest.Mock;
-
-      // Ensure a fresh service instance for these tests if constructor logic is key
-      localStorageMock.clear(); // No user override
+      localStorageMock.clear();
       systemPrefersDark = false;
-      themeServiceInstance = new ThemeService();
 
-      if (mockAddEventListener.mock.calls.length > 0) {
-        const call = mockAddEventListener.mock.calls.find(c => c[0] === 'change');
-        if (call) {
-            mediaQueryListener = call[1];
+      inspectableMq = { // Define it here so it's fresh for each test in this block
+        matches: systemPrefersDark,
+        media: '(prefers-color-scheme: dark)',
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      };
+
+      matchMediaMock.mockImplementation((query: string) => {
+        if (query === '(prefers-color-scheme: dark)') {
+          inspectableMq.matches = systemPrefersDark; // Ensure 'matches' is current
+          return inspectableMq;
         }
+        return originalMatchMediaImpl(query);
+      });
+
+      themeServiceInstance = new ActualThemeServiceClass();
+
+      const addEventListenerCalls = inspectableMq.addEventListener.mock.calls;
+      const addListenerCalls = inspectableMq.addListener.mock.calls;
+
+      if (addEventListenerCalls.length > 0 && addEventListenerCalls[0][0] === 'change') {
+        mediaQueryListener = addEventListenerCalls[0][1];
+      } else if (addListenerCalls.length > 0) {
+        mediaQueryListener = addListenerCalls[0][0];
+      } else {
+        mediaQueryListener = null;
       }
     });
 
-    test('should change theme if system theme changes and no user theme is set', () => {
-      expect(themeServiceInstance.getCurrentTheme()).toBe('light'); // Initial
+    afterEach(() => {
+      // Restore the global matchMedia mock to its default behavior after tests in this block
+      matchMediaMock.mockImplementation(originalMatchMediaImpl);
+    });
 
-      // Simulate system theme changing to dark
-      if (mediaQueryListener) {
-        mediaQueryListener({ matches: true });
-      } else {
-        throw new Error("Media query listener not captured");
+    test('should change theme if system theme changes and no user theme is set', () => {
+      // themeServiceInstance is already light, systemPrefersDark is false.
+      expect(themeServiceInstance.getCurrentTheme()).toBe('light');
+
+      if (!mediaQueryListener) {
+        throw new Error("Media query listener was not captured in beforeEach for this test block.");
       }
+      mediaQueryListener({ matches: true }); // Simulate system theme changing to dark
 
       expect(themeServiceInstance.getCurrentTheme()).toBe('dark');
       expect(document.body.classList.contains(DARK_MODE_CLASS)).toBe(true);
     });
 
     test('should NOT change theme if system theme changes but a user theme IS set in localStorage', () => {
-      localStorageMock.setItem(THEME_KEY, 'light'); // User explicitly set light theme
-      const serviceWithUserPref = new ThemeService(); // Re-init with user pref
-      expect(serviceWithUserPref.getCurrentTheme()).toBe('light');
+      localStorageMock.setItem(THEME_KEY, 'light');
+      systemPrefersDark = false; // System initially prefers light
 
-      // Simulate system theme changing to dark
-      const mockAddEventListener = window.matchMedia('(prefers-color-scheme: dark)')
-        .addEventListener as jest.Mock;
-      let specificListener: ((event: { matches: boolean }) => void) | null = null;
-      if (mockAddEventListener.mock.calls.length > 0) {
-        const call = mockAddEventListener.mock.calls.find(c => c[0] === 'change');
-        if (call) {
-            specificListener = call[1];
+      const inspectableMqForThisTest = {
+        matches: systemPrefersDark, // Initial state
+        media: '(prefers-color-scheme: dark)',
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      };
+
+      // Temporarily override global matchMediaMock for this specific instantiation
+      const originalImpl = matchMediaMock.getMockImplementation() || defaultMatchMediaImplementation;
+      matchMediaMock.mockImplementation((query: string) => {
+        if (query === '(prefers-color-scheme: dark)') {
+          inspectableMqForThisTest.matches = systemPrefersDark; // Update based on current test scope systemPrefersDark
+          return inspectableMqForThisTest;
         }
+        return originalImpl(query);
+      });
+
+      const serviceWithUserPref = new ActualThemeServiceClass();
+      expect(serviceWithUserPref.getCurrentTheme()).toBe('light'); // Should be 'light' due to localStorage
+
+      // Restore global matchMediaMock immediately after service instantiation for this test
+      matchMediaMock.mockImplementation(originalImpl);
+
+      // Now, try to trigger the listener that serviceWithUserPref attached to inspectableMqForThisTest
+      let attachedListener: ((event: { matches: boolean }) => void) | null = null;
+      if (inspectableMqForThisTest.addEventListener.mock.calls.length > 0 &&
+          inspectableMqForThisTest.addEventListener.mock.calls[0][0] === 'change') {
+        attachedListener = inspectableMqForThisTest.addEventListener.mock.calls[0][1];
+      } else if (inspectableMqForThisTest.addListener.mock.calls.length > 0) {
+        attachedListener = inspectableMqForThisTest.addListener.mock.calls[0][0];
       }
 
-      if (specificListener) {
-        specificListener({ matches: true });
+      if (attachedListener) {
+        // Simulate system trying to change to dark
+        systemPrefersDark = true; // This would affect inspectableMqForThisTest.matches if it were queried again
+        inspectableMqForThisTest.matches = true; // More direct: simulate event object's matches property
+        attachedListener({ matches: true });
       } else {
-        // This might happen if the listener wasn't re-attached for serviceWithUserPref
-        // or if the mock setup for addEventListener needs adjustment for multiple instances.
-        // For simplicity, we can re-trigger the logic that `new ThemeService()` runs.
-        // This part of the test relies on the listener being correctly attached by the new instance.
+        throw new Error("Listener for serviceWithUserPref not captured on its specific MQL mock.");
       }
 
       // The theme should remain 'light' because localStorage has a value
       expect(serviceWithUserPref.getCurrentTheme()).toBe('light');
       expect(document.body.classList.contains(DARK_MODE_CLASS)).toBe(false);
     });
+
+    test('should use addListener if addEventListener is not available on mediaQuery', () => {
+      localStorageMock.clear();
+      systemPrefersDark = false;
+
+      // Keep a reference to the original implementation of our top-level matchMediaMock
+      const originalMatchMediaImpl = matchMediaMock.getMockImplementation() || defaultMatchMediaImplementation;
+
+      const specificMqMock = {
+        matches: systemPrefersDark,
+        media: '(prefers-color-scheme: dark)',
+        onchange: null,
+        addListener: jest.fn(), // Fresh spy for this specific media query object
+        removeListener: jest.fn(),
+        addEventListener: undefined, // Simulate 'addEventListener' is not available
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      };
+
+      // Temporarily change the implementation of the global window.matchMedia mock
+      matchMediaMock.mockImplementation(((query: string) => {
+        if (query === '(prefers-color-scheme: dark)') {
+          return specificMqMock;
+        }
+        // For any other query, fall back to the original mock's behavior
+        return originalMatchMediaImpl(query);
+      }) as any); // Cast to any to satisfy TypeScript for this temporary broader signature
+
+      const serviceForOldBrowser = new ActualThemeServiceClass();
+
+      expect(specificMqMock.addListener).toHaveBeenCalledWith(expect.any(Function));
+      expect(serviceForOldBrowser.getCurrentTheme()).toBe('light');
+
+      if (specificMqMock.addListener.mock.calls.length > 0) {
+        const listener = specificMqMock.addListener.mock.calls[0][0];
+        listener({ matches: true });
+        expect(serviceForOldBrowser.getCurrentTheme()).toBe('dark');
+      } else {
+        throw new Error("addListener was not called or listener not captured for specificMqMock");
+      }
+
+      // Restore the original implementation to avoid affecting other tests
+      matchMediaMock.mockImplementation(originalMatchMediaImpl);
+    });
   });
 
   describe('updateChartDefaults', () => {
     test('should set Chart.defaults for light theme', () => {
       localStorageMock.setItem(THEME_KEY, 'light');
-      const service = new ThemeService(); // Init as light
+      const service = new ActualThemeServiceClass(); // Init as light
 
       expect(Chart.defaults.color).toBe('#333');
       if (Chart.defaults.scale) {
@@ -264,7 +369,7 @@ describe('ThemeService', () => {
 
     test('should set Chart.defaults for dark theme', () => {
       localStorageMock.setItem(THEME_KEY, 'dark');
-      const service = new ThemeService(); // Init as dark
+      const service = new ActualThemeServiceClass(); // Init as dark
 
       expect(Chart.defaults.color).toBe('#e0e0e0');
       if (Chart.defaults.scale) {
@@ -274,9 +379,17 @@ describe('ThemeService', () => {
     });
 
     test('should call update on all active Chart instances', () => {
-      const mockChartInstance1 = { update: jest.fn() };
-      const mockChartInstance2 = { update: jest.fn() };
-      Chart.instances = { 'chart1': mockChartInstance1, 'chart2': mockChartInstance2 } as any;
+      const mockChartInstance1 = { update: jest.fn(), id: 1 }; // Charts have an ID
+      const mockChartInstance2 = { update: jest.fn(), id: 2 };
+
+      // Clear existing instances from the mock and add new ones
+      // Chart.instances is mocked as an object `{}`
+      for (const key in Chart.instances) {
+        delete (Chart.instances as any)[key];
+      }
+      (Chart.instances as any)['chart1'] = mockChartInstance1; // Or use IDs if the service iterates by values
+      (Chart.instances as any)['chart2'] = mockChartInstance2;
+
 
       themeServiceInstance.toggleTheme(); // This will trigger updateChartDefaults
 

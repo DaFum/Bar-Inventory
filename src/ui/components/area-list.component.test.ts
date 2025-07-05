@@ -53,9 +53,10 @@ describe('AreaListComponent', () => {
     const items = listHostDiv!.children;
     expect(items.length).toBe(initialAreas.length);
     // Check order: Beta (1), Alpha (2), Gamma (N/A, then by name)
-    expect(items[0]!.textContent).toBe('Area Beta');
-    expect(items[1]!.textContent).toBe('Area Alpha');
-    expect(items[2]!.textContent).toBe('Area Gamma');
+    if (!items[0] || !items[1] || !items[2]) throw new Error("Test assumption failed: not enough items in constructor test");
+    expect(items[0].textContent).toBe('Area Beta');
+    expect(items[1].textContent).toBe('Area Alpha');
+    expect(items[2].textContent).toBe('Area Gamma');
   });
 
   test('setAreas should re-render the list with new sorted areas', () => {
@@ -69,8 +70,9 @@ describe('AreaListComponent', () => {
     const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
     const items = listHostDiv!.children;
     expect(items.length).toBe(newAreas.length);
-    expect(items[0]!.textContent).toBe('Area Epsilon'); // Epsilon (0)
-    expect(items[1]!.textContent).toBe('Area Delta');   // Delta (1)
+    if (!items[0] || !items[1]) throw new Error("Test assumption failed: not enough items in setAreas test");
+    expect(items[0].textContent).toBe('Area Epsilon');
+    expect(items[1].textContent).toBe('Area Delta');
   });
 
   test('setAreas with empty array should display "no areas" message', () => {
@@ -86,8 +88,9 @@ describe('AreaListComponent', () => {
     const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
     const items = listHostDiv!.children;
     expect(items.length).toBe(initialAreas.length + 1);
-    expect(items[0]!.textContent).toBe('Area Zero'); // Zero (0)
-    expect(items[1]!.textContent).toBe('Area Beta');  // Beta (1)
+    if (!items[0] || !items[1]) throw new Error("Test assumption failed: not enough items in addArea test");
+    expect(items[0].textContent).toBe('Area Zero'); // Zero (0)
+    expect(items[1].textContent).toBe('Area Beta');  // Beta (1)
     expect(AreaListItemComponent).toHaveBeenCalledTimes(initialAreas.length + 1);
   });
 
@@ -103,12 +106,14 @@ describe('AreaListComponent', () => {
     expect(listHostDiv).not.toBeNull();
     const items = listHostDiv!.children;
     expect(items.length).toBe(1);
-    expect(items[0]!.textContent).toBe('First Area');
+    if (!items[0]) throw new Error("Test assumption failed: item not found in addArea to empty list test");
+    expect(items[0].textContent).toBe('First Area');
   });
 
 
   test('updateArea should update the corresponding item and re-sort if needed', () => {
-    const updatedArea: Area = { ...initialAreas[1]!, name: 'Area Beta Updated', displayOrder: 3, inventoryItems: [] }; // Was Beta, order 1
+    if (!initialAreas[1]) throw new Error("Test assumption failed: initialAreas[1] is undefined for updateArea test");
+    const updatedArea: Area = { ...initialAreas[1], name: 'Area Beta Updated', displayOrder: 3, inventoryItems: [] }; // Was Beta, order 1
     areaListComponent.updateArea(updatedArea);
 
     const mockItemInstance = (AreaListItemComponent as jest.Mock).mock.results.find(
@@ -118,12 +123,13 @@ describe('AreaListComponent', () => {
 
     // Check DOM order: Alpha(2), Gamma(N/A), Beta Updated (3)
     // Original order: Beta(1), Alpha(2), Gamma(N/A)
+    // Re-query items from the DOM after the update operation
     const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
     const items = listHostDiv!.children;
     expect(items.length).toBe(initialAreas.length);
-    expect(items[0].textContent).toBe('Area Alpha');
-    expect(items[1].textContent).toBe('Area Gamma');
-    expect(items[2].textContent).toBe('Area Beta Updated');
+    if (!items[0] || !items[1] || !items[2]) throw new Error("Test assumption failed: not enough items for updateArea order check");
+    const texts = Array.from(items).map(item => item.textContent);
+    expect(texts).toEqual(['Area Alpha', 'Area Beta Updated', 'Area Gamma']);
   });
 
   test('updateArea for a non-existent area should add it', () => {
@@ -133,10 +139,12 @@ describe('AreaListComponent', () => {
     const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
     const items = listHostDiv!.children;
     expect(items.length).toBe(initialAreas.length + 1);
+    if (!items[0]) throw new Error("Test assumption failed: item not found for updateArea non-existent test");
     expect(items[0].textContent).toBe('New via Update'); // Should be at the top due to displayOrder 0
   });
 
   test('removeArea should remove the item from the list and DOM', () => {
+    if (!initialAreas[1]) throw new Error("Test assumption failed: initialAreas[1] is undefined for removeArea test");
     const areaIdToRemove = initialAreas[1].id; // Area Beta
     const mockItemInstanceToRemove = (AreaListItemComponent as jest.Mock).mock.results.find(
         (result: any) => result.value.getAreaId() === areaIdToRemove
@@ -152,6 +160,7 @@ describe('AreaListComponent', () => {
   });
 
   test('removeArea last item should display "no areas" message', () => {
+    if (!initialAreas[0] || !initialAreas[1] || !initialAreas[2]) throw new Error("Test assumption failed: not enough initialAreas for remove last item test");
     areaListComponent.removeArea(initialAreas[0].id);
     areaListComponent.removeArea(initialAreas[1].id);
     areaListComponent.removeArea(initialAreas[2].id);
@@ -169,6 +178,7 @@ describe('AreaListComponent', () => {
     // Expected order: Beta (1), Alpha (2), Gamma (N/A), Omega (N/A) -> Gamma before Omega by name
     const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
     const items = listHostDiv!.children;
+    if (!items[0] || !items[1] || !items[2] || !items[3]) throw new Error("Test assumption failed: not enough items for sorting logic test");
     expect(items[0].textContent).toBe('Area Beta');
     expect(items[1].textContent).toBe('Area Alpha');
     expect(items[2].textContent).toBe('Area Gamma');

@@ -24,38 +24,33 @@ jest.mock('../../state/location.store', () => ({
   },
 }));
 
-// Mock AreaListComponent and AreaFormComponent
-let mockAreaListComponentInstance: {
-    appendTo: jest.Mock;
-    setAreas: jest.Mock;
+// Define mock instances first
+const mockAreaListComponentInstance = {
+    appendTo: jest.fn(),
+    setAreas: jest.fn(),
 };
-let mockAreaFormComponentInstance: {
-    appendTo: jest.Mock;
-    show: jest.Mock;
-    hide: jest.Mock;
+const mockAreaFormComponentInstance = {
+    appendTo: jest.fn(),
+    show: jest.fn(),
+    hide: jest.fn(),
 };
 
+// Then use them in jest.mock
 jest.mock('./area-list.component', () => {
-    mockAreaListComponentInstance = {
-        appendTo: jest.fn(),
-        setAreas: jest.fn(),
-    };
     return {
+      // AreaListComponent constructor mock returns the pre-defined instance
       AreaListComponent: jest.fn(() => mockAreaListComponentInstance),
     };
   });
 
 jest.mock('./area-form.component', () => {
-    mockAreaFormComponentInstance = {
-        appendTo: jest.fn(),
-        show: jest.fn(),
-        hide: jest.fn(),
-    };
     return {
+      // AreaFormComponent constructor mock returns the pre-defined instance
       AreaFormComponent: jest.fn(() => mockAreaFormComponentInstance),
     };
   });
 
+// The let declarations for these are no longer needed as they are const above.
 
 describe('CounterListItemComponent', () => {
   let component: CounterListItemComponent;
