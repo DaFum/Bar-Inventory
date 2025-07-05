@@ -7,13 +7,13 @@
  * @returns Die maskierte Zeichenkette mit ersetzten HTML-Sonderzeichen
  */
 export function escapeHtml(str: string | undefined | null): string {
-    if (str === undefined || str === null) {
-        return '';
-    }
-    return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
+  if (str === undefined || str === null) {
+    return '';
+  }
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

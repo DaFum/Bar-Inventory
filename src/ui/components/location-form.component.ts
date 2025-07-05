@@ -93,14 +93,23 @@ export class LocationFormComponent extends BaseComponent<HTMLDivElement> {
             return;
         }
 
-        const locationData: Pick<Location, 'id' | 'name' | 'address'> = {
+        const name = this.nameInput.value.trim();
+        const addressValue = this.addressInput.value.trim();
+
+        const dataForCallback: Pick<Location, 'id' | 'name' | 'address'> = {
             id: this.currentEditingLocation?.id || '',
-            name: this.nameInput.value.trim(),
-            address: this.addressInput.value.trim() || undefined
+            name: name, // Uses existing 'name'
+            // 'address' will be added conditionally
         };
 
+        if (addressValue) { // Uses existing 'addressValue'; only add 'address' if it's not an empty string
+            dataForCallback.address = addressValue;
+        }
+        // If addressValue is empty, dataForCallback.address remains undefined (omitted property),
+        // which is correct for an optional property under exactOptionalPropertyTypes.
+
         try {
-            await this.onSubmitCallback(locationData);
+            await this.onSubmitCallback(dataForCallback);
         } catch (error) {
             console.error("LocationFormComponent: Error during submission callback", error);
         }

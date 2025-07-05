@@ -144,8 +144,11 @@ export class AreaListComponent extends BaseComponent<HTMLDivElement> {
             return;
         }
 
-        const oldArea = this.areas[index];
-        this.areas[index] = area;
+        const oldAreaAtIndex = this.areas[index]!; // Assert non-null
+        const oldDisplayOrder = oldAreaAtIndex.displayOrder;
+        const oldName = oldAreaAtIndex.name;
+
+        this.areas[index] = area; // Update in the internal array
 
         const itemComponent = this.listItemComponents.get(area.id);
         if (!itemComponent) {
@@ -155,8 +158,8 @@ export class AreaListComponent extends BaseComponent<HTMLDivElement> {
 
         itemComponent.update(area);
 
-        const orderChanged = oldArea.displayOrder !== area.displayOrder;
-        const nameChanged = oldArea.name.localeCompare(area.name) !== 0;
+        const orderChanged = oldDisplayOrder !== area.displayOrder;
+        const nameChanged = oldName.localeCompare(area.name) !== 0;
 
         if (orderChanged || nameChanged) {
             this.areas = this.sortAreas(this.areas);

@@ -16,9 +16,9 @@ let currentView: ViewName = 'inventory'; /**
  */
 
 export function initializeApp(container: HTMLElement): void {
-    appContainer = container;
-    renderLayout();
-    navigateTo(currentView); // Navigate to default view
+  appContainer = container;
+  renderLayout();
+  navigateTo(currentView); // Navigate to default view
 }
 
 /**
@@ -27,9 +27,9 @@ export function initializeApp(container: HTMLElement): void {
  * Fügt die Navigations- und Theme-Umschaltbuttons ein und verbindet sie mit den entsprechenden Event-Handlern für Ansichtswechsel und Theme-Wechsel.
  */
 function renderLayout(): void {
-    if (!appContainer) return;
+  if (!appContainer) return;
 
-    appContainer.innerHTML = `
+  appContainer.innerHTML = `
         <nav id="main-nav" class="navbar">
             <div role="menubar"> <!-- Group for view buttons -->
                 <button data-view="inventory" class="nav-button" role="menuitem">Inventur</button>
@@ -47,20 +47,20 @@ function renderLayout(): void {
         </main>
     `;
 
-    document.querySelectorAll('#main-nav .nav-button').forEach(button => {
-        button.addEventListener('click', (e) => {
-            const viewName = (e.target as HTMLElement).dataset.view as ViewName;
-            if (viewName) {
-                navigateTo(viewName);
-            }
-        });
+  document.querySelectorAll('#main-nav .nav-button').forEach((button) => {
+    button.addEventListener('click', (e) => {
+      const viewName = (e.target as HTMLElement).dataset.view as ViewName;
+      if (viewName) {
+        navigateTo(viewName);
+      }
     });
+  });
 
-    document.getElementById('theme-toggle-btn')?.addEventListener('click', () => {
-        themeService.toggleTheme();
-        // Update button text or icon if needed based on themeService.getCurrentTheme()
-        // For now, charts are updated globally by themeService.
-    });
+  document.getElementById('theme-toggle-btn')?.addEventListener('click', () => {
+    themeService.toggleTheme();
+    // Update button text or icon if needed based on themeService.getCurrentTheme()
+    // For now, charts are updated globally by themeService.
+  });
 }
 
 /**
@@ -69,50 +69,50 @@ function renderLayout(): void {
  * @param viewName - Die Zielansicht, die angezeigt werden soll
  */
 function navigateTo(viewName: ViewName): void {
-    currentView = viewName;
-    const viewContainer = document.getElementById('view-container');
-    if (!viewContainer) {
-        console.error("View container not found!");
-        return;
-    }
+  currentView = viewName;
+  const viewContainer = document.getElementById('view-container');
+  if (!viewContainer) {
+    console.error('View container not found!');
+    return;
+  }
 
-    // Clear previous view content
-    viewContainer.innerHTML = '';
-    updateActiveNavButton();
+  // Clear previous view content
+  viewContainer.innerHTML = '';
+  updateActiveNavButton();
 
-    switch (viewName) {
-        case 'locations':
-            initLocationManager(viewContainer);
-            break;
-        case 'products':
-            initProductManager(viewContainer);
-            break;
-        case 'inventory':
-            initInventoryView(viewContainer);
-            break;
-        case 'analytics': // Handle Analytics View
-            initAnalyticsView(viewContainer);
-            break;
-        case 'settings':
-            viewContainer.innerHTML = '<h2>Einstellungen (Demnächst)</h2>';
-            break;
-        default:
-            viewContainer.innerHTML = '<p>Unbekannte Ansicht.</p>';
-    }
-    console.log(`Navigated to ${viewName}`);
+  switch (viewName) {
+    case 'locations':
+      initLocationManager(viewContainer);
+      break;
+    case 'products':
+      initProductManager(viewContainer);
+      break;
+    case 'inventory':
+      initInventoryView(viewContainer);
+      break;
+    case 'analytics': // Handle Analytics View
+      initAnalyticsView(viewContainer);
+      break;
+    case 'settings':
+      viewContainer.innerHTML = '<h2>Einstellungen (Demnächst)</h2>';
+      break;
+    default:
+      viewContainer.innerHTML = '<p>Unbekannte Ansicht.</p>';
+  }
+  console.log(`Navigated to ${viewName}`);
 }
 
 /**
  * Aktualisiert die Navigationsleiste, indem die Schaltfläche der aktuellen Ansicht hervorgehoben und die Hervorhebung bei allen anderen entfernt wird.
  */
 function updateActiveNavButton(): void {
-    document.querySelectorAll('#main-nav .nav-button').forEach(button => {
-        if (button.getAttribute('data-view') === currentView) {
-            button.classList.add('active');
-        } else {
-            button.classList.remove('active');
-        }
-    });
+  document.querySelectorAll('#main-nav .nav-button').forEach((button) => {
+    if (button.getAttribute('data-view') === currentView) {
+      button.classList.add('active');
+    } else {
+      button.classList.remove('active');
+    }
+  });
 }
 
-console.log("UI Manager initialized.");
+console.log('UI Manager initialized.');

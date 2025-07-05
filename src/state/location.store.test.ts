@@ -1,712 +1,609 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { LocationStore } from "./location.store";
+import { locationStore } from './location.store'; // Import the instance
+import { Location, Counter, Area } from '../models';
+import { dbService } from '../services/indexeddb.service';
+import { generateId } from '../utils/helpers';
 
-describe("LocationStore", () => {
-  let locationStore: LocationStore;
+// Mocks
+jest.mock('../services/indexeddb.service', () => ({
+  dbService: {
+    loadLocations: jest.fn(),
+    saveLocation: jest.fn(),
+    delete: jest.fn(),
+  },
+}));
+
+jest.mock('../utils/helpers', () => ({
+  generateId: jest.fn((prefix: string) => `${prefix}-mock-id-${Math.random().toString(36).substr(2, 5)}`),
+}));
+
+describe('LocationStore', () => {
+  const mockLocation1: Location = {
+    id: 'loc1',
+    name: 'Main Bar',
+    address: '123 Bar Street',
+    counters: [
+      { id: 'ctr1', name: 'Front Counter', description: 'Main service', areas: [
+        { id: 'area1', name: 'Top Shelf', displayOrder: 1, inventoryItems: [] }
+      ]}
+    ],
+  };
+  const mockLocation2: Location = {
+    id: 'loc2',
+    name: 'Patio Bar',
+    address: '456 Garden Ave',
+    counters: [],
+  };
+  let initialMockLocations: Location[];
 
   beforeEach(() => {
-    locationStore = new LocationStore();
-    // Reset any global state or mocks
-    vi.clearAllMocks();
+    // Deep clone to ensure tests don't interfere via shared mock objects
+    initialMockLocations = [
+        JSON.parse(JSON.stringify(mockLocation1)),
+        JSON.parse(JSON.stringify(mockLocation2))
+    ];
+
+    (dbService.loadLocations as jest.Mock).mockClear().mockResolvedValue(JSON.parse(JSON.stringify(initialMockLocations)));
+    (dbService.saveLocation as jest.Mock).mockClear().mockImplementation(async (loc: Location) => loc.id);
+    (dbService.delete as jest.Mock).mockClear().mockResolvedValue(undefined);
+    (generateId as jest.Mock).mockClear().mockImplementation((prefix: string) => `${prefix}-mock-id-${Date.now()}`);
+
+
+    // Reset internal store state using the public reset method
+    locationStore.reset();
   });
 
-  afterEach(() => {
-    // Clean up any side effects
-    vi.restoreAllMocks();
-  });
+  describe('loadLocations', () => {
+    it('should load locations from dbService and notify subscribers', async () => {
+      const subscriber = jest.fn();
+      locationStore.subscribe(subscriber);
+      await locationStore.loadLocations();
 
-  describe("initialization", () => {
-    it("should initialize with default values", () => {
-      expect(locationStore).toBeDefined();
-      expect(locationStore.currentLocation).toBeNull();
-      expect(locationStore.isLoading).toBe(false);
-      expect(locationStore.error).toBeNull();
+      expect(dbService.loadLocations).toHaveBeenCalledTimes(1);
+      expect(locationStore.getLocations()).toEqual(initialMockLocations);
+      expect(subscriber).toHaveBeenCalledWith(initialMockLocations);
     });
+  });
 
-    it("should initialize with provided initial state", () => {
-      const initialState = {
-        currentLocation: {
-          lat: 37.7749,
-          lng: -122.4194,
-          name: "San Francisco"
-        },
-        isLoading: false,
-        error: null
+  describe('addLocation', () => {
+    it('should add a location, save via dbService, and notify subscribers', async () => {
+      const locData = { name: 'New Location', address: '789 New St' };
+      const expectedNewId = `loc-mock-id-${Date.now()}`; // Based on mock generateId
+      (generateId as jest.Mock).mockReturnValueOnce(expectedNewId);
+
+
+      const subscriber = jest.fn();
+      locationStore.subscribe(subscriber);
+      const newLocation = await locationStore.addLocation(locData);
+
+      expect(generateId).toHaveBeenCalledWith('loc');
+      expect(newLocation.id).toBe(expectedNewId);
+      expect(newLocation.name).toBe(locData.name);
+      expect(dbService.saveLocation).toHaveBeenCalledWith(newLocation);
+      expect(locationStore.getLocations()).toContainEqual(newLocation);
+      expect(subscriber).toHaveBeenCalled();
+    });
+    it('should throw error if location name is empty', async () => {
+        await expect(locationStore.addLocation({ name: '  ' })).rejects.toThrow('Standortname darf nicht leer sein');
+    });
+  });
+
+  describe('updateLocation', () => {
+    it('should update an existing location and notify subscribers', async () => {
+      await locationStore.loadLocations(); // Load initial
+      const subscriber = jest.fn();
+      locationStore.subscribe(subscriber);
+
+      const originalLocation = initialMockLocations[0]!;
+      const updatedLocation: Location = {
+        ...originalLocation,
+        id: originalLocation.id, // Be explicit
+        name: 'Main Bar Updated',
+        counters: originalLocation.counters, // Be explicit
       };
-      const store = new LocationStore(initialState);
+      await locationStore.updateLocation(updatedLocation);
 
-      expect(store.currentLocation).toEqual(initialState.currentLocation);
-      expect(store.isLoading).toBe(false);
-      expect(store.error).toBeNull();
+      expect(dbService.saveLocation).toHaveBeenCalledWith(updatedLocation);
+      expect(locationStore.getLocationById(updatedLocation.id)?.name).toBe('Main Bar Updated');
+      expect(subscriber).toHaveBeenCalled();
+    });
+    it('should ensure nested IDs are present when updating location', async () => {
+        await locationStore.loadLocations();
+        const locationToUpdate = JSON.parse(JSON.stringify(initialMockLocations[0]));
+        locationToUpdate.counters.push({ name: 'New Counter No ID', areas: [{ name: 'New Area No ID' }] });
+
+        (generateId as jest.Mock).mockImplementation((prefix) => `${prefix}-generated`);
+
+        await locationStore.updateLocation(locationToUpdate);
+
+        const savedLocation = (dbService.saveLocation as jest.Mock).mock.calls[0][0] as Location;
+        expect(savedLocation.counters.find(c => c.name === 'New Counter No ID')?.id).toBe('ctr-generated');
+        expect(savedLocation.counters.find(c => c.name === 'New Counter No ID')?.areas[0]?.id).toBe('area-generated');
     });
   });
 
-  describe("setLocation", () => {
-    it("should set a valid location", () => {
-      const location = { lat: 40.7128, lng: -74.006, name: "New York" };
+  describe('deleteLocation', () => {
+    it('should delete a location and notify subscribers', async () => {
+      await locationStore.loadLocations();
+      const subscriber = jest.fn();
+      locationStore.subscribe(subscriber);
+      const idToDelete = initialMockLocations[0]!.id;
 
-      locationStore.setLocation(location);
+      await locationStore.deleteLocation(idToDelete);
 
-      expect(locationStore.currentLocation).toEqual(location);
-      expect(locationStore.error).toBeNull();
+      expect(dbService.delete).toHaveBeenCalledWith('locations', idToDelete);
+      expect(locationStore.getLocationById(idToDelete)).toBeUndefined();
+      expect(subscriber).toHaveBeenCalled();
+    });
+  });
+
+  // Counter specific methods
+  describe('Counter operations', () => {
+    beforeEach(async () => {
+      await locationStore.loadLocations(); // Ensure loc1 exists
     });
 
-    it("should handle location with minimal required fields", () => {
-      const location = { lat: 0, lng: 0 };
+    it('addCounter should add a counter to a location', async () => {
+      const counterData = { name: 'Side Bar', description: 'Auxiliary bar' };
+      const newCounter = await locationStore.addCounter(mockLocation1.id, counterData);
 
-      locationStore.setLocation(location);
-
-      expect(locationStore.currentLocation).toEqual(location);
+      expect(newCounter.name).toBe(counterData.name);
+      const location = locationStore.getLocationById(mockLocation1.id);
+      expect(location?.counters).toContainEqual(newCounter);
+      expect(dbService.saveLocation).toHaveBeenCalledWith(location); // saveLocation is called to persist the whole location
     });
 
-    it("should validate latitude bounds", () => {
-      const invalidLocation = { lat: 91, lng: 0 };
+    it('updateCounter should update a counter in a location', async () => {
+        const originalCounter = mockLocation1.counters[0]!;
+        const updatedCounterData: Counter = {
+            ...originalCounter,
+            id: originalCounter.id, // Be explicit
+            name: 'Front Bar Deluxe',
+            areas: originalCounter.areas, // Be explicit
+        };
+        await locationStore.updateCounter(mockLocation1.id, updatedCounterData);
 
-      expect(() => locationStore.setLocation(invalidLocation)).toThrow(
-        "Invalid latitude: must be between -90 and 90"
-      );
+        const location = locationStore.getLocationById(mockLocation1.id);
+        expect(location?.counters.find(c => c.id === originalCounter.id)?.name).toBe('Front Bar Deluxe');
+        expect(dbService.saveLocation).toHaveBeenCalledWith(location);
     });
 
-    it("should validate longitude bounds", () => {
-      const invalidLocation = { lat: 0, lng: 181 };
+    it('deleteCounter should remove a counter from a location', async () => {
+        const counterIdToDelete = mockLocation1.counters[0]!.id; // Added !
+        await locationStore.deleteCounter(mockLocation1.id, counterIdToDelete);
 
-      expect(() => locationStore.setLocation(invalidLocation)).toThrow(
-        "Invalid longitude: must be between -180 and 180"
-      );
+        const location = locationStore.getLocationById(mockLocation1.id);
+        expect(location?.counters.find(c => c.id === counterIdToDelete)).toBeUndefined();
+        expect(dbService.saveLocation).toHaveBeenCalledWith(location);
+    });
+  });
+
+  // Area specific methods
+  describe('Area operations', () => {
+    let locId: string;
+    let counterId: string;
+
+    beforeEach(async () => {
+        await locationStore.loadLocations();
+        locId = mockLocation1.id;
+        counterId = mockLocation1.counters[0]!.id; // Added !
     });
 
-    it("should handle edge case coordinates", () => {
-      const edgeLocations = [
-        { lat: 90, lng: 180 },
-        { lat: -90, lng: -180 },
-        { lat: 0, lng: 0 }
-      ];
+    it('addArea should add an area to a counter', async () => {
+        const areaData = { name: 'Back Shelf', description: 'Storage', displayOrder: 2 };
+        const newArea = await locationStore.addArea(locId, counterId, areaData);
 
-      edgeLocations.forEach(location => {
-        expect(() => locationStore.setLocation(location)).not.toThrow();
-        expect(locationStore.currentLocation).toEqual(location);
-      });
+        expect(newArea.name).toBe(areaData.name);
+        const location = locationStore.getLocationById(locId);
+        const counter = location?.counters.find(c => c.id === counterId);
+        expect(counter?.areas).toContainEqual(newArea);
+        expect(dbService.saveLocation).toHaveBeenCalledWith(location);
+        // Check sort order (initial area1 has order 1, newArea has order 2)
+        expect(counter?.areas[0]!.name).toBe('Top Shelf');
+        expect(counter?.areas[1]!.name).toBe('Back Shelf');
     });
 
-    it("should handle null or undefined location", () => {
-      locationStore.setLocation(null);
-      expect(locationStore.currentLocation).toBeNull();
+    it('updateArea should update an area in a counter', async () => {
+        const areaToUpdate = mockLocation1.counters[0]!.areas[0]!;
+        // if (!areaToUpdate) throw new Error("Area to update is undefined in test setup"); // Already asserted by !
+        const updatedAreaData: Area = {
+            ...areaToUpdate,
+            id: areaToUpdate.id, // Be explicit
+            name: 'Top Shelf Deluxe',
+            displayOrder: 0,
+            inventoryItems: areaToUpdate.inventoryItems, // Be explicit
+        };
+        await locationStore.updateArea(locId, counterId, updatedAreaData);
 
-      locationStore.setLocation(undefined);
-      expect(locationStore.currentLocation).toBeNull();
+        const location = locationStore.getLocationById(locId);
+        const counter = location?.counters.find(c => c.id === counterId);
+        expect(counter?.areas.find(a => a.id === areaToUpdate.id)?.name).toBe('Top Shelf Deluxe');
+        expect(dbService.saveLocation).toHaveBeenCalledWith(location);
+        // Check sort order (updatedArea now has order 0)
+        expect(counter?.areas[0]!.name).toBe('Top Shelf Deluxe');
     });
 
-    it("should handle location with additional properties", () => {
-      const location = {
-        lat: 40.7128,
-        lng: -74.006,
-        name: "New York",
-        address: "123 Main St",
-        timestamp: Date.now()
+    it('deleteArea should remove an area from a counter', async () => {
+        const areaIdToDelete = mockLocation1.counters[0]!.areas[0]!.id; // Added !
+        await locationStore.deleteArea(locId, counterId, areaIdToDelete);
+
+        const location = locationStore.getLocationById(locId);
+        const counter = location?.counters.find(c => c.id === counterId);
+        expect(counter?.areas.find(a => a.id === areaIdToDelete)).toBeUndefined();
+        expect(dbService.saveLocation).toHaveBeenCalledWith(location);
+    });
+  });
+
+  describe('getLocationById', () => {
+    it('should return a location if found', async () => {
+        await locationStore.loadLocations();
+        const found = locationStore.getLocationById(mockLocation1.id);
+        expect(found).toEqual(initialMockLocations[0]); // initialMockLocations is what loadLocations returns
+    });
+    it('should return undefined if location not found', async () => {
+        await locationStore.loadLocations();
+        const notFound = locationStore.getLocationById('non-existent-id');
+        expect(notFound).toBeUndefined();
+    });
+  });
+});
+
+  describe('Error Handling', () => {
+    it('should handle dbService.loadLocations failure', async () => {
+      const error = new Error('Database connection failed');
+      (dbService.loadLocations as jest.Mock).mockRejectedValueOnce(error);
+      
+      await expect(locationStore.loadLocations()).rejects.toThrow('Database connection failed');
+    });
+
+    it('should handle dbService.saveLocation failure in addLocation', async () => {
+      const error = new Error('Save operation failed');
+      (dbService.saveLocation as jest.Mock).mockRejectedValueOnce(error);
+      
+      await expect(locationStore.addLocation({ name: 'Test Location' })).rejects.toThrow('Save operation failed');
+    });
+
+    it('should handle dbService.saveLocation failure in updateLocation', async () => {
+      await locationStore.loadLocations();
+      const error = new Error('Update operation failed');
+      (dbService.saveLocation as jest.Mock).mockRejectedValueOnce(error);
+      
+      await expect(locationStore.updateLocation(initialMockLocations[0]!)).rejects.toThrow('Update operation failed');
+    });
+
+    it('should handle dbService.delete failure', async () => {
+      await locationStore.loadLocations();
+      const error = new Error('Delete operation failed');
+      (dbService.delete as jest.Mock).mockRejectedValueOnce(error);
+      
+      await expect(locationStore.deleteLocation(initialMockLocations[0]!.id)).rejects.toThrow('Delete operation failed');
+    });
+  });
+
+  describe('Input Validation', () => {
+    it('should throw error for null location name', async () => {
+      await expect(locationStore.addLocation({ name: null as any })).rejects.toThrow();
+    });
+
+    it('should throw error for undefined location name', async () => {
+      await expect(locationStore.addLocation({ name: undefined as any })).rejects.toThrow();
+    });
+
+    it('should throw error for location name with only whitespace', async () => {
+      await expect(locationStore.addLocation({ name: '   \t\n   ' })).rejects.toThrow('Standortname darf nicht leer sein');
+    });
+
+    it('should handle empty address gracefully', async () => {
+      const newLocation = await locationStore.addLocation({ name: 'Test Location', address: '' });
+      expect(newLocation.address).toBe('');
+    });
+
+    it('should handle missing address gracefully', async () => {
+      const newLocation = await locationStore.addLocation({ name: 'Test Location' });
+      expect(newLocation.address).toBeUndefined();
+    });
+
+    it('should throw error for counter name with only whitespace', async () => {
+      await locationStore.loadLocations();
+      await expect(locationStore.addCounter(mockLocation1.id, { name: '   ' })).rejects.toThrow();
+    });
+
+    it('should throw error for area name with only whitespace', async () => {
+      await locationStore.loadLocations();
+      const counterId = mockLocation1.counters[0]!.id;
+      await expect(locationStore.addArea(mockLocation1.id, counterId, { name: '   ' })).rejects.toThrow();
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle updating non-existent location', async () => {
+      await locationStore.loadLocations();
+      const nonExistentLocation: Location = {
+        id: 'non-existent-id',
+        name: 'Non-existent Location',
+        address: 'Nowhere',
+        counters: []
       };
-
-      locationStore.setLocation(location);
-
-      expect(locationStore.currentLocation).toEqual(location);
-    });
-  });
-
-  describe("clearLocation", () => {
-    it("should clear current location", () => {
-      locationStore.setLocation({ lat: 40.7128, lng: -74.006 });
-
-      locationStore.clearLocation();
-
-      expect(locationStore.currentLocation).toBeNull();
-      expect(locationStore.error).toBeNull();
+      
+      await expect(locationStore.updateLocation(nonExistentLocation)).rejects.toThrow();
     });
 
-    it("should clear location when already null", () => {
-      expect(locationStore.currentLocation).toBeNull();
-
-      locationStore.clearLocation();
-
-      expect(locationStore.currentLocation).toBeNull();
-    });
-  });
-
-  describe("setLoading", () => {
-    it("should set loading state to true", () => {
-      locationStore.setLoading(true);
-
-      expect(locationStore.isLoading).toBe(true);
+    it('should handle deleting non-existent location', async () => {
+      await locationStore.loadLocations();
+      await expect(locationStore.deleteLocation('non-existent-id')).rejects.toThrow();
     });
 
-    it("should set loading state to false", () => {
-      locationStore.setLoading(false);
-
-      expect(locationStore.isLoading).toBe(false);
+    it('should handle adding counter to non-existent location', async () => {
+      await locationStore.loadLocations();
+      await expect(locationStore.addCounter('non-existent-id', { name: 'Test Counter' })).rejects.toThrow();
     });
 
-    it("should clear error when setting loading to true", () => {
-      locationStore.setError("Some error");
-
-      locationStore.setLoading(true);
-
-      expect(locationStore.isLoading).toBe(true);
-      expect(locationStore.error).toBeNull();
-    });
-
-    it("should not affect current location when setting loading state", () => {
-      const location = { lat: 40.7128, lng: -74.006 };
-      locationStore.setLocation(location);
-
-      locationStore.setLoading(true);
-
-      expect(locationStore.currentLocation).toEqual(location);
-      expect(locationStore.isLoading).toBe(true);
-    });
-  });
-
-  describe("setError", () => {
-    it("should set error message", () => {
-      const errorMessage = "Location access denied";
-
-      locationStore.setError(errorMessage);
-
-      expect(locationStore.error).toBe(errorMessage);
-      expect(locationStore.isLoading).toBe(false);
-    });
-
-    it("should handle error objects", () => {
-      const error = new Error("Network error");
-
-      locationStore.setError(error.message);
-
-      expect(locationStore.error).toBe("Network error");
-    });
-
-    it("should clear loading state when setting error", () => {
-      locationStore.setLoading(true);
-
-      locationStore.setError("Some error");
-
-      expect(locationStore.isLoading).toBe(false);
-      expect(locationStore.error).toBe("Some error");
-    });
-
-    it("should handle null or empty error", () => {
-      locationStore.setError(null);
-      expect(locationStore.error).toBeNull();
-
-      locationStore.setError("");
-      expect(locationStore.error).toBe("");
-    });
-
-    it("should handle undefined error", () => {
-      locationStore.setError(undefined);
-      expect(locationStore.error).toBeNull();
-    });
-  });
-
-  describe("clearError", () => {
-    it("should clear existing error", () => {
-      locationStore.setError("Some error");
-
-      locationStore.clearError();
-
-      expect(locationStore.error).toBeNull();
-    });
-
-    it("should handle clearing when no error exists", () => {
-      expect(locationStore.error).toBeNull();
-
-      locationStore.clearError();
-
-      expect(locationStore.error).toBeNull();
-    });
-
-    it("should not affect loading state when clearing error", () => {
-      locationStore.setLoading(true);
-      locationStore.setError("Some error");
-
-      locationStore.clearError();
-
-      expect(locationStore.error).toBeNull();
-      expect(locationStore.isLoading).toBe(false);
-    });
-  });
-
-  describe("getCurrentPosition", () => {
-    beforeEach(() => {
-      // Mock geolocation API
-      Object.defineProperty(global.navigator, "geolocation", {
-        value: {
-          getCurrentPosition: vi.fn()
-        },
-        configurable: true
-      });
-    });
-
-    it("should successfully get current position", async () => {
-      const mockPosition = {
-        coords: {
-          latitude: 37.7749,
-          longitude: -122.4194,
-          accuracy: 10
-        }
+    it('should handle updating non-existent counter', async () => {
+      await locationStore.loadLocations();
+      const nonExistentCounter: Counter = {
+        id: 'non-existent-counter',
+        name: 'Non-existent Counter',
+        description: 'Does not exist',
+        areas: []
       };
-
-      vi.mocked(navigator.geolocation.getCurrentPosition).mockImplementation(
-        success => success(mockPosition)
-      );
-
-      await locationStore.getCurrentPosition();
-
-      expect(locationStore.currentLocation).toEqual({
-        lat: 37.7749,
-        lng: -122.4194
-      });
-      expect(locationStore.isLoading).toBe(false);
-      expect(locationStore.error).toBeNull();
+      
+      await expect(locationStore.updateCounter(mockLocation1.id, nonExistentCounter)).rejects.toThrow();
     });
 
-    it("should handle geolocation permission denied error", async () => {
-      const mockError = { code: 1, message: "Permission denied" };
-
-      vi.mocked(navigator.geolocation.getCurrentPosition).mockImplementation(
-        (success, error) => error(mockError)
-      );
-
-      await locationStore.getCurrentPosition();
-
-      expect(locationStore.currentLocation).toBeNull();
-      expect(locationStore.isLoading).toBe(false);
-      expect(locationStore.error).toContain("Permission denied");
+    it('should handle deleting non-existent counter', async () => {
+      await locationStore.loadLocations();
+      await expect(locationStore.deleteCounter(mockLocation1.id, 'non-existent-counter')).rejects.toThrow();
     });
 
-    it("should handle geolocation position unavailable error", async () => {
-      const mockError = { code: 2, message: "Position unavailable" };
-
-      vi.mocked(navigator.geolocation.getCurrentPosition).mockImplementation(
-        (success, error) => error(mockError)
-      );
-
-      await locationStore.getCurrentPosition();
-
-      expect(locationStore.error).toContain("Position unavailable");
+    it('should handle adding area to non-existent counter', async () => {
+      await locationStore.loadLocations();
+      await expect(locationStore.addArea(mockLocation1.id, 'non-existent-counter', { name: 'Test Area' })).rejects.toThrow();
     });
 
-    it("should handle geolocation timeout error", async () => {
-      const mockError = { code: 3, message: "Timeout" };
-
-      vi.mocked(navigator.geolocation.getCurrentPosition).mockImplementation(
-        (success, error) => error(mockError)
-      );
-
-      await locationStore.getCurrentPosition();
-
-      expect(locationStore.error).toContain("Timeout");
-    });
-
-    it("should handle geolocation not available", async () => {
-      Object.defineProperty(global.navigator, "geolocation", {
-        value: undefined,
-        configurable: true
-      });
-
-      await locationStore.getCurrentPosition();
-
-      expect(locationStore.error).toContain("Geolocation is not supported");
-    });
-
-    it("should set loading state during position request", () => {
-      vi.mocked(navigator.geolocation.getCurrentPosition).mockImplementation(
-        success => {
-          expect(locationStore.isLoading).toBe(true);
-          success({
-            coords: { latitude: 0, longitude: 0, accuracy: 10 }
-          });
-        }
-      );
-
-      locationStore.getCurrentPosition();
-    });
-
-    it("should handle position with additional coordinate properties", async () => {
-      const mockPosition = {
-        coords: {
-          latitude: 37.7749,
-          longitude: -122.4194,
-          accuracy: 10,
-          altitude: 100,
-          altitudeAccuracy: 5,
-          heading: 45,
-          speed: 0
-        },
-        timestamp: Date.now()
+    it('should handle updating non-existent area', async () => {
+      await locationStore.loadLocations();
+      const counterId = mockLocation1.counters[0]!.id;
+      const nonExistentArea: Area = {
+        id: 'non-existent-area',
+        name: 'Non-existent Area',
+        displayOrder: 1,
+        inventoryItems: []
       };
+      
+      await expect(locationStore.updateArea(mockLocation1.id, counterId, nonExistentArea)).rejects.toThrow();
+    });
 
-      vi.mocked(navigator.geolocation.getCurrentPosition).mockImplementation(
-        success => success(mockPosition)
-      );
-
-      await locationStore.getCurrentPosition();
-
-      expect(locationStore.currentLocation).toEqual({
-        lat: 37.7749,
-        lng: -122.4194
-      });
+    it('should handle deleting non-existent area', async () => {
+      await locationStore.loadLocations();
+      const counterId = mockLocation1.counters[0]!.id;
+      await expect(locationStore.deleteArea(mockLocation1.id, counterId, 'non-existent-area')).rejects.toThrow();
     });
   });
 
-  describe("calculateDistance", () => {
-    it("should calculate distance between two points", () => {
-      const point1 = { lat: 40.7128, lng: -74.006 }; // New York
-      const point2 = { lat: 34.0522, lng: -118.2437 }; // Los Angeles
-
-      const distance = locationStore.calculateDistance(point1, point2);
-
-      expect(distance).toBeGreaterThan(0);
-      expect(distance).toBeCloseTo(3944, 0); // Approximate distance in km
+  describe('Subscription Management', () => {
+    it('should handle multiple subscribers', async () => {
+      const subscriber1 = jest.fn();
+      const subscriber2 = jest.fn();
+      const subscriber3 = jest.fn();
+      
+      locationStore.subscribe(subscriber1);
+      locationStore.subscribe(subscriber2);
+      locationStore.subscribe(subscriber3);
+      
+      await locationStore.loadLocations();
+      
+      expect(subscriber1).toHaveBeenCalledWith(initialMockLocations);
+      expect(subscriber2).toHaveBeenCalledWith(initialMockLocations);
+      expect(subscriber3).toHaveBeenCalledWith(initialMockLocations);
     });
 
-    it("should return 0 for same coordinates", () => {
-      const point = { lat: 40.7128, lng: -74.006 };
-
-      const distance = locationStore.calculateDistance(point, point);
-
-      expect(distance).toBe(0);
+    it('should handle unsubscribe functionality', async () => {
+      const subscriber = jest.fn();
+      const unsubscribe = locationStore.subscribe(subscriber);
+      
+      await locationStore.loadLocations();
+      expect(subscriber).toHaveBeenCalledTimes(1);
+      
+      unsubscribe();
+      await locationStore.addLocation({ name: 'New Location' });
+      
+      // Should not be called again after unsubscribe
+      expect(subscriber).toHaveBeenCalledTimes(1);
     });
 
-    it("should handle edge case coordinates", () => {
-      const point1 = { lat: 90, lng: 180 };
-      const point2 = { lat: -90, lng: -180 };
-
-      const distance = locationStore.calculateDistance(point1, point2);
-
-      expect(distance).toBeGreaterThan(0);
-      expect(typeof distance).toBe("number");
-    });
-
-    it("should calculate distance between antipodal points", () => {
-      const point1 = { lat: 0, lng: 0 };
-      const point2 = { lat: 0, lng: 180 };
-
-      const distance = locationStore.calculateDistance(point1, point2);
-
-      expect(distance).toBeCloseTo(20015, 0); // Half of Earth's circumference
-    });
-
-    it("should handle small distance calculations", () => {
-      const point1 = { lat: 40.7128, lng: -74.006 };
-      const point2 = { lat: 40.7129, lng: -74.0061 };
-
-      const distance = locationStore.calculateDistance(point1, point2);
-
-      expect(distance).toBeGreaterThan(0);
-      expect(distance).toBeLessThan(1); // Less than 1 km
-    });
-
-    it("should throw error for invalid coordinates", () => {
-      const validPoint = { lat: 40.7128, lng: -74.006 };
-      const invalidPoint = { lat: 91, lng: 0 };
-
-      expect(() =>
-        locationStore.calculateDistance(validPoint, invalidPoint)
-      ).toThrow("Invalid coordinates");
-    });
-
-    it("should throw error for null or undefined coordinates", () => {
-      const validPoint = { lat: 40.7128, lng: -74.006 };
-
-      expect(() => locationStore.calculateDistance(validPoint, null)).toThrow(
-        "Invalid coordinates"
-      );
-
-      expect(() => locationStore.calculateDistance(null, validPoint)).toThrow(
-        "Invalid coordinates"
-      );
+    it('should handle subscriber throwing error', async () => {
+      const goodSubscriber = jest.fn();
+      const badSubscriber = jest.fn().mockImplementation(() => {
+        throw new Error('Subscriber error');
+      });
+      
+      locationStore.subscribe(goodSubscriber);
+      locationStore.subscribe(badSubscriber);
+      
+      // Should not throw even if one subscriber fails
+      await expect(locationStore.loadLocations()).resolves.not.toThrow();
+      expect(goodSubscriber).toHaveBeenCalled();
     });
   });
 
-  describe("isLocationValid", () => {
-    it("should return true for valid coordinates", () => {
-      const validLocations = [
-        { lat: 0, lng: 0 },
-        { lat: 40.7128, lng: -74.006 },
-        { lat: -33.8688, lng: 151.2093 },
-        { lat: 90, lng: 180 },
-        { lat: -90, lng: -180 },
-        { lat: 89.9999, lng: 179.9999 },
-        { lat: -89.9999, lng: -179.9999 }
-      ];
-
-      validLocations.forEach(location => {
-        expect(locationStore.isLocationValid(location)).toBe(true);
-      });
+  describe('Data Consistency', () => {
+    it('should maintain proper area display order after multiple operations', async () => {
+      await locationStore.loadLocations();
+      const locId = mockLocation1.id;
+      const counterId = mockLocation1.counters[0]!.id;
+      
+      // Add multiple areas with different display orders
+      await locationStore.addArea(locId, counterId, { name: 'Area 2', displayOrder: 2 });
+      await locationStore.addArea(locId, counterId, { name: 'Area 0', displayOrder: 0 });
+      await locationStore.addArea(locId, counterId, { name: 'Area 3', displayOrder: 3 });
+      
+      const location = locationStore.getLocationById(locId);
+      const counter = location?.counters.find(c => c.id === counterId);
+      const areaNames = counter?.areas.map(a => a.name);
+      
+      expect(areaNames).toEqual(['Area 0', 'Top Shelf', 'Area 2', 'Area 3']);
     });
 
-    it("should return false for invalid coordinates", () => {
-      const invalidLocations = [
-        { lat: 91, lng: 0 },
-        { lat: -91, lng: 0 },
-        { lat: 0, lng: 181 },
-        { lat: 0, lng: -181 },
-        { lat: NaN, lng: 0 },
-        { lat: 0, lng: NaN },
-        { lat: Infinity, lng: 0 },
-        { lat: 0, lng: -Infinity },
-        null,
-        undefined,
-        {},
-        { lat: 0 }, // missing lng
-        { lng: 0 }, // missing lat
-        { lat: "40.7128", lng: -74.006 }, // string coordinates
-        { lat: 40.7128, lng: "-74.0060" }
-      ];
-
-      invalidLocations.forEach(location => {
-        expect(locationStore.isLocationValid(location)).toBe(false);
-      });
-    });
-
-    it("should handle edge cases", () => {
-      expect(locationStore.isLocationValid({ lat: 0, lng: 0 })).toBe(true);
-      expect(locationStore.isLocationValid({ lat: -0, lng: -0 })).toBe(true);
-    });
-  });
-
-  describe("getLocationHistory", () => {
-    it("should return empty history initially", () => {
-      expect(locationStore.getLocationHistory()).toEqual([]);
-    });
-
-    it("should track location history", () => {
-      const locations = [
-        { lat: 40.7128, lng: -74.006, name: "New York" },
-        { lat: 34.0522, lng: -118.2437, name: "Los Angeles" },
-        { lat: 37.7749, lng: -122.4194, name: "San Francisco" }
-      ];
-
-      locations.forEach(location => {
-        locationStore.setLocation(location);
-      });
-
-      const history = locationStore.getLocationHistory();
-      expect(history).toHaveLength(3);
-      expect(history).toEqual(locations);
-    });
-
-    it("should limit history size", () => {
-      // Add more locations than the limit
-      for (let i = 0; i < 15; i++) {
-        locationStore.setLocation({ lat: i, lng: i });
-      }
-
-      const history = locationStore.getLocationHistory();
-      expect(history.length).toBe(10); // Assuming max history is 10
-      expect(history[0]).toEqual({ lat: 5, lng: 5 }); // Oldest kept
-      expect(history[9]).toEqual({ lat: 14, lng: 14 }); // Newest
-    });
-  });
-
-  describe("clearLocationHistory", () => {
-    it("should clear location history", () => {
-      locationStore.setLocation({ lat: 40.7128, lng: -74.006 });
-      locationStore.setLocation({ lat: 34.0522, lng: -118.2437 });
-
-      locationStore.clearLocationHistory();
-
-      expect(locationStore.getLocationHistory()).toEqual([]);
-    });
-  });
-
-  describe("state management integration", () => {
-    it("should maintain state consistency during operations", () => {
-      // Test state transitions
-      expect(locationStore.isLoading).toBe(false);
-      expect(locationStore.currentLocation).toBeNull();
-      expect(locationStore.error).toBeNull();
-
-      locationStore.setLoading(true);
-      expect(locationStore.isLoading).toBe(true);
-      expect(locationStore.error).toBeNull();
-
-      locationStore.setLocation({ lat: 40.7128, lng: -74.006 });
-      expect(locationStore.currentLocation).toBeDefined();
-      expect(locationStore.isLoading).toBe(false);
-
-      locationStore.setError("Test error");
-      expect(locationStore.error).toBe("Test error");
-      expect(locationStore.isLoading).toBe(false);
-    });
-
-    it("should handle rapid state changes", () => {
-      for (let i = 0; i < 100; i++) {
-        locationStore.setLoading(i % 2 === 0);
-        locationStore.setLocation({ lat: i % 90, lng: i % 180 });
-        if (i % 10 === 0) {
-          locationStore.setError(`Error ${i}`);
-          locationStore.clearError();
-        }
-      }
-
-      expect(locationStore.currentLocation).toEqual({
-        lat: 99 % 90,
-        lng: 99 % 180
-      });
-      expect(locationStore.isLoading).toBe(false);
-      expect(locationStore.error).toBeNull();
-    });
-
-    it("should handle concurrent operations", async () => {
-      // Mock geolocation
-      Object.defineProperty(global.navigator, "geolocation", {
-        value: {
-          getCurrentPosition: vi.fn().mockImplementation(success => {
-            setTimeout(
-              () =>
-                success({
-                  coords: { latitude: 37.7749, longitude: -122.4194 }
-                }),
-              100
-            );
-          })
-        },
-        configurable: true
-      });
-
-      // Start multiple operations
-      const promises = [
-        locationStore.getCurrentPosition(),
-        locationStore.getCurrentPosition(),
-        locationStore.getCurrentPosition()
-      ];
-
-      await Promise.all(promises);
-
-      expect(locationStore.currentLocation).toEqual({
-        lat: 37.7749,
-        lng: -122.4194
-      });
-      expect(locationStore.isLoading).toBe(false);
-    });
-  });
-
-  describe("integration scenarios", () => {
-    it("should handle complete location workflow", async () => {
-      // Mock successful geolocation
-      const mockPosition = {
-        coords: { latitude: 37.7749, longitude: -122.4194 }
+    it('should preserve inventory items when updating areas', async () => {
+      await locationStore.loadLocations();
+      const locId = mockLocation1.id;
+      const counterId = mockLocation1.counters[0]!.id;
+      const areaId = mockLocation1.counters[0]!.areas[0]!.id;
+      
+      // Add inventory items to the area
+      const location = locationStore.getLocationById(locId)!;
+      const counter = location.counters.find(c => c.id === counterId)!;
+      const area = counter.areas.find(a => a.id === areaId)!;
+      
+      area.inventoryItems.push({ id: 'item1', name: 'Test Item' } as any);
+      await locationStore.updateLocation(location);
+      
+      // Update area name
+      const updatedArea: Area = {
+        ...area,
+        name: 'Updated Area Name'
       };
-
-      vi.mocked(navigator.geolocation.getCurrentPosition).mockImplementation(
-        success => success(mockPosition)
-      );
-
-      // Start location request
-      await locationStore.getCurrentPosition();
-
-      // Verify location was set
-      expect(locationStore.currentLocation).toEqual({
-        lat: 37.7749,
-        lng: -122.4194
-      });
-
-      // Calculate distance to another point
-      const distance = locationStore.calculateDistance(
-        locationStore.currentLocation,
-        { lat: 40.7128, lng: -74.006 }
-      );
-
-      expect(distance).toBeGreaterThan(0);
-
-      // Verify location is in history
-      expect(locationStore.getLocationHistory()).toContain(
-        expect.objectContaining({
-          lat: 37.7749,
-          lng: -122.4194
-        })
-      );
-
-      // Clear location
-      locationStore.clearLocation();
-      expect(locationStore.currentLocation).toBeNull();
-    });
-
-    it("should handle error recovery workflow", async () => {
-      // Set an error
-      locationStore.setError("Initial error");
-      expect(locationStore.error).toBe("Initial error");
-
-      // Start loading (should clear error)
-      locationStore.setLoading(true);
-      expect(locationStore.error).toBeNull();
-      expect(locationStore.isLoading).toBe(true);
-
-      // Set location (should stop loading)
-      locationStore.setLocation({ lat: 40.7128, lng: -74.006 });
-      expect(locationStore.isLoading).toBe(false);
-      expect(locationStore.currentLocation).toBeDefined();
-
-      // Verify error is still cleared
-      expect(locationStore.error).toBeNull();
-    });
-
-    it("should handle location permission workflow", async () => {
-      // Mock permission denied
-      vi.mocked(navigator.geolocation.getCurrentPosition).mockImplementation(
-        (success, error) => error({ code: 1, message: "Permission denied" })
-      );
-
-      await locationStore.getCurrentPosition();
-
-      expect(locationStore.error).toContain("Permission denied");
-      expect(locationStore.currentLocation).toBeNull();
-
-      // Clear error and try manual location
-      locationStore.clearError();
-      locationStore.setLocation({ lat: 40.7128, lng: -74.006 });
-
-      expect(locationStore.error).toBeNull();
-      expect(locationStore.currentLocation).toBeDefined();
+      await locationStore.updateArea(locId, counterId, updatedArea);
+      
+      const updatedLocation = locationStore.getLocationById(locId);
+      const updatedCounter = updatedLocation?.counters.find(c => c.id === counterId);
+      const finalArea = updatedCounter?.areas.find(a => a.id === areaId);
+      
+      expect(finalArea?.inventoryItems).toHaveLength(1);
+      expect(finalArea?.inventoryItems[0]?.name).toBe('Test Item');
     });
   });
 
-  describe("edge cases and stress tests", () => {
-    it("should handle extremely large coordinate numbers", () => {
-      // Test with valid but large numbers
-      const locations = [
-        { lat: 89.999999, lng: 179.999999 },
-        { lat: -89.999999, lng: -179.999999 }
+  describe('Complex Operations', () => {
+    it('should handle rapid consecutive operations', async () => {
+      await locationStore.loadLocations();
+      
+      // Perform multiple operations in quick succession
+      const operations = [
+        locationStore.addLocation({ name: 'Location 1' }),
+        locationStore.addLocation({ name: 'Location 2' }),
+        locationStore.addLocation({ name: 'Location 3' }),
       ];
-
-      locations.forEach(location => {
-        expect(() => locationStore.setLocation(location)).not.toThrow();
-        expect(locationStore.isLocationValid(location)).toBe(true);
-      });
+      
+      const results = await Promise.all(operations);
+      
+      expect(results).toHaveLength(3);
+      expect(locationStore.getLocations()).toHaveLength(5); // 2 initial + 3 new
     });
 
-    it("should handle precision edge cases", () => {
-      const location = { lat: 40.71280000000001, lng: -74.00600000000001 };
+    it('should handle location with deeply nested structure', async () => {
+      const complexLocation = {
+        name: 'Complex Location',
+        address: '123 Complex St',
+        counters: []
+      };
+      
+      const newLocation = await locationStore.addLocation(complexLocation);
+      
+      // Add multiple counters with multiple areas each
+      const counter1 = await locationStore.addCounter(newLocation.id, { name: 'Counter 1' });
+      const counter2 = await locationStore.addCounter(newLocation.id, { name: 'Counter 2' });
+      
+      await locationStore.addArea(newLocation.id, counter1.id, { name: 'Area 1-1', displayOrder: 1 });
+      await locationStore.addArea(newLocation.id, counter1.id, { name: 'Area 1-2', displayOrder: 2 });
+      await locationStore.addArea(newLocation.id, counter2.id, { name: 'Area 2-1', displayOrder: 1 });
+      
+      const finalLocation = locationStore.getLocationById(newLocation.id);
+      
+      expect(finalLocation?.counters).toHaveLength(2);
+      expect(finalLocation?.counters[0]?.areas).toHaveLength(2);
+      expect(finalLocation?.counters[1]?.areas).toHaveLength(1);
+    });
+  });
 
-      locationStore.setLocation(location);
-      expect(locationStore.currentLocation).toEqual(location);
-
-      const distance = locationStore.calculateDistance(location, location);
-      expect(distance).toBe(0);
+  describe('State Management', () => {
+    it('should return immutable data from getLocations', async () => {
+      await locationStore.loadLocations();
+      const locations1 = locationStore.getLocations();
+      const locations2 = locationStore.getLocations();
+      
+      // Should return different array instances
+      expect(locations1).not.toBe(locations2);
+      expect(locations1).toEqual(locations2);
     });
 
-    it("should handle memory cleanup", () => {
-      // Create many locations to test memory management
-      for (let i = 0; i < 1000; i++) {
-        locationStore.setLocation({
-          lat: Math.random() * 180 - 90,
-          lng: Math.random() * 360 - 180
-        });
-      }
+    it('should return immutable data from getLocationById', async () => {
+      await locationStore.loadLocations();
+      const location1 = locationStore.getLocationById(mockLocation1.id);
+      const location2 = locationStore.getLocationById(mockLocation1.id);
+      
+      // Should return different object instances
+      expect(location1).not.toBe(location2);
+      expect(location1).toEqual(location2);
+    });
 
-      locationStore.clearLocation();
-      locationStore.clearLocationHistory();
+    it('should not allow external modification of returned data', async () => {
+      await locationStore.loadLocations();
+      const locations = locationStore.getLocations();
+      
+      // Attempt to modify returned data
+      locations.push({ id: 'hacked', name: 'Hacked Location', address: '', counters: [] });
+      
+      // Should not affect internal state
+      const freshLocations = locationStore.getLocations();
+      expect(freshLocations).toHaveLength(2);
+      expect(freshLocations.find(l => l.id === 'hacked')).toBeUndefined();
+    });
+  });
 
-      expect(locationStore.currentLocation).toBeNull();
-      expect(locationStore.getLocationHistory()).toEqual([]);
+  describe('ID Generation', () => {
+    it('should generate unique IDs for locations', async () => {
+      const location1 = await locationStore.addLocation({ name: 'Location 1' });
+      const location2 = await locationStore.addLocation({ name: 'Location 2' });
+      
+      expect(location1.id).not.toBe(location2.id);
+      expect(location1.id).toMatch(/^loc-/);
+      expect(location2.id).toMatch(/^loc-/);
+    });
+
+    it('should generate unique IDs for counters', async () => {
+      await locationStore.loadLocations();
+      const counter1 = await locationStore.addCounter(mockLocation1.id, { name: 'Counter 1' });
+      const counter2 = await locationStore.addCounter(mockLocation1.id, { name: 'Counter 2' });
+      
+      expect(counter1.id).not.toBe(counter2.id);
+      expect(counter1.id).toMatch(/^ctr-/);
+      expect(counter2.id).toMatch(/^ctr-/);
+    });
+
+    it('should generate unique IDs for areas', async () => {
+      await locationStore.loadLocations();
+      const counterId = mockLocation1.counters[0]!.id;
+      const area1 = await locationStore.addArea(mockLocation1.id, counterId, { name: 'Area 1' });
+      const area2 = await locationStore.addArea(mockLocation1.id, counterId, { name: 'Area 2' });
+      
+      expect(area1.id).not.toBe(area2.id);
+      expect(area1.id).toMatch(/^area-/);
+      expect(area2.id).toMatch(/^area-/);
+    });
+  });
+
+  describe('Reset Functionality', () => {
+    it('should clear all data when reset is called', async () => {
+      await locationStore.loadLocations();
+      expect(locationStore.getLocations()).toHaveLength(2);
+      
+      locationStore.reset();
+      
+      expect(locationStore.getLocations()).toHaveLength(0);
+    });
+
+    it('should clear subscribers when reset is called', async () => {
+      const subscriber = jest.fn();
+      locationStore.subscribe(subscriber);
+      
+      await locationStore.loadLocations();
+      expect(subscriber).toHaveBeenCalledTimes(1);
+      
+      locationStore.reset();
+      await locationStore.addLocation({ name: 'Test Location' });
+      
+      // Subscriber should not be called after reset
+      expect(subscriber).toHaveBeenCalledTimes(1);
     });
   });
 });

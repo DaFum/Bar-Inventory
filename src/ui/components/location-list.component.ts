@@ -1,6 +1,7 @@
 import { BaseComponent } from '../core/base-component';
 import { Location } from '../../models';
-import { LocationListItemComponent, LocationListItemCallbacks } from './location-list-item.component';
+import { LocationListItemComponent } from './location-list-item.component';
+import type { LocationListItemCallbacks } from './location-list-item.component'; // Import type
 
 /**
  * Component responsible for rendering the list of locations.
@@ -142,7 +143,9 @@ export class LocationListComponent extends BaseComponent<HTMLDivElement> {
             return;
         }
 
-        const oldLocation = this.locations[index];
+        const oldLocationAtIndex = this.locations[index]!; // Assert non-null, as index is valid
+        const oldName = oldLocationAtIndex.name; // Store old name before updating array
+
         this.locations[index] = location; // Update in the internal array
 
         const itemComponent = this.listItemComponents.get(location.id);
@@ -153,7 +156,7 @@ export class LocationListComponent extends BaseComponent<HTMLDivElement> {
 
         itemComponent.update(location); // Update the content of the specific list item
 
-        if (oldLocation.name.localeCompare(location.name) !== 0) { // Check if name (sort key) changed
+        if (oldName.localeCompare(location.name) !== 0) { // Use stored oldName for comparison
             this.locations = this.sortLocations(this.locations); // Re-sort the internal array
 
             const currentElement = itemComponent.getElement();

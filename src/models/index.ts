@@ -63,8 +63,8 @@ export interface InventoryState {
 
 // User roles as defined in devplan.md
 export enum UserRole {
-  MANAGER = "Manager",
-  MITARBEITER = "Mitarbeiter" // Employee
+  MANAGER = 'Manager',
+  MITARBEITER = 'Mitarbeiter', // Employee
 }
 
 export interface User {

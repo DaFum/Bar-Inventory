@@ -1,5 +1,5 @@
-import { Product } from "../models";
-import { dbService } from "../services/indexeddb.service";
+import { Product } from '../models';
+import { dbService } from '../services/indexeddb.service';
 // generateId might be needed if the store takes responsibility for ID creation for new products.
 // For now, assuming Product objects passed to addProduct already have an ID.
 
@@ -24,13 +24,18 @@ class ProductStore {
       const catB = b.category.toLowerCase();
       if (catA < catB) return -1;
       if (catA > catB) return 1;
-      return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+      // If categories are the same, sort by name
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
+      if (nameA < nameB) return -1;
+      if (nameA > nameB) return 1;
+      return 0; // Products are identical for sorting purposes
     });
   }
 
   private notifySubscribers(): void {
     const sortedProducts = this.sortProducts(this.products);
-    this.subscribers.forEach(callback => callback(sortedProducts));
+    this.subscribers.forEach((callback) => callback(sortedProducts));
   }
 
   /**
@@ -52,7 +57,7 @@ class ProductStore {
    * @param callback - The callback function to remove.
    */
   unsubscribe(callback: ProductSubscriber): void {
-    this.subscribers = this.subscribers.filter(sub => sub !== callback);
+    this.subscribers = this.subscribers.filter((sub) => sub !== callback);
   }
 
   /**
@@ -71,7 +76,7 @@ class ProductStore {
       this.products = await dbService.loadProducts();
       this.notifySubscribers();
     } catch (error) {
-      console.error("ProductStore: Error loading products from DB", error);
+      console.error('ProductStore: Error loading products from DB', error);
       // Potentially re-throw or handle more gracefully for UI feedback
       throw error;
     }
@@ -91,7 +96,7 @@ class ProductStore {
       this.notifySubscribers();
       return product;
     } catch (error) {
-      console.error("ProductStore: Error adding product", error);
+      console.error('ProductStore: Error adding product', error);
       throw error;
     }
   }
@@ -104,7 +109,7 @@ class ProductStore {
   async updateProduct(product: Product): Promise<Product> {
     try {
       await dbService.saveProduct(product);
-      const index = this.products.findIndex(p => p.id === product.id);
+      const index = this.products.findIndex((p) => p.id === product.id);
       if (index !== -1) {
         this.products[index] = product;
       } else {
@@ -115,7 +120,7 @@ class ProductStore {
       this.notifySubscribers();
       return product;
     } catch (error) {
-      console.error("ProductStore: Error updating product", error);
+      console.error('ProductStore: Error updating product', error);
       throw error;
     }
   }
@@ -126,15 +131,15 @@ class ProductStore {
    */
   async deleteProduct(productId: string): Promise<void> {
     try {
-      await dbService.delete("products", productId);
-      this.products = this.products.filter(p => p.id !== productId);
+      await dbService.delete('products', productId);
+      this.products = this.products.filter((p) => p.id !== productId);
       this.notifySubscribers();
     } catch (error) {
-      console.error("ProductStore: Error deleting product", error);
+      console.error('ProductStore: Error deleting product', error);
       throw error;
     }
   }
 }
 
 export const productStore = new ProductStore();
-console.log("ProductStore initialized.");
+console.log('ProductStore initialized.');

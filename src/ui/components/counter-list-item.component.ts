@@ -1,7 +1,8 @@
 import { BaseComponent } from '../core/base-component';
 import { Counter, Location as LocationModel, Area } from '../../models'; // Renamed Location to avoid conflict
 import { escapeHtml } from '../../utils/security';
-import { AreaListComponent, AreaListItemCallbacks } from './area-list.component';
+import { AreaListComponent } from './area-list.component';
+import type { AreaListItemCallbacks } from './area-list-item.component'; // Corrected import
 import { AreaFormComponent, AreaFormComponentOptions } from './area-form.component';
 import { locationStore } from '../../state/location.store'; // To interact with areas
 import { showToast } from './toast-notifications';
@@ -75,6 +76,7 @@ export class CounterListItemComponent extends BaseComponent<HTMLDivElement> {
         deleteButton.addEventListener('click', () => this.callbacks.onDeleteCounter(this.counter.id, this.counter.name));
 
         buttonDiv.appendChild(editButton);
+        buttonDiv.appendChild(manageAreasButton); // Add the manage areas button here
         buttonDiv.appendChild(deleteButton);
 
         this.element.appendChild(nameSpan);
@@ -136,17 +138,40 @@ export class CounterListItemComponent extends BaseComponent<HTMLDivElement> {
             if (!currentCounter) throw new Error("Parent counter not found in store for area submission.");
 
             if (areaData.id) { // Editing existing Area
-                const updatedArea: Area = {
-                    ...(currentCounter.areas.find(a => a.id === areaData.id) || { inventoryItems: [] }), // Base for update
-                    id: areaData.id, // Ensure ID is present
+                const existingArea = currentCounter.areas.find(a => a.id === areaData.id);
+                if (!existingArea) {
+                    showToast(`Fehler: Zu bearbeitender Bereich (ID: ${areaData.id}) nicht gefunden.`, "error");
+                    throw new Error(`Area with ID ${areaData.id} not found for update.`);
+                }
+
+                const updatedAreaDataPayload: Area = {
+                    ...existingArea, // Start with existing properties
+                    id: areaData.id,
                     name: areaData.name,
-                    description: areaData.description,
-                    displayOrder: areaData.displayOrder,
                 };
-                await locationStore.updateArea(this.location.id, this.counter.id, updatedArea);
-                showToast(`Bereich "${updatedArea.name}" aktualisiert.`, "success");
+
+                if (areaData.description !== undefined) {
+                    updatedAreaDataPayload.description = areaData.description;
+                } else {
+                    delete updatedAreaDataPayload.description;
+                }
+
+                if (areaData.displayOrder !== undefined) {
+                    updatedAreaDataPayload.displayOrder = areaData.displayOrder;
+                } else {
+                    delete updatedAreaDataPayload.displayOrder;
+                }
+
+                await locationStore.updateArea(this.location.id, this.counter.id, updatedAreaDataPayload);
+                showToast(`Bereich "${updatedAreaDataPayload.name}" aktualisiert.`, "success");
             } else { // Adding new Area
-                const newArea = await locationStore.addArea(this.location.id, this.counter.id, areaData);
+                // Ensure we only pass properties expected by addArea (name, description, displayOrder)
+                const { name, description, displayOrder } = areaData;
+                const areaPayload: Pick<Area, 'name' | 'description' | 'displayOrder'> = { name };
+                if (description !== undefined) areaPayload.description = description;
+                if (displayOrder !== undefined) areaPayload.displayOrder = displayOrder;
+
+                const newArea = await locationStore.addArea(this.location.id, this.counter.id, areaPayload);
                 showToast(`Bereich "${newArea.name}" hinzugefügt.`, "success");
             }
             this.areaFormComponent.hide();

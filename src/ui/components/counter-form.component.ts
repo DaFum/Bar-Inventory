@@ -94,14 +94,20 @@ export class CounterFormComponent extends BaseComponent<HTMLDivElement> {
             return;
         }
 
-        const counterData: Pick<Counter, 'id' | 'name' | 'description'> = {
+        const nameValue = this.nameInput.value.trim();
+        const descriptionValue = this.descriptionInput.value.trim();
+
+        const counterDataToSubmit: Pick<Counter, 'id' | 'name' | 'description'> = {
             id: this.currentEditingCounter?.id || '',
-            name: this.nameInput.value.trim(),
-            description: this.descriptionInput.value.trim() || undefined,
+            name: nameValue,
         };
 
+        if (descriptionValue) { // Only add if not an empty string
+            counterDataToSubmit.description = descriptionValue;
+        }
+
         try {
-            await this.onSubmitCallback(counterData);
+            await this.onSubmitCallback(counterDataToSubmit);
         } catch (error) {
             // User feedback for store errors should be handled by the caller of the store method.
             console.error("CounterFormComponent: Error during submission callback", error);

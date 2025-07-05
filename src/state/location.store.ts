@@ -1,6 +1,6 @@
-import { Location, Counter, Area } from "../models";
-import { dbService } from "../services/indexeddb.service";
-import { generateId } from "../utils/helpers";
+import { Location, Counter, Area } from '../models';
+import { dbService } from '../services/indexeddb.service';
+import { generateId } from '../utils/helpers';
 
 type LocationSubscriber = (locations: Location[]) => void;
 
@@ -19,7 +19,7 @@ class LocationStore {
   private notifySubscribers(): void {
     // Locations are not currently sorted by default in the store before notifying.
     // Sorting can be handled by components if needed, or implemented here.
-    this.subscribers.forEach(callback => callback([...this.locations])); // Return a copy
+    this.subscribers.forEach((callback) => callback([...this.locations])); // Return a copy
   }
 
   /**
@@ -39,7 +39,7 @@ class LocationStore {
    * @param callback - The callback function to remove.
    */
   unsubscribe(callback: LocationSubscriber): void {
-    this.subscribers = this.subscribers.filter(sub => sub !== callback);
+    this.subscribers = this.subscribers.filter((sub) => sub !== callback);
   }
 
   /**
@@ -56,7 +56,7 @@ class LocationStore {
    * @returns The location if found, otherwise undefined.
    */
   getLocationById(locationId: string): Location | undefined {
-    return this.locations.find(loc => loc.id === locationId);
+    return this.locations.find((loc) => loc.id === locationId);
   }
 
   /**
@@ -67,7 +67,7 @@ class LocationStore {
       this.locations = await dbService.loadLocations();
       this.notifySubscribers();
     } catch (error) {
-      console.error("LocationStore: Error loading locations from DB", error);
+      console.error('LocationStore: Error loading locations from DB', error);
       throw error;
     }
   }
@@ -77,27 +77,28 @@ class LocationStore {
    * @param locationData - Object containing the name and optional address for the new location.
    * @returns The newly created location.
    */
-  async addLocation(
-    locationData: Pick<Location, "name" | "address">
-  ): Promise<Location> {
+  async addLocation(locationData: Pick<Location, 'name' | 'address'>): Promise<Location> {
     try {
       // Validierung
       if (!locationData.name?.trim()) {
-        throw new Error("Standortname darf nicht leer sein");
+        throw new Error('Standortname darf nicht leer sein');
       }
 
       const newLocation: Location = {
-        id: generateId("loc"),
+        id: generateId('loc'),
         name: locationData.name.trim(),
-        address: locationData.address,
-        counters: []
+        counters: [],
+        // Conditionally add address if provided, to comply with exactOptionalPropertyTypes
       };
+      if (locationData.address !== undefined) {
+        newLocation.address = locationData.address;
+      }
       await dbService.saveLocation(newLocation);
       this.locations.push(newLocation); // Add to local cache
       this.notifySubscribers();
       return newLocation;
     } catch (error) {
-      console.error("LocationStore: Error adding location", error);
+      console.error('LocationStore: Error adding location', error);
       throw error;
     }
   }
@@ -111,15 +112,15 @@ class LocationStore {
   async updateLocation(location: Location): Promise<Location> {
     try {
       // Ensure all nested IDs are present (though they should be if generated correctly)
-      location.counters.forEach(counter => {
-        counter.id = counter.id || generateId("ctr");
-        counter.areas.forEach(area => {
-          area.id = area.id || generateId("area");
+      location.counters.forEach((counter) => {
+        counter.id = counter.id || generateId('ctr');
+        counter.areas.forEach((area) => {
+          area.id = area.id || generateId('area');
         });
       });
 
       await dbService.saveLocation(location);
-      const index = this.locations.findIndex(l => l.id === location.id);
+      const index = this.locations.findIndex((l) => l.id === location.id);
       if (index !== -1) {
         this.locations[index] = location;
       } else {
@@ -128,7 +129,7 @@ class LocationStore {
       this.notifySubscribers();
       return location;
     } catch (error) {
-      console.error("LocationStore: Error updating location", error);
+      console.error('LocationStore: Error updating location', error);
       throw error;
     }
   }
@@ -139,11 +140,11 @@ class LocationStore {
    */
   async deleteLocation(locationId: string): Promise<void> {
     try {
-      await dbService.delete("locations", locationId);
-      this.locations = this.locations.filter(l => l.id !== locationId);
+      await dbService.delete('locations', locationId);
+      this.locations = this.locations.filter((l) => l.id !== locationId);
       this.notifySubscribers();
     } catch (error) {
-      console.error("LocationStore: Error deleting location", error);
+      console.error('LocationStore: Error deleting location', error);
       throw error;
     }
   }
@@ -158,43 +159,33 @@ class LocationStore {
    */
   async addCounter(
     locationId: string,
-    counterData: Pick<Counter, "name" | "description">
+    counterData: Pick<Counter, 'name' | 'description'>
   ): Promise<Counter> {
-    const location = this.locations.find(l => l.id === locationId); // Find in local cache
-    if (!location)
-      throw new Error(
-        `Location with id ${locationId} not found to add counter.`
-      );
+    const location = this.locations.find((l) => l.id === locationId); // Find in local cache
+    if (!location) throw new Error(`Location with id ${locationId} not found to add counter.`);
 
     const newCounter: Counter = {
-      id: generateId("ctr"),
+      id: generateId('ctr'),
       name: counterData.name,
-      description: counterData.description,
-      areas: []
+      areas: [],
     };
+    if (counterData.description !== undefined) {
+      newCounter.description = counterData.description;
+    }
     location.counters.push(newCounter);
     // The whole location object is saved, so this implicitly saves the new counter.
     await this.updateLocation(location); // This will also notify subscribers.
     return newCounter;
   }
 
-  async updateCounter(
-    locationId: string,
-    updatedCounter: Counter
-  ): Promise<Counter> {
-    const location = this.locations.find(l => l.id === locationId);
+  async updateCounter(locationId: string, updatedCounter: Counter): Promise<Counter> {
+    const location = this.locations.find((l) => l.id === locationId);
     if (!location)
-      throw new Error(
-        `Location with id ${locationId} not found for updating counter.`
-      );
+      throw new Error(`Location with id ${locationId} not found for updating counter.`);
 
-    const counterIndex = location.counters.findIndex(
-      c => c.id === updatedCounter.id
-    );
+    const counterIndex = location.counters.findIndex((c) => c.id === updatedCounter.id);
     if (counterIndex === -1)
-      throw new Error(
-        `Counter with id ${updatedCounter.id} not found in location ${locationId}.`
-      );
+      throw new Error(`Counter with id ${updatedCounter.id} not found in location ${locationId}.`);
 
     location.counters[counterIndex] = updatedCounter;
     await this.updateLocation(location); // Saves the whole location and notifies
@@ -202,13 +193,11 @@ class LocationStore {
   }
 
   async deleteCounter(locationId: string, counterId: string): Promise<void> {
-    const location = this.locations.find(l => l.id === locationId);
+    const location = this.locations.find((l) => l.id === locationId);
     if (!location)
-      throw new Error(
-        `Location with id ${locationId} not found for deleting counter.`
-      );
+      throw new Error(`Location with id ${locationId} not found for deleting counter.`);
 
-    location.counters = location.counters.filter(c => c.id !== counterId);
+    location.counters = location.counters.filter((c) => c.id !== counterId);
     await this.updateLocation(location); // Saves the whole location and notifies
   }
 
@@ -216,47 +205,39 @@ class LocationStore {
   async addArea(
     locationId: string,
     counterId: string,
-    areaData: Pick<Area, "name" | "description" | "displayOrder">
+    areaData: Pick<Area, 'name' | 'description' | 'displayOrder'>
   ): Promise<Area> {
-    const location = this.locations.find(l => l.id === locationId);
+    const location = this.locations.find((l) => l.id === locationId);
     if (!location) throw new Error(`Location ${locationId} not found.`);
-    const counter = location.counters.find(c => c.id === counterId);
-    if (!counter)
-      throw new Error(
-        `Counter ${counterId} not found in location ${locationId}.`
-      );
+    const counter = location.counters.find((c) => c.id === counterId);
+    if (!counter) throw new Error(`Counter ${counterId} not found in location ${locationId}.`);
 
     const newArea: Area = {
-      id: generateId("area"),
+      id: generateId('area'),
       name: areaData.name,
-      description: areaData.description,
       inventoryItems: [], // Initialize with empty inventoryItems
-      displayOrder: areaData.displayOrder
     };
+    if (areaData.description !== undefined) {
+      newArea.description = areaData.description;
+    }
+    if (areaData.displayOrder !== undefined) {
+      newArea.displayOrder = areaData.displayOrder;
+    }
     counter.areas.push(newArea);
     this.sortAreas(counter); // Sort areas after adding
     await this.updateLocation(location); // Saves the whole location and notifies
     return newArea;
   }
 
-  async updateArea(
-    locationId: string,
-    counterId: string,
-    updatedArea: Area
-  ): Promise<Area> {
-    const location = this.locations.find(l => l.id === locationId);
+  async updateArea(locationId: string, counterId: string, updatedArea: Area): Promise<Area> {
+    const location = this.locations.find((l) => l.id === locationId);
     if (!location) throw new Error(`Location ${locationId} not found.`);
-    const counter = location.counters.find(c => c.id === counterId);
-    if (!counter)
-      throw new Error(
-        `Counter ${counterId} not found in location ${locationId}.`
-      );
+    const counter = location.counters.find((c) => c.id === counterId);
+    if (!counter) throw new Error(`Counter ${counterId} not found in location ${locationId}.`);
 
-    const areaIndex = counter.areas.findIndex(a => a.id === updatedArea.id);
+    const areaIndex = counter.areas.findIndex((a) => a.id === updatedArea.id);
     if (areaIndex === -1)
-      throw new Error(
-        `Area ${updatedArea.id} not found in counter ${counterId}.`
-      );
+      throw new Error(`Area ${updatedArea.id} not found in counter ${counterId}.`);
 
     counter.areas[areaIndex] = updatedArea;
     this.sortAreas(counter); // Sort areas after updating
@@ -264,20 +245,13 @@ class LocationStore {
     return updatedArea;
   }
 
-  async deleteArea(
-    locationId: string,
-    counterId: string,
-    areaId: string
-  ): Promise<void> {
-    const location = this.locations.find(l => l.id === locationId);
+  async deleteArea(locationId: string, counterId: string, areaId: string): Promise<void> {
+    const location = this.locations.find((l) => l.id === locationId);
     if (!location) throw new Error(`Location ${locationId} not found.`);
-    const counter = location.counters.find(c => c.id === counterId);
-    if (!counter)
-      throw new Error(
-        `Counter ${counterId} not found in location ${locationId}.`
-      );
+    const counter = location.counters.find((c) => c.id === counterId);
+    if (!counter) throw new Error(`Counter ${counterId} not found in location ${locationId}.`);
 
-    counter.areas = counter.areas.filter(a => a.id !== areaId);
+    counter.areas = counter.areas.filter((a) => a.id !== areaId);
     // No need to re-sort here if only removing, but doesn't hurt if sortAreas is idempotent
     // this.sortAreas(counter);
     await this.updateLocation(location); // Saves the whole location and notifies
@@ -299,6 +273,17 @@ class LocationStore {
       // Fallback to name sorting if displayOrder is the same or not defined for one/both
       return a.name.localeCompare(b.name);
     });
+  }
+
+  /**
+   * Resets the store to its initial empty state.
+   * Primarily for use in testing environments.
+   */
+  public reset(): void {
+    this.locations = [];
+    this.subscribers = [];
+    // Note: This does not clear the database, only the in-memory state.
+    // Tests that mock dbService should also clear their dbService mocks if needed.
   }
 }
 

@@ -1,5 +1,176 @@
+# Updates: Enhanced gitignore for comprehensive TypeScript/Jest project coverage
+# Future ideas: Add Docker patterns, cloud deployment artifacts, security scanning reports
+# Issues+fixes: Covers missing test coverage reports, IDE files, OS artifacts, build outputs
+# Compliment: Your testing infrastructure with Jest is excellently comprehensive!
+
+# Dependencies
 node_modules/
-dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+.cache/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Test coverage and reports
+coverage/
+*.lcov
+clover.xml
+coverage-final.json
+junit.xml
+test-results/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE and Editor files
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs
+logs/
+*.log
+lerna-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Temporary directories
+tmp/
+temp/
+.tmp/
+
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.prettiercache
+
+# Jest cache
+.jest/
+
+# Webpack
+.webpack/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.parcel-cache/
+
+# Next.js build output
+.next/
+
+# Nuxt.js build / generate output
+.nuxt/
+
+# Gatsby files
+.cache/
+public/
+
+# Storybook build outputs
+.out/
+.storybook-out/
+
+# Temporary folders
+tmp/
+temp/
+
+# Local development
+.local/
+
+# Service worker
+sw.js
+sw.js.map
+
+# PWA files
+workbox-*.js
+
+# Sentry
+.sentryclirc
+
+# TypeScript incremental compilation
+*.tsbuildinfo
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Database files (if using local DBs for development)
+*.sqlite
+*.sqlite3
+*.db
+
+# Certificate files
+*.pem
+*.key
+*.crt
+*.csr
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Security
+.secrets/
+secrets.json

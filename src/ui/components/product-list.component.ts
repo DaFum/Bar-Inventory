@@ -9,8 +9,8 @@ import { ProductListItemComponent, ProductListItemCallbacks } from './product-li
 export class ProductListComponent extends BaseComponent<HTMLDivElement> {
     private products: Product[] = [];
     private itemCallbacks: ProductListItemCallbacks;
-    private tbodyElement?: HTMLTableSectionElement; // Optional: only present if table is rendered
-    private tableElement?: HTMLTableElement;       // Optional: only present if table is rendered
+    private tbodyElement: HTMLTableSectionElement | undefined; // Changed to allow undefined
+    private tableElement: HTMLTableElement | undefined;       // Changed to allow undefined
     private listItemComponents: Map<string, ProductListItemComponent> = new Map();
 
     /**
@@ -114,16 +114,21 @@ export class ProductListComponent extends BaseComponent<HTMLDivElement> {
         // Find its correct sorted position in the DOM
         const newIndex = this.products.findIndex(p => p.id === product.id);
         if (this.tbodyElement) {
-            if (newIndex === this.products.length - 1) { // If it's the last item
+            if (newIndex === this.products.length - 1 || newIndex === -1) { // If it's the last item or not found (should append)
                 newItemComponent.appendTo(this.tbodyElement);
             } else { // Insert before the item that should come after it
-                const siblingId = this.products[newIndex + 1].id;
-                const siblingComponent = this.listItemComponents.get(siblingId);
-                if (siblingComponent) {
-                    this.tbodyElement.insertBefore(newItemComponent.getElement(), siblingComponent.getElement());
+                const siblingProduct = this.products[newIndex + 1];
+                if (siblingProduct) {
+                    const siblingComponent = this.listItemComponents.get(siblingProduct.id);
+                    if (siblingComponent && siblingComponent.getElement().isConnected) {
+                        this.tbodyElement.insertBefore(newItemComponent.getElement(), siblingComponent.getElement());
+                    } else {
+                         // Fallback if sibling not found or not in DOM
+                        this.tbodyElement.appendChild(newItemComponent.getElement());
+                    }
                 } else {
-                     // Fallback if sibling not found (should not happen if map is consistent)
-                    this.renderFullList();
+                     // Fallback, if it's the last item after all.
+                    this.tbodyElement.appendChild(newItemComponent.getElement());
                 }
             }
         }
@@ -136,49 +141,52 @@ export class ProductListComponent extends BaseComponent<HTMLDivElement> {
      */
     updateProduct(product: Product): void {
         const index = this.products.findIndex(p => p.id === product.id);
-        if (index === -1) return; // Product not in list, nothing to update
-
-        const oldProduct = this.products[index];
-        this.products[index] = product; // Update data in the internal list
-
-        const itemComponent = this.listItemComponents.get(product.id);
-        if (!itemComponent) { // Should not happen if products map and listItemComponents map are in sync
-            this.renderFullList(); // Fallback to full re-render if component not found
+        if (index === -1) { // Product not in list
+            this.addProduct(product); // Add it if it's new from the store's perspective
             return;
         }
 
-        itemComponent.update(product); // Update the content of the specific row (ProductListItemComponent.render)
+        const oldProduct = this.products[index]; // Store old product before updating
+        this.products[index] = product; // Update data in the internal list
+
+        const itemComponent = this.listItemComponents.get(product.id);
+        if (!itemComponent) {
+            this.renderFullList();
+            return;
+        }
+
+        itemComponent.update(product);
 
         // Check if sorting order might have changed
-        const oldCategory = oldProduct.category.toLowerCase();
-        const newCategory = product.category.toLowerCase();
-        const oldName = oldProduct.name.toLowerCase();
-        const newName = product.name.toLowerCase();
+        if (oldProduct) { // Check if oldProduct was found (it should be if index !== -1)
+            const oldCategory = oldProduct.category.toLowerCase();
+            const newCategory = product.category.toLowerCase();
+            const oldName = oldProduct.name.toLowerCase();
+            const newName = product.name.toLowerCase();
 
-        if (oldCategory !== newCategory || oldName !== newName) {
-            this.products.sort(this.sortProducts); // Re-sort the internal array
+            if (oldCategory !== newCategory || oldName !== newName) {
+                this.products.sort(this.sortProducts);
 
-            // If sorting changed, the DOM element might need to move.
-            // This requires removing and re-inserting it in the correct visual order.
-            if (this.tbodyElement) {
-                const currentElement = itemComponent.getElement();
-                currentElement.remove(); // Detach from DOM
+                if (this.tbodyElement) {
+                    const currentElement = itemComponent.getElement();
+                    currentElement.remove();
 
-                // Find new visual index based on the re-sorted `this.products` array
-                const newSortedVisualIndex = this.products.findIndex(p => p.id === product.id);
+                    const newSortedVisualIndex = this.products.findIndex(p => p.id === product.id);
 
-                if (newSortedVisualIndex === this.products.length - 1) { // If it's now the last item
-                    this.tbodyElement.appendChild(currentElement);
-                } else {
-                    // Insert before the element that is now at its next position in the sorted list
-                    const nextProductId = this.products[newSortedVisualIndex + 1]?.id;
-                    const nextProductComponent = nextProductId ? this.listItemComponents.get(nextProductId) : null;
-                    if (nextProductComponent) {
-                        this.tbodyElement.insertBefore(currentElement, nextProductComponent.getElement());
-                    } else {
-                        // Fallback if the next sibling isn't found (e.g., it was the one being moved and is already detached)
-                        // or if it's the last element.
+                    if (newSortedVisualIndex === this.products.length - 1 || newSortedVisualIndex === -1) {
                         this.tbodyElement.appendChild(currentElement);
+                    } else {
+                        const nextProduct = this.products[newSortedVisualIndex + 1];
+                        if (nextProduct) {
+                            const nextProductComponent = this.listItemComponents.get(nextProduct.id);
+                            if (nextProductComponent && nextProductComponent.getElement().isConnected) {
+                                this.tbodyElement.insertBefore(currentElement, nextProductComponent.getElement());
+                            } else {
+                                this.tbodyElement.appendChild(currentElement);
+                            }
+                        } else {
+                             this.tbodyElement.appendChild(currentElement);
+                        }
                     }
                 }
             }
