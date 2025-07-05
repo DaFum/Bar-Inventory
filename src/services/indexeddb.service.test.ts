@@ -690,8 +690,7 @@ const DATABASE_VERSION = 1;
     
         // Capture the upgrade callback when openDB is called
         // Capture the upgrade callback with a precise signature
--        let capturedUpgradeCallback: Function | undefined;
-+        let capturedUpgradeCallback: ((db: IDBPDatabase<BarInventoryDBSchemaType>, oldVersion: number, newVersion: number, transaction: any) => void) | undefined;
+        let capturedUpgradeCallback: ((db: IDBPDatabase<BarInventoryDBSchemaType>, oldVersion: number, newVersion: number, transaction: any) => void) | undefined;
 
         (openDB as jest.Mock).mockImplementationOnce((name, version, options) => {
           capturedUpgradeCallback = options.upgrade;
