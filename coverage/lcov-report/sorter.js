@@ -73,22 +73,6 @@ function loadColumns() {
     return columns;
 }
 
-        for (i = 0; i < colNodes.length; i += 1) {
-            colNode = colNodes[i];
-            col = {
-                key: colNode.getAttribute('data-col'),
-                sortable: !colNode.getAttribute('data-nosort'),
-                type: colNode.getAttribute('data-type') || 'string'
-            };
-            cols.push(col);
-            if (col.sortable) {
-                col.defaultDescSort = col.type === 'number';
-                colNode.innerHTML =
-                    colNode.innerHTML + '<span class="sorter"></span>';
-            }
-        }
-        return cols;
-    }
     // attaches a data attribute to every tr element with an object
     // of data values keyed by column name
     function loadRowData(tableRow) {
