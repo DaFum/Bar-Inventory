@@ -460,9 +460,21 @@ const DATABASE_VERSION = 1;
 
     test('should handle transaction failures gracefully', async () => {
       const transactionError = new Error('Transaction failed');
+      const originalMockImplementation = mockDb.transaction.getMockImplementation();
       mockDb.transaction.mockImplementation(() => {
         throw transactionError;
       });
+
+      try {
+        await expect(dbService.saveAllApplicationData({ 
+          products: [mockProduct], 
+          locations: [mockLocation], 
+          state: mockInventoryState 
+        })).rejects.toThrow(transactionError);
+      } finally {
+        // Restore original implementation
+        mockDb.transaction.mockImplementation(originalMockImplementation);
+      }
 
       await expect(dbService.saveAllApplicationData({ 
         products: [mockProduct], 
