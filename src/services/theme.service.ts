@@ -21,8 +21,16 @@ export class ThemeService {
     this.applyTheme();
 
     // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const systemThemeChangeHandler = (e: MediaQueryListEvent | Event) => { // Event for older addListener
+  // add these fields to the class
+  private mediaQuery?: MediaQueryList;
+  private systemThemeChangeHandler?: (e: MediaQueryListEvent | Event) => void;
+
+  constructor() {
+    // ... existing code ...
+
+    // set up and store the media query + handler
+    this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    this.systemThemeChangeHandler = (e: MediaQueryListEvent | Event) => {
       // Check type of event if needed, or rely on e.matches if available on Event for older browsers
       const eventMatches = (e as MediaQueryListEvent).matches;
       // Only update if no theme explicitly set by user
@@ -32,15 +40,24 @@ export class ThemeService {
       }
     };
 
-    // Use addEventListener if available, otherwise fall back to addListener
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', systemThemeChangeHandler);
-    } else if (mediaQuery.addListener) { // Deprecated but necessary for older browsers
-      mediaQuery.addListener(systemThemeChangeHandler);
+    // register listener with fallback
+    if (this.mediaQuery.addEventListener) {
+      this.mediaQuery.addEventListener('change', this.systemThemeChangeHandler);
+    } else if (this.mediaQuery.addListener) {
+      this.mediaQuery.addListener(this.systemThemeChangeHandler);
     }
-    // Storing mediaQuery and systemThemeChangeHandler on the instance would be necessary
-    // if we implement a cleanup/dispose method to call removeEventListener/removeListener.
-    // For now, this addresses the compatibility issue.
+  }
+
+  // new dispose method to clean up the listener
+  public dispose(): void {
+    if (this.mediaQuery && this.systemThemeChangeHandler) {
+      if (this.mediaQuery.removeEventListener) {
+        this.mediaQuery.removeEventListener('change', this.systemThemeChangeHandler);
+      } else if (this.mediaQuery.removeListener) {
+        this.mediaQuery.removeListener(this.systemThemeChangeHandler);
+      }
+    }
+  }
   }
 
   public toggleTheme(): void {
