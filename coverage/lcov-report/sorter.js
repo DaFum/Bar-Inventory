@@ -57,12 +57,21 @@ var addSorting = (function() {
     }
 
     // loads all columns
-    function loadColumns() {
-        var colNodes = getTableHeader().querySelectorAll('th'),
-            colNode,
-            cols = [],
-            col,
-            i;
+function loadColumns() {
+    var colNodes = getTableHeader().querySelectorAll('th'),
+        colNode,
+        columns = [],
+        col,
+        i;
+
+    for (i = 0; i < colNodes.length; i++) {
+        colNode = colNodes[i];
+        // existing logic to build/assign to col
+        columns.push(col);
+    }
+
+    return columns;
+}
 
         for (i = 0; i < colNodes.length; i += 1) {
             colNode = colNodes[i];
