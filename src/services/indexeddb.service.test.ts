@@ -697,17 +697,35 @@ const DATABASE_VERSION = 1;
           return mockDb;
         });
       
-          expect(mockCreateObjectStore).toHaveBeenCalledTimes(3);
-          expect(mockCreateObjectStore).toHaveBeenCalledWith('products', { keyPath: 'id' });
-          expect(mockCreateObjectStore).toHaveBeenCalledWith('locations', { keyPath: 'id' });
-          expect(mockCreateObjectStore).toHaveBeenCalledWith('inventoryState', { keyPath: 'key' });
-        } else {
-          fail('Upgrade callback was not captured');
-        }
+          // Instanziiere den Service
+          const service = new ServiceClass();
+          
+          // Verifiziere, dass der Upgrade-Callback erfasst wurde
+          expect(capturedUpgradeCallback).toBeDefined();
+          
+          if (capturedUpgradeCallback) {
+            const mockCreateObjectStore = jest.fn().mockReturnValue({
+              createIndex: jest.fn(),
+            });
+            const mockUpgradeDb = {
+              objectStoreNames: {
+                contains: jest.fn().mockReturnValue(false),
+              },
+              createObjectStore: mockCreateObjectStore,
+            } as unknown as IDBPDatabase<BarInventoryDBSchemaType>;
+            
+            // Rufe den Upgrade-Callback auf
+            capturedUpgradeCallback(mockUpgradeDb, 0, 1, mockTransaction);
+            
+            expect(mockCreateObjectStore).toHaveBeenCalledTimes(3);
+            expect(mockCreateObjectStore).toHaveBeenCalledWith('products', { keyPath: 'id' });
+            expect(mockCreateObjectStore).toHaveBeenCalledWith('locations', { keyPath: 'id' });
+            expect(mockCreateObjectStore).toHaveBeenCalledWith('inventoryState', { keyPath: 'key' });
+          } else {
+            fail('Upgrade callback was not captured');
+          }
       });
     });
-
-    test('should handle partial schema upgrade', async () => {
       const mockCreateObjectStore = jest.fn().mockReturnValue({ 
         createIndex: jest.fn() 
       });
