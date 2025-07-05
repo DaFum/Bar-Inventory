@@ -270,11 +270,16 @@ describe('ProductStore', () => {
       });
 
       it('should handle null/undefined returned from database', async () => {
-        (dbService.loadProducts as jest.Mock).mockResolvedValue(null);
+        const originalConsoleError = console.error;
         console.error = jest.fn();
+  
+        (dbService.loadProducts as jest.Mock).mockResolvedValue(null);
 
         await expect(productStore.loadProducts()).rejects.toThrow();
         expect(console.error).toHaveBeenCalled();
+  
+        // Restore original console.error
+        console.error = originalConsoleError;
       });
 
       it('should handle malformed product data from database', async () => {
