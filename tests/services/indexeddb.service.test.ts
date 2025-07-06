@@ -62,7 +62,7 @@ jest.mock('idb', () => {
   const actualIdb = jest.requireActual('idb');
   // Import mockOpenDB from the helpers file INSIDE this factory function
   // to ensure it's the one from the mocked path.
-  const { mockOpenDB } = jest.requireActual('./mock-helpers/indexeddb.mocks');
+  const { mockOpenDB } = jest.requireActual('../services/mock-helpers/indexeddb.mocks');
   return {
     ...actualIdb,
     openDB: mockOpenDB, // This should now correctly refer to the mock from mock-helpers
