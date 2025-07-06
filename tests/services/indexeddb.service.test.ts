@@ -473,17 +473,18 @@ describe('IndexedDBService', () => {
         currentMockProductStore.put.mockRejectedValue(error); // Simulate error in product store
 
         // Ensure transaction.done is a mock that can be rejected
-        const mockDonePromise = jest.fn().mockRejectedValue(error); // Simulate transaction abort
-        mockTransaction.mockImplementation((storeNames, mode) => ({
-            ...mockTransactionInstance, // Spread the default instance
-            objectStore: jest.fn((name) => { // Keep objectStore logic
-                if (name === 'products') return currentMockProductStore;
-                if (name === 'locations') return currentMockLocationStore;
-                if (name === 'inventoryState') return currentMockInventoryStateStore;
-                throw new Error(`Mock Error: Unknown object store ${name}`);
-            }),
-            done: mockDonePromise, // Use the mock for done
-        }));
+    // Simulate the transaction promise rejecting, which is what 'idb' does on an operation error.
+    const mockRejectedDonePromise = Promise.reject(error);
+    mockTransaction.mockImplementation((storeNames, mode) => ({
+      ...mockTransactionInstance, // Spread the default instance
+      objectStore: jest.fn((name) => { // Keep objectStore logic
+        if (name === 'products') return currentMockProductStore;
+        if (name === 'locations') return currentMockLocationStore;
+        if (name === 'inventoryState') return currentMockInventoryStateStore;
+        throw new Error(`Mock Error: Unknown object store ${name}`);
+      }),
+      done: mockRejectedDonePromise, // Use the rejected promise for `done`
+    }));
 
         // Re-initialize service to pick up the new transaction mock behavior for the next transaction
         dbService = new IndexedDBServiceClass();
