@@ -1,23 +1,23 @@
 // jest.mock for './toast-notifications' must be at the very top
-jest.mock('./toast-notifications');
+jest.mock('../../../src/ui/components/toast-notifications');
 
-import { ProductFormComponent, ProductFormComponentOptions } from './product-form.component';
-import { Product } from '../../models'; // For types
-import { PREDEFINED_CATEGORIES } from '../../utils/helpers'; // For PREDEFINED_CATEGORIES value
+import { ProductFormComponent, ProductFormComponentOptions } from '../../../src/ui/components/product-form.component';
+import { Product } from '../../../src/models'; // For types
+import { PREDEFINED_CATEGORIES } from '../../../src/utils/helpers'; // For PREDEFINED_CATEGORIES value
 
 // Mocks for other modules
-jest.mock('../../utils/security', () => ({
+jest.mock('../../../src/utils/security', () => ({
   escapeHtml: jest.fn((value: string) => value || ''),
 }));
 
 // Get a reference to the mocked showToast after jest.mock has been declared
-const mockedShowToastFn = require('./toast-notifications').showToast;
+const mockedShowToastFn = require('../../../src/ui/components/toast-notifications').showToast;
 
-jest.mock('../../utils/helpers', () => ({
-  ...jest.requireActual('../../utils/helpers'), // Keep actual PREDEFINED_CATEGORIES
+jest.mock('../../../src/utils/helpers', () => ({
+  ...jest.requireActual('../../../src/utils/helpers'), // Keep actual PREDEFINED_CATEGORIES
   generateId: jest.fn(() => 'mock-prod-id'),
 }));
-jest.mock('../core/base-component', () => {
+jest.mock('../../../src/ui/core/base-component', () => {
   return {
     BaseComponent: class MockBaseComponent {
       element: HTMLElement;

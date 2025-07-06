@@ -3,7 +3,7 @@ import {
   formatDate,
   generateId,
   // PREDEFINED_CATEGORIES is a const, not a function to test here
-} from './helpers';
+} from '../../src/utils/helpers';
 
 // No external mocks needed for these functions unless they had complex internal dependencies
 

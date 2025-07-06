@@ -1,9 +1,9 @@
-import { AreaListComponent } from './area-list.component';
-import { AreaListItemComponent, AreaListItemCallbacks } from './area-list-item.component';
-import { Area } from '../../models';
+import { AreaListComponent } from '../../../src/ui/components/area-list.component';
+import { AreaListItemComponent, AreaListItemCallbacks } from '../../../src/ui/components/area-list-item.component';
+import { Area } from '../../../src/models';
 
 // Mock AreaListItemComponent
-jest.mock('./area-list-item.component', () => {
+jest.mock('../../../src/ui/components/area-list-item.component', () => {
   return {
     AreaListItemComponent: jest.fn().mockImplementation((area: Area, callbacks: AreaListItemCallbacks) => {
       const element = document.createElement('div');
@@ -659,3 +659,4 @@ describe('AreaListComponent', () => {
       expect(listHostDiv?.children.length).toBe(initialCount);
     });
   });
+});

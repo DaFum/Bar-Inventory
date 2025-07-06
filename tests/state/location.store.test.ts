@@ -1,10 +1,10 @@
-import { locationStore } from './location.store'; // Import the instance
-import { Location, Counter, Area } from '../models';
-import { dbService } from '../services/indexeddb.service';
-import { generateId } from '../utils/helpers';
+import { locationStore } from '../../src/state/location.store'; // Import the instance
+import { Location, Counter, Area } from '../../src/models';
+import { dbService } from '../../src/services/indexeddb.service';
+import { generateId } from '../../src/utils/helpers';
 
 // Mocks
-jest.mock('../services/indexeddb.service', () => ({
+jest.mock('../../src/services/indexeddb.service', () => ({
   dbService: {
     loadLocations: jest.fn(),
     saveLocation: jest.fn(),
@@ -12,7 +12,7 @@ jest.mock('../services/indexeddb.service', () => ({
   },
 }));
 
-jest.mock('../utils/helpers', () => ({
+jest.mock('../../src/utils/helpers', () => ({
   generateId: jest.fn((prefix: string) => `${prefix}-mock-id-${Math.random().toString(36).substr(2, 5)}`),
 }));
 

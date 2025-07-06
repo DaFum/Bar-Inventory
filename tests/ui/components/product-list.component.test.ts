@@ -1,9 +1,9 @@
-import { ProductListComponent } from './product-list.component';
-import { ProductListItemComponent, ProductListItemCallbacks } from './product-list-item.component';
-import { Product } from '../../models';
+import { ProductListComponent } from '../../../src/ui/components/product-list.component';
+import { ProductListItemComponent, ProductListItemCallbacks } from '../../../src/ui/components/product-list-item.component';
+import { Product } from '../../../src/models';
 
 // Mock ProductListItemComponent
-jest.mock('./product-list-item.component', () => {
+jest.mock('../../../src/ui/components/product-list-item.component', () => {
   return {
     ProductListItemComponent: jest.fn().mockImplementation((product: Product, callbacks: ProductListItemCallbacks) => {
       const element = document.createElement('tr'); // Mocked as TR for table
@@ -27,7 +27,7 @@ jest.mock('./product-list-item.component', () => {
 });
 
 // Mock BaseComponent
-jest.mock('../core/base-component', () => {
+jest.mock('../../../src/ui/core/base-component', () => {
     return {
       BaseComponent: class MockBaseComponent {
         element: HTMLElement;

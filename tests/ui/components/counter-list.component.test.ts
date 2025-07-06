@@ -1,9 +1,9 @@
-import { CounterListComponent } from './counter-list.component';
-import { CounterListItemComponent, CounterListItemCallbacks } from './counter-list-item.component';
-import { Counter, Location as LocationModel } from '../../models';
+import { CounterListComponent } from '../../../src/ui/components/counter-list.component';
+import { CounterListItemComponent, CounterListItemCallbacks } from '../../../src/ui/components/counter-list-item.component';
+import { Counter, Location as LocationModel } from '../../../src/models';
 
 // Mock CounterListItemComponent
-jest.mock('./counter-list-item.component', () => {
+jest.mock('../../../src/ui/components/counter-list-item.component', () => {
   return {
     CounterListItemComponent: jest.fn().mockImplementation((location: LocationModel, counter: Counter, callbacks: CounterListItemCallbacks) => {
       const element = document.createElement('div');

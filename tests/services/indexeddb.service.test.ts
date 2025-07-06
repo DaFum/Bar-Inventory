@@ -1,9 +1,9 @@
 // Note: dbService import will be done dynamically after mocks are set up.
-// import { dbService } from './indexeddb.service';
-import { Product, Location, InventoryState } from '../models';
+// import { dbService } from '../../src/services/indexeddb.service';
+import { Product, Location, InventoryState } from '../../src/models';
 import { openDB, IDBPDatabase, IDBPTransaction, IDBPObjectStore } from 'idb';
 // BarInventoryDBSchema and StoredInventoryState will also be imported dynamically or type-only.
-import type { BarInventoryDBSchema as BarInventoryDBSchemaType, StoredInventoryState as StoredInventoryStateType } from './indexeddb.service';
+import type { BarInventoryDBSchema as BarInventoryDBSchemaType, StoredInventoryState as StoredInventoryStateType } from '../../src/services/indexeddb.service';
 
 // Mock 'idb' library
 jest.mock('idb', () => {
@@ -15,7 +15,7 @@ jest.mock('idb', () => {
 });
 
 // Mock toast notifications
-jest.mock('../ui/components/toast-notifications', () => ({
+jest.mock('../../src/ui/components/toast-notifications', () => ({
   showToast: jest.fn(),
 }));
 
@@ -126,7 +126,7 @@ describe('IndexedDBService', () => {
 
     // 5. Dynamically import the service and create a new instance for this test run
     await jest.isolateModulesAsync(async () => {
-        const { IndexedDBService: ServiceClass } = await import('./indexeddb.service');
+        const { IndexedDBService: ServiceClass } = await import('../../src/services/indexeddb.service');
         dbService = new ServiceClass();
     });
   });
@@ -402,7 +402,7 @@ describe('IndexedDBService', () => {
         // IndexedDB vor dem Import entfernen
         (window as any).indexedDB = undefined;
         
-        const { IndexedDBService } = await import('./indexeddb.service');
+        const { IndexedDBService } = await import('../../src/services/indexeddb.service');
         
         expect(() => new IndexedDBService()).toThrow('IndexedDB not supported');
         expect(showToast).toHaveBeenCalledWith(
@@ -444,7 +444,7 @@ const DATABASE_VERSION = 1;
       (openDB as jest.Mock).mockRejectedValueOnce(dbError);
       
       await jest.isolateModulesAsync(async () => {
-        const { IndexedDBService: ServiceClass } = await import('./indexeddb.service');
+        const { IndexedDBService: ServiceClass } = await import('../../src/services/indexeddb.service');
         const failingService = new ServiceClass();
         
         await expect(failingService.getAll('products')).rejects.toThrow();
@@ -686,7 +686,7 @@ const DATABASE_VERSION = 1;
     test('should handle schema upgrade from version 0 to 1', async () => {
       // Reset the service to test initialization again
       await jest.isolateModulesAsync(async () => {
-        const { IndexedDBService: ServiceClass } = await import('./indexeddb.service');
+        const { IndexedDBService: ServiceClass } = await import('../../src/services/indexeddb.service');
     
         // Capture the upgrade callback when openDB is called
         // Capture the upgrade callback with a precise signature
@@ -827,7 +827,7 @@ const DATABASE_VERSION = 1;
       (openDB as jest.Mock).mockResolvedValue(limitedMockDb);
       
       await jest.isolateModulesAsync(async () => {
-        const { IndexedDBService: ServiceClass } = await import('./indexeddb.service');
+        const { IndexedDBService: ServiceClass } = await import('../../src/services/indexeddb.service');
         const service = new ServiceClass();
         
         // Basic operations should still work

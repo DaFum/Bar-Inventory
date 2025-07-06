@@ -1,7 +1,7 @@
-import { ToastType } from './toast-notifications'; // Add ToastType back
+import { ToastType } from '../../../src/ui/components/toast-notifications'; // Add ToastType back
 
 describe('Toast Notifications', () => {
-  let showToast: typeof import('./toast-notifications').showToast;
+  let showToast: typeof import('../../../src/ui/components/toast-notifications').showToast;
   // ToastType can still be imported at top for type annotations if needed, or use import('./module').ToastType
 
   beforeEach(() => {
@@ -10,7 +10,7 @@ describe('Toast Notifications', () => {
 
     // Re-require the module to get the fresh version with reset internal state
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const toastModule = require('./toast-notifications');
+    const toastModule = require('../../../src/ui/components/toast-notifications');
     showToast = toastModule.showToast;
 
     // Ensure a clean DOM slate for the toast container for each test

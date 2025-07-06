@@ -1,9 +1,9 @@
-import { productStore } from './product.store'; // Import the instance
-import { Product } from '../models';
-import { dbService } from '../services/indexeddb.service';
+import { productStore } from '../../src/state/product.store'; // Import the instance
+import { Product } from '../../src/models';
+import { dbService } from '../../src/services/indexeddb.service';
 
 // Mock dbService
-jest.mock('../services/indexeddb.service', () => ({
+jest.mock('../../src/services/indexeddb.service', () => ({
   dbService: {
     loadProducts: jest.fn(),
     saveProduct: jest.fn(), // Used by addProduct and updateProduct

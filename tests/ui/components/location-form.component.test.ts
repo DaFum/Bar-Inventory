@@ -1,19 +1,19 @@
-import { LocationFormComponent, LocationFormComponentOptions } from './location-form.component';
-import { Location } from '../../models';
-import { escapeHtml } from '../../utils/security';
-import { showToast } from './toast-notifications';
+import { LocationFormComponent, LocationFormComponentOptions } from '../../../src/ui/components/location-form.component';
+import { Location } from '../../../src/models';
+import { escapeHtml } from '../../../src/utils/security';
+import { showToast } from '../../../src/ui/components/toast-notifications';
 
 // Mock dependencies
-jest.mock('../../utils/security', () => ({
+jest.mock('../../../src/utils/security', () => ({
   escapeHtml: jest.fn((value: string) => value || ''), // Simple pass-through
 }));
 
-jest.mock('./toast-notifications', () => ({
+jest.mock('../../../src/ui/components/toast-notifications', () => ({
   showToast: jest.fn(),
 }));
 
 // Mock BaseComponent as it's extended
-jest.mock('../core/base-component', () => {
+jest.mock('../../../src/ui/core/base-component', () => {
   return {
     BaseComponent: class MockBaseComponent {
       element: HTMLElement;

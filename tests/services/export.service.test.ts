@@ -1,13 +1,13 @@
-import { exportService } from './export.service';
-import { Product, Location, Area, Counter, InventoryEntry } from '../models';
-import * as CalculationService from './calculation.service';
-import * as ToastNotifications from '../ui/components/toast-notifications';
+import { exportService } from '../../src/services/export.service';
+import { Product, Location, Area, Counter, InventoryEntry } from '../../src/models';
+import * as CalculationService from '../../src/services/calculation.service';
+import * as ToastNotifications from '../../src/ui/components/toast-notifications';
 
 // Mocks
-jest.mock('./calculation.service', () => ({
+jest.mock('../../src/services/calculation.service', () => ({
   calculateAreaConsumption: jest.fn(),
 }));
-jest.mock('../ui/components/toast-notifications', () => ({
+jest.mock('../../src/ui/components/toast-notifications', () => ({
   showToast: jest.fn(),
 }));
 

@@ -41,20 +41,20 @@ if (typeof window !== 'undefined') {
 }
 
 // Mock services and modules (these don't have duplicate import issues)
-jest.mock('../../services/indexeddb.service', () => ({
+jest.mock('../../../src/services/indexeddb.service', () => ({
   dbService: {
     loadLocations: jest.fn(),
     loadProducts: jest.fn(),
   },
 }));
 
-jest.mock('../../services/calculation.service', () => ({
+jest.mock('../../../src/services/calculation.service', () => ({
   calculateAreaConsumption: jest.fn(),
 }));
 
 // Hoist toast-notifications mock to be very early, though it's already high
-jest.mock('./toast-notifications');
-const mockedShowToastFn = require('./toast-notifications').showToast;
+jest.mock('../../../src/ui/components/toast-notifications');
+const mockedShowToastFn = require('../../../src/ui/components/toast-notifications').showToast;
 
 // Mock Chart.js more directly
 const mockChartInstance = { // This is what `new Chart()` will return
@@ -85,11 +85,11 @@ jest.mock('chart.js', () => {
 // Import necessary modules AFTER mocks are defined.
 // Note: 'Chart' will be the mocked constructor from above.
 import { Chart } from 'chart.js';
-import { initAnalyticsView } from './analytics-view';
-import { dbService } from '../../services/indexeddb.service';
-import * as CalculationService from '../../services/calculation.service';
-// import * as ToastNotifications from './toast-notifications'; // Will use mockedShowToastFn
-import { Location, Product, InventoryEntry, Area, Counter } from '../../models';
+import { initAnalyticsView } from '../../../src/ui/components/analytics-view';
+import { dbService } from '../../../src/services/indexeddb.service';
+import * as CalculationService from '../../../src/services/calculation.service';
+// import * as ToastNotifications from '../../../src/ui/components/toast-notifications'; // Will use mockedShowToastFn
+import { Location, Product, InventoryEntry, Area, Counter } from '../../../src/models';
 // registerables is implicitly handled by the chart.js mock providing it.
 
 
@@ -329,18 +329,18 @@ describe('Analytics View (analytics-view.ts)', () => {
         // The mocking within jest.isolateModulesAsync might not be correctly linking
         // to the showToast instance used by the re-imported analytics-view.
         // Skipping for now.
-        jest.mock('./toast-notifications');
-        const isolatedMockedShowToastFn = require('./toast-notifications').showToast;
+        jest.mock('../../../src/ui/components/toast-notifications');
+        const isolatedMockedShowToastFn = require('../../../src/ui/components/toast-notifications').showToast;
 
-        jest.mock('../../services/indexeddb.service', () => ({
+        jest.mock('../../../src/services/indexeddb.service', () => ({
             dbService: {
                 loadLocations: jest.fn(),
                 loadProducts: jest.fn(),
             },
         }));
 
-        const { initAnalyticsView: isolatedInitAnalyticsView } = await import('./analytics-view');
-        const { dbService: isolatedDbService } = await import('../../services/indexeddb.service');
+        const { initAnalyticsView: isolatedInitAnalyticsView } = await import('../../../src/ui/components/analytics-view');
+        const { dbService: isolatedDbService } = await import('../../../src/services/indexeddb.service');
 
         const isolatedContainer = document.createElement('div');
         document.body.appendChild(isolatedContainer);

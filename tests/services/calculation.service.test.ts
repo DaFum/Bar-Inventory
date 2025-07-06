@@ -1,5 +1,5 @@
-import { calculateSingleItemConsumption, calculateAreaConsumption } from './calculation.service';
-import { InventoryEntry, Product } from '../models';
+import { calculateSingleItemConsumption, calculateAreaConsumption } from '../../src/services/calculation.service';
+import { InventoryEntry, Product } from '../../src/models';
 
 // Mock data for testing
 const mockProduct: Product = {

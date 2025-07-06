@@ -1,20 +1,20 @@
-import { initLocationManager } from './location-manager';
-import { locationStore } from '../../state/location.store';
-import { LocationListComponent } from './location-list.component';
-import type { LocationListItemCallbacks } from './location-list-item.component'; // Corrected import
-import { LocationFormComponent, LocationFormComponentOptions } from './location-form.component';
-import { CounterListComponent } from './counter-list.component';
-import type { CounterListItemCallbacks } from './counter-list-item.component'; // Corrected import
-import { CounterFormComponent, CounterFormComponentOptions } from './counter-form.component';
-// import { showToast } from './toast-notifications'; // Will be mocked
-import { Location, Counter } from '../../models';
+import { initLocationManager } from '../../../src/ui/components/location-manager';
+import { locationStore } from '../../../src/state/location.store';
+import { LocationListComponent } from '../../../src/ui/components/location-list.component';
+import type { LocationListItemCallbacks } from '../../../src/ui/components/location-list-item.component'; // Corrected import
+import { LocationFormComponent, LocationFormComponentOptions } from '../../../src/ui/components/location-form.component';
+import { CounterListComponent } from '../../../src/ui/components/counter-list.component';
+import type { CounterListItemCallbacks } from '../../../src/ui/components/counter-list-item.component'; // Corrected import
+import { CounterFormComponent, CounterFormComponentOptions } from '../../../src/ui/components/counter-form.component';
+// import { showToast } from '../../../src/ui/components/toast-notifications'; // Will be mocked
+import { Location, Counter } from '../../../src/models';
 
 // Hoist toast-notifications mock
-jest.mock('./toast-notifications');
-const mockedShowToastFn = require('./toast-notifications').showToast;
+jest.mock('../../../src/ui/components/toast-notifications');
+const mockedShowToastFn = require('../../../src/ui/components/toast-notifications').showToast;
 
 // Other Mocks
-jest.mock('../../state/location.store', () => ({
+jest.mock('../../../src/state/location.store', () => ({
   locationStore: {
     subscribe: jest.fn(),
     loadLocations: jest.fn().mockResolvedValue([]), // Start with empty
@@ -40,7 +40,7 @@ const mockLocationListInstance = {
   appendTo: jest.fn(),
   remove: jest.fn(),
 };
-jest.mock('./location-list.component', () => ({
+jest.mock('../../../src/ui/components/location-list.component', () => ({
   LocationListComponent: jest.fn(() => mockLocationListInstance),
 }));
 
@@ -58,7 +58,7 @@ const mockLocationFormInstance = {
   remove: jest.fn(),
   currentEditingLocation: null as Location | null, // Add property if accessed
 };
-jest.mock('./location-form.component', () => ({
+jest.mock('../../../src/ui/components/location-form.component', () => ({
   LocationFormComponent: jest.fn(() => mockLocationFormInstance),
 }));
 
@@ -74,7 +74,7 @@ const mockCounterListInstance = {
   remove: jest.fn(),
   toggleAreaManagementForCounter: jest.fn(), // Added based on usage
 };
-jest.mock('./counter-list.component', () => ({
+jest.mock('../../../src/ui/components/counter-list.component', () => ({
   CounterListComponent: jest.fn(() => mockCounterListInstance),
 }));
 
@@ -92,11 +92,11 @@ const mockCounterFormInstance = {
   remove: jest.fn(),
   currentEditingCounter: null as Counter | null, // Add property if accessed
 };
-jest.mock('./counter-form.component', () => ({
+jest.mock('../../../src/ui/components/counter-form.component', () => ({
   CounterFormComponent: jest.fn(() => mockCounterFormInstance),
 }));
 
-// jest.mock('./toast-notifications'); // Already handled by hoisted mock + mockedShowToastFn
+// jest.mock('../../../src/ui/components/toast-notifications'); // Already handled by hoisted mock + mockedShowToastFn
 
 // Helper to simulate store update and notify subscribers
 let notifySubscribers: (locations: Location[]) => void;

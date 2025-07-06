@@ -1,14 +1,14 @@
-import { LocationListItemComponent, LocationListItemCallbacks } from './location-list-item.component';
-import { Location } from '../../models';
-import { escapeHtml } from '../../utils/security';
+import { LocationListItemComponent, LocationListItemCallbacks } from '../../../src/ui/components/location-list-item.component';
+import { Location } from '../../../src/models';
+import { escapeHtml } from '../../../src/utils/security';
 
 // Mock escapeHtml
-jest.mock('../../utils/security', () => ({
+jest.mock('../../../src/utils/security', () => ({
   escapeHtml: jest.fn((str) => str),
 }));
 
 // Mock BaseComponent
-jest.mock('../core/base-component', () => {
+jest.mock('../../../src/ui/core/base-component', () => {
     return {
       BaseComponent: class MockBaseComponent {
         element: HTMLElement;

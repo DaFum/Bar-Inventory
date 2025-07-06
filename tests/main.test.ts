@@ -1,8 +1,8 @@
 // Mock ui-manager (must be at the very top before any imports that might use it)
-jest.mock('./ui/ui-manager', () => ({
+jest.mock('../src/ui/ui-manager', () => ({
   initializeApp: jest.fn(),
 }));
-// No top-level import of initializeApp from './ui/ui-manager' here
+// No top-level import of initializeApp from '../src/ui/ui-manager' here
 
 describe('Application Initialization (main.ts)', () => {
   let appContainerElement: HTMLElement; // Renamed to avoid confusion with module-level vars
@@ -17,7 +17,7 @@ describe('Application Initialization (main.ts)', () => {
 
     // Re-require ./ui/ui-manager to get the fresh mock after resetModules.
     // This ensures initializeAppMock is the mock that main.ts will get when it's required.
-    initializeAppMock = require('./ui/ui-manager').initializeApp;
+    initializeAppMock = require('../src/ui/ui-manager').initializeApp;
     initializeAppMock.mockClear(); // Clear calls from previous tests if any leakage
 
     // Create a mock app container
@@ -68,7 +68,7 @@ describe('Application Initialization (main.ts)', () => {
   test('should instantiate Application and call initializeApp if DOM is already loaded', () => {
     document.body.appendChild(appContainerElement); // Ensure container is in DOM
     (document.readyState as any) = 'complete';
-    require('./main'); // main.ts runs and should use the initializeAppMock
+    require('../src/main'); // main.ts runs and should use the initializeAppMock
     expect(consoleLogSpy).toHaveBeenCalledWith('Application initializing...');
     expect(consoleLogSpy).toHaveBeenCalledWith('DOM content loaded, app container found.');
     expect(initializeAppMock).toHaveBeenCalledWith(appContainerElement);
@@ -78,7 +78,7 @@ describe('Application Initialization (main.ts)', () => {
   test('should instantiate Application and call initializeApp after DOMContentLoaded event', () => {
     document.body.appendChild(appContainerElement); // Ensure container is in DOM
     (document.readyState as any) = 'loading';
-    require('./main'); // main.ts runs and should use the initializeAppMock
+    require('../src/main'); // main.ts runs and should use the initializeAppMock
     expect(consoleLogSpy).toHaveBeenCalledWith('Application initializing...');
     expect(initializeAppMock).not.toHaveBeenCalled(); // Should not be called yet
 
@@ -92,7 +92,7 @@ describe('Application Initialization (main.ts)', () => {
   test('should log an error if app-container is not found', () => {
     // appContainerElement is NOT appended to body for this test
     (document.readyState as any) = 'complete';
-    require('./main'); // main.ts runs and should use the initializeAppMock
+    require('../src/main'); // main.ts runs and should use the initializeAppMock
 
     expect(consoleLogSpy).toHaveBeenCalledWith('Application initializing...');
     expect(initializeAppMock).not.toHaveBeenCalled();

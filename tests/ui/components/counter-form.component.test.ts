@@ -1,20 +1,20 @@
-import { CounterFormComponent, CounterFormComponentOptions } from './counter-form.component';
-import { Counter } from '../../models';
-import { escapeHtml } from '../../utils/security';
-import { showToast } from './toast-notifications';
+import { CounterFormComponent, CounterFormComponentOptions } from '../../../src/ui/components/counter-form.component';
+import { Counter } from '../../../src/models';
+import { escapeHtml } from '../../../src/utils/security';
+import { showToast } from '../../../src/ui/components/toast-notifications';
 
 // Mock dependencies
-jest.mock('../../utils/security', () => ({
+jest.mock('../../../src/utils/security', () => ({
   escapeHtml: jest.fn((value: string) => value || ''), // Simple pass-through
 }));
 
-jest.mock('./toast-notifications', () => ({
+jest.mock('../../../src/ui/components/toast-notifications', () => ({
   showToast: jest.fn(),
 }));
 
 // Mock BaseComponent as it's extended by CounterFormComponent
 // We don't need its full functionality, just the basic element creation.
-jest.mock('../core/base-component', () => {
+jest.mock('../../../src/ui/core/base-component', () => {
   return {
     BaseComponent: class MockBaseComponent {
       element: HTMLElement;

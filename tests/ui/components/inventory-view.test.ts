@@ -11,7 +11,7 @@ Object.defineProperty(window, 'indexedDB', {
 });
 
 // Mock dbService FIRST
-jest.mock('../../services/indexeddb.service', () => {
+jest.mock('../../../src/services/indexeddb.service', () => {
   // const actualDbService = jest.requireActual('../../services/indexeddb.service'); // Avoid loading actual service
   return {
     dbService: {
@@ -22,26 +22,26 @@ jest.mock('../../services/indexeddb.service', () => {
   };
 });
 // Mock toast-notifications early
-jest.mock('./toast-notifications');
-const mockedShowToastFn = require('./toast-notifications').showToast;
+jest.mock('../../../src/ui/components/toast-notifications');
+const mockedShowToastFn = require('../../../src/ui/components/toast-notifications').showToast;
 
 
-import type { initInventoryView as InitInventoryViewType } from './inventory-view'; // Type-only import
+import type { initInventoryView as InitInventoryViewType } from '../../../src/ui/components/inventory-view'; // Type-only import
 // No longer importing real dbService here, it's mocked above.
-import * as CalculationService from '../../services/calculation.service';
-import * as ExportService from '../../services/export.service';
-// import * as ToastNotifications from './toast-notifications'; // Will use mockedShowToastFn
-import * as Helpers from '../../utils/helpers';
-import { Location, Product, InventoryEntry, Area, Counter } from '../../models';
-import { escapeHtml } from '../../utils/security';
+import * as CalculationService from '../../../src/services/calculation.service';
+import * as ExportService from '../../../src/services/export.service';
+// import * as ToastNotifications from '../../../src/ui/components/toast-notifications'; // Will use mockedShowToastFn
+import * as Helpers from '../../../src/utils/helpers';
+import { Location, Product, InventoryEntry, Area, Counter } from '../../../src/models';
+import { escapeHtml } from '../../../src/utils/security';
 
 // Mocks
-jest.mock('../../services/indexeddb.service'); // This will re-apply if not already done by above. Fine.
-jest.mock('../../services/calculation.service');
-jest.mock('../../services/export.service');
-// jest.mock('./toast-notifications'); // Already mocked above
-jest.mock('../../utils/helpers', () => {
-  const actualHelpers = jest.requireActual('../../utils/helpers');
+jest.mock('../../../src/services/indexeddb.service'); // This will re-apply if not already done by above. Fine.
+jest.mock('../../../src/services/calculation.service');
+jest.mock('../../../src/services/export.service');
+// jest.mock('../../../src/ui/components/toast-notifications'); // Already mocked above
+jest.mock('../../../src/utils/helpers', () => {
+  const actualHelpers = jest.requireActual('../../../src/utils/helpers');
   return {
     ...actualHelpers,
     debounce: jest.fn(<T extends (...args: any[]) => any>(fn: T, delay: number): ((...args: Parameters<T>) => void) => {
@@ -51,7 +51,7 @@ jest.mock('../../utils/helpers', () => {
     generateId: jest.fn(() => 'mock-id'),
   };
 });
-jest.mock('../../utils/security', () => ({
+jest.mock('../../../src/utils/security', () => ({
     escapeHtml: jest.fn(str => str), // Pass-through
 }));
 
@@ -98,14 +98,14 @@ describe('Inventory View (inventory-view.ts)', () => {
         // and configure its method mocks *before* importing inventory-view.
         // Ensure this dbServiceMock is the one used by the module by getting it from the module system
         // after jest.mock has established it.
-        const tempDbService = (await import('../../services/indexeddb.service')).dbService;
+        const tempDbService = (await import('../../../src/services/indexeddb.service')).dbService;
         (tempDbService.loadLocations as jest.Mock).mockResolvedValue(JSON.parse(JSON.stringify(mockLocations)));
         (tempDbService.loadProducts as jest.Mock).mockResolvedValue(JSON.parse(JSON.stringify(mockProducts)));
         (tempDbService.saveLocation as jest.Mock).mockResolvedValue('loc1');
         dbServiceMock = tempDbService; // Assign to the higher-scoped variable for use in tests
 
         await jest.isolateModulesAsync(async () => {
-            const inventoryViewModule = await import('./inventory-view');
+            const inventoryViewModule = await import('../../../src/ui/components/inventory-view');
             currentInitInventoryView = inventoryViewModule.initInventoryView;
         });
 
@@ -360,11 +360,11 @@ describe('Inventory View (inventory-view.ts)', () => {
         // This requires isolating this test's module loading or carefully managing mock states.
         // Let's try re-setting mocks and re-running the isolated init for this test.
         await jest.isolateModulesAsync(async () => {
-            const isolatedDbService = (await import('../../services/indexeddb.service')).dbService;
+            const isolatedDbService = (await import('../../../src/services/indexeddb.service')).dbService;
             (isolatedDbService.loadLocations as jest.Mock).mockResolvedValue([partialLocation, ...mockLocations]);
             (isolatedDbService.loadProducts as jest.Mock).mockResolvedValue(mockProducts);
 
-            const isolatedInventoryViewModule = await import('./inventory-view');
+            const isolatedInventoryViewModule = await import('../../../src/ui/components/inventory-view');
             await isolatedInventoryViewModule.initInventoryView(container); // Use isolated init
         });
 
@@ -395,4 +395,4 @@ describe('Inventory View (inventory-view.ts)', () => {
             expect(items[1]!.productId).toBe('prod1'); // Vodka (Spirits)
         });
     });
-// Removed extra closing });
+});

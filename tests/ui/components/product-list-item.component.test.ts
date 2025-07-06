@@ -1,14 +1,14 @@
-import { ProductListItemComponent, ProductListItemCallbacks } from './product-list-item.component';
-import { Product } from '../../models';
-import { escapeHtml } from '../../utils/security';
+import { ProductListItemComponent, ProductListItemCallbacks } from '../../../src/ui/components/product-list-item.component';
+import { Product } from '../../../src/models';
+import { escapeHtml } from '../../../src/utils/security';
 
 // Mock escapeHtml
-jest.mock('../../utils/security', () => ({
+jest.mock('../../../src/utils/security', () => ({
   escapeHtml: jest.fn((str) => str),
 }));
 
 // Mock BaseComponent
-jest.mock('../core/base-component', () => {
+jest.mock('../../../src/ui/core/base-component', () => {
     return {
       BaseComponent: class MockBaseComponent {
         element: HTMLElement;

@@ -1,29 +1,29 @@
-import { initializeApp } from './ui-manager';
+import { initializeApp } from '../../src/ui/ui-manager';
 // Need to explicitly import functions to be mocked from their modules.
-import * as ThemeServiceModule from '../services/theme.service';
-import * as InventoryViewModule from './components/inventory-view';
-import * as LocationManagerModule from './components/location-manager';
-import * as ProductManagerModule from './components/product-manager';
-import * as AnalyticsViewModule from './components/analytics-view';
+import * as ThemeServiceModule from '../../src/services/theme.service';
+import * as InventoryViewModule from '../../src/ui/components/inventory-view';
+import * as LocationManagerModule from '../../src/ui/components/location-manager';
+import * as ProductManagerModule from '../../src/ui/components/product-manager';
+import * as AnalyticsViewModule from '../../src/ui/components/analytics-view';
 
 // Mock services and view initializers
-jest.mock('../services/theme.service', () => ({
+jest.mock('../../src/services/theme.service', () => ({
   themeService: {
     toggleTheme: jest.fn(),
     // getCurrentTheme: jest.fn().mockReturnValue('light'), // if needed
   },
 }));
 
-jest.mock('./components/inventory-view', () => ({
+jest.mock('../../src/ui/components/inventory-view', () => ({
   initInventoryView: jest.fn(),
 }));
-jest.mock('./components/location-manager', () => ({
+jest.mock('../../src/ui/components/location-manager', () => ({
   initLocationManager: jest.fn(),
 }));
-jest.mock('./components/product-manager', () => ({
+jest.mock('../../src/ui/components/product-manager', () => ({
   initProductManager: jest.fn(),
 }));
-jest.mock('./components/analytics-view', () => ({
+jest.mock('../../src/ui/components/analytics-view', () => ({
   initAnalyticsView: jest.fn(),
 }));
 

@@ -3,19 +3,19 @@
  * Testing Framework: Jest (based on TypeScript testing patterns)
  */
 
-import { AreaFormComponent, AreaFormComponentOptions } from './area-form.component';
-import { Area } from '../../models';
+import { AreaFormComponent, AreaFormComponentOptions } from '../../../src/ui/components/area-form.component';
+import { Area } from '../../../src/models';
 
 // Mock dependencies
-jest.mock('../../utils/security', () => ({
+jest.mock('../../../src/utils/security', () => ({
     escapeHtml: jest.fn((value: string) => value || '')
 }));
 
 // Hoist toast-notifications mock
-jest.mock('./toast-notifications');
-const mockedShowToastFn = require('./toast-notifications').showToast;
+jest.mock('../../../src/ui/components/toast-notifications');
+const mockedShowToastFn = require('../../../src/ui/components/toast-notifications').showToast;
 
-jest.mock('../core/base-component', () => {
+jest.mock('../../../src/ui/core/base-component', () => {
     return {
         BaseComponent: class MockBaseComponent<T extends HTMLElement = HTMLElement> {
             element: T;
@@ -38,8 +38,8 @@ jest.mock('../core/base-component', () => {
     };
 });
 
-import { escapeHtml } from '../../utils/security';
-import { showToast } from './toast-notifications';
+import { escapeHtml } from '../../../src/utils/security';
+import { showToast } from '../../../src/ui/components/toast-notifications';
 
 describe('AreaFormComponent', () => {
     let component: AreaFormComponent;

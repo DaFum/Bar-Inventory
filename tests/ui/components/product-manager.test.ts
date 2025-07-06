@@ -1,14 +1,14 @@
-import { Product } from '../../models'; // Type import can stay
+import { Product } from '../../../src/models'; // Type import can stay
 
 // Mocks - These should be defined before they are used by jest.mock,
 // and before the describe block if they are referenced by isolated modules.
 
 // Mock dependencies that don't rely on window.indexedDB first
-jest.mock('./toast-notifications', () => ({
+jest.mock('../../../src/ui/components/toast-notifications', () => ({
   showToast: jest.fn(),
 }));
 
-jest.mock('../../services/export.service', () => ({
+jest.mock('../../../src/services/export.service', () => ({
   exportService: {
     exportProductsToCsv: jest.fn(),
   },
@@ -27,18 +27,18 @@ const mockProductFormComponentInstance = {
     getElement: jest.fn().mockReturnValue(document.createElement('div')),
 };
 
-jest.mock('./product-list.component', () => {
+jest.mock('../../../src/ui/components/product-list.component', () => {
     return { ProductListComponent: jest.fn(() => mockProductListComponentInstance) };
 });
 
-jest.mock('./product-form.component', () => {
+jest.mock('../../../src/ui/components/product-form.component', () => {
     return { ProductFormComponent: jest.fn(() => mockProductFormComponentInstance) };
 });
 
 
 // Mock product.store separately as it's a key dependency that pulls in IndexedDB
 // This mock will be used by the dynamically imported product.store
-jest.mock('../../state/product.store', () => {
+jest.mock('../../../src/state/product.store', () => {
     // Ensure Product type is available if needed by the mock's logic
     // For this specific mock, it's not directly using Product type in its signature,
     // but if it did, we'd need to handle that (e.g. dynamic import or careful placement)
@@ -131,20 +131,20 @@ describe('Product Manager (initProductManager)', () => {
     await jest.isolateModulesAsync(async () => {
         // Dynamically import modules that might be affected by the indexedDB mock
         // or that depend on other dynamically loaded modules.
-        const pmModule = await import('./product-manager');
+        const pmModule = await import('../../../src/ui/components/product-manager');
         currentInitProductManager = pmModule.initProductManager;
 
-        const storeModule = await import('../../state/product.store');
+        const storeModule = await import('../../../src/state/product.store');
         currentProductStore = storeModule.productStore;
 
         // Component constructor mocks are defined globally, so we just need their types for casting if necessary
         // but the actual mock functions (ProductListComponent, ProductFormComponent) will be from the global scope.
         // We still need to import them if we want to assert on `toHaveBeenCalled` on the constructor itself.
-        currentProductListComponent = (await import('./product-list.component')).ProductListComponent;
-        currentProductFormComponent = (await import('./product-form.component')).ProductFormComponent;
+        currentProductListComponent = (await import('../../../src/ui/components/product-list.component')).ProductListComponent;
+        currentProductFormComponent = (await import('../../../src/ui/components/product-form.component')).ProductFormComponent;
 
-        currentShowToast = (await import('./toast-notifications')).showToast;
-        currentExportService = (await import('../../services/export.service')).exportService;
+        currentShowToast = (await import('../../../src/ui/components/toast-notifications')).showToast;
+        currentExportService = (await import('../../../src/services/export.service')).exportService;
     });
 
     // Initialize mock data after dynamic imports

@@ -1,9 +1,9 @@
-import { LocationListComponent } from './location-list.component';
-import { LocationListItemComponent, LocationListItemCallbacks } from './location-list-item.component';
-import { Location } from '../../models';
+import { LocationListComponent } from '../../../src/ui/components/location-list.component';
+import { LocationListItemComponent, LocationListItemCallbacks } from '../../../src/ui/components/location-list-item.component';
+import { Location } from '../../../src/models';
 
 // Mock LocationListItemComponent
-jest.mock('./location-list-item.component', () => {
+jest.mock('../../../src/ui/components/location-list-item.component', () => {
   return {
     LocationListItemComponent: jest.fn().mockImplementation((location: Location, callbacks: LocationListItemCallbacks) => {
       const element = document.createElement('li'); // Mocked as LI
@@ -22,7 +22,7 @@ jest.mock('./location-list-item.component', () => {
 });
 
 // Mock BaseComponent as it's extended
-jest.mock('../core/base-component', () => {
+jest.mock('../../../src/ui/core/base-component', () => {
     return {
       BaseComponent: class MockBaseComponent {
         element: HTMLElement;

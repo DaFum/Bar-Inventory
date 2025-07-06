@@ -1,4 +1,4 @@
-import type { ThemeService as ThemeServiceType } from './theme.service'; // Type-only import
+import type { ThemeService as ThemeServiceType } from '../../src/services/theme.service'; // Type-only import
 import { Chart } from 'chart.js';
 
 // Mock localStorage
@@ -102,7 +102,7 @@ describe('ThemeService', () => {
     // Dynamically import the ThemeService class within an isolated module context
     // This ensures it picks up the mocks defined at the top of this test file.
     await jest.isolateModulesAsync(async () => {
-      const themeServiceModule = await import('./theme.service');
+      const themeServiceModule = await import('../../src/services/theme.service');
       ActualThemeServiceClass = themeServiceModule.ThemeService;
     });
 
@@ -525,7 +525,7 @@ describe('ThemeService', () => {
       
       const promises = Array.from({ length: 5 }, async () => {
         return await jest.isolateModulesAsync(async () => {
-          const themeServiceModule = await import('./theme.service');
+          const themeServiceModule = await import('../../src/services/theme.service');
           return new themeServiceModule.ThemeService();
         });
       });

@@ -1,21 +1,21 @@
-import { CounterListItemComponent, CounterListItemCallbacks } from './counter-list-item.component';
-import { Location as LocationModel, Counter, Area } from '../../models';
-import { escapeHtml } from '../../utils/security';
-import { showToast } from './toast-notifications';
-import { locationStore } from '../../state/location.store';
-import { AreaListComponent } from './area-list.component';
-import { AreaFormComponent } from './area-form.component';
+import { CounterListItemComponent, CounterListItemCallbacks } from '../../../src/ui/components/counter-list-item.component';
+import { Location as LocationModel, Counter, Area } from '../../../src/models';
+import { escapeHtml } from '../../../src/utils/security';
+import { showToast } from '../../../src/ui/components/toast-notifications';
+import { locationStore } from '../../../src/state/location.store';
+import { AreaListComponent } from '../../../src/ui/components/area-list.component';
+import { AreaFormComponent } from '../../../src/ui/components/area-form.component';
 
 // Mock dependencies
-jest.mock('../../utils/security', () => ({
+jest.mock('../../../src/utils/security', () => ({
   escapeHtml: jest.fn((str) => str), // Simple pass-through
 }));
 
-jest.mock('./toast-notifications', () => ({
+jest.mock('../../../src/ui/components/toast-notifications', () => ({
   showToast: jest.fn(),
 }));
 
-jest.mock('../../state/location.store', () => ({
+jest.mock('../../../src/state/location.store', () => ({
   locationStore: {
     getLocationById: jest.fn(),
     addArea: jest.fn(),
@@ -36,14 +36,14 @@ const mockAreaFormComponentInstance = {
 };
 
 // Then use them in jest.mock
-jest.mock('./area-list.component', () => {
+jest.mock('../../../src/ui/components/area-list.component', () => {
     return {
       // AreaListComponent constructor mock returns the pre-defined instance
       AreaListComponent: jest.fn(() => mockAreaListComponentInstance),
     };
   });
 
-jest.mock('./area-form.component', () => {
+jest.mock('../../../src/ui/components/area-form.component', () => {
     return {
       // AreaFormComponent constructor mock returns the pre-defined instance
       AreaFormComponent: jest.fn(() => mockAreaFormComponentInstance),
@@ -651,7 +651,8 @@ describe('CounterListItemComponent', () => {
       
       expect(newComponent.getCounterId()).toBe(mockCounter.id);
       expect(newComponent.getElement().dataset.counterId).toBe(mockCounter.id);
-      
+
       newComponent.getElement().remove();
     });
   });
+});

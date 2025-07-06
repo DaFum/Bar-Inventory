@@ -1,4 +1,4 @@
-import { escapeHtml } from './security';
+import { escapeHtml } from '../../src/utils/security';
 
 describe('Security Utilities', () => {
   describe('escapeHtml', () => {

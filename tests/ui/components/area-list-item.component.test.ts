@@ -1,9 +1,9 @@
-import { AreaListItemComponent, AreaListItemCallbacks } from './area-list-item.component';
-import { Area } from '../../models';
-import { escapeHtml } from '../../utils/security';
+import { AreaListItemComponent, AreaListItemCallbacks } from '../../../src/ui/components/area-list-item.component';
+import { Area } from '../../../src/models';
+import { escapeHtml } from '../../../src/utils/security';
 
 // Mock escapeHtml
-jest.mock('../../utils/security', () => ({
+jest.mock('../../../src/utils/security', () => ({
   escapeHtml: jest.fn((str) => str), // Simple pass-through mock
 }));
 

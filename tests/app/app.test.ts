@@ -7,7 +7,7 @@
 // Mock main.ts to see if app.ts tries to load it.
 // This is a bit of a "presence" test.
 let mainTSRun = false;
-jest.mock('./main', () => {
+jest.mock('../../src/main', () => {
   // This mock will be used when app.ts executes `import './main';`
   // We can set a flag or log something here.
   mainTSRun = true;
@@ -26,13 +26,13 @@ describe('App Module (app.ts)', () => {
   test('should load and execute main.ts', () => {
     // When app.ts is imported, it should in turn import './main'.
     // Our mock for './main' will set mainTSRun to true.
-    require('./app');
+    require('../../src/app');
     expect(mainTSRun).toBe(true);
   });
 
   test('should log to console when app module is loaded', () => {
     const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    require('./app');
+    require('../../src/app');
     // Check for the specific log message from app.ts
     expect(consoleLogSpy).toHaveBeenCalledWith("App module loaded. Main execution starts in main.ts.");
     consoleLogSpy.mockRestore();
