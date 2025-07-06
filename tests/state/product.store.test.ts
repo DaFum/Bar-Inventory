@@ -647,11 +647,13 @@ describe('ProductStore', () => {
         const currentProducts = productStore.getProducts();
         // Verify that products are always sorted
         for (let i = 1; i < currentProducts.length; i++) {
-          const prev = currentProducts[i - 1]!; // Added non-null assertion
-          const curr = currentProducts[i]!; // Added non-null assertion
-          const prevKey = `${prev.category.toLowerCase()}-${prev.name.toLowerCase()}`;
-          const currKey = `${curr.category.toLowerCase()}-${curr.name.toLowerCase()}`;
-          expect(prevKey <= currKey).toBe(true);
+          const prev = currentProducts[i - 1];
+          const curr = currentProducts[i];
+          if (prev && curr) {
+            const prevKey = `${prev.category.toLowerCase()}-${prev.name.toLowerCase()}`;
+            const currKey = `${curr.category.toLowerCase()}-${curr.name.toLowerCase()}`;
+            expect(prevKey <= currKey).toBe(true);
+          }
         }
       }
     });
