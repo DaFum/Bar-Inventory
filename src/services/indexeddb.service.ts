@@ -2,8 +2,12 @@ import { DBSchema, openDB, IDBPDatabase } from 'idb';
 import { Product, Location, InventoryState } from '../models'; // Removed Counter, Area, InventoryEntry
 import { showToast } from '../ui/components/toast-notifications';
 
-const DATABASE_NAME = 'BarInventoryDB';
-const DATABASE_VERSION = 1;
+export const DATABASE_NAME = 'BarInventoryDB';
+export const DATABASE_VERSION = 1;
+export const PRODUCTS_STORE_NAME = 'products';
+export const LOCATIONS_STORE_NAME = 'locations';
+export const INVENTORY_STATE_STORE_NAME = 'inventoryState';
+
 
 // Erweiterte Version von InventoryState für IndexedDB-Speicherung
 // Export for use in test files
@@ -14,16 +18,16 @@ export interface StoredInventoryState extends InventoryState {
 // Define the database schema using the DBSchema interface from 'idb'
 // Export for use in test files
 export interface BarInventoryDBSchema extends DBSchema {
-  products: {
+  [PRODUCTS_STORE_NAME]: {
     key: string; // Product.id
     value: Product;
     indexes: { category: string }; // Example index
   };
-  locations: {
+  [LOCATIONS_STORE_NAME]: {
     key: string; // Location.id
     value: Location;
   };
-  inventoryState: {
+  [INVENTORY_STATE_STORE_NAME]: {
     key: string; // e.g., 'currentState'
     value: StoredInventoryState; // Use the globally defined StoredInventoryState
   };
@@ -56,8 +60,8 @@ export class IndexedDBService {
         console.log(`Upgrading database from version ${oldVersion} to ${newVersion}`);
 
         // Object store for Products
-        if (!db.objectStoreNames.contains('products')) {
-          const productStore = db.createObjectStore('products', {
+        if (!db.objectStoreNames.contains(PRODUCTS_STORE_NAME)) {
+          const productStore = db.createObjectStore(PRODUCTS_STORE_NAME, {
             keyPath: 'id',
           });
           productStore.createIndex('category', 'category');
@@ -66,14 +70,14 @@ export class IndexedDBService {
         }
 
         // Object store for Locations (which will contain counters and areas)
-        if (!db.objectStoreNames.contains('locations')) {
-          db.createObjectStore('locations', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains(LOCATIONS_STORE_NAME)) {
+          db.createObjectStore(LOCATIONS_STORE_NAME, { keyPath: 'id' });
           // Add initial locations if necessary
         }
 
         // Object store for general inventory state (e.g., settings, last sync time)
-        if (!db.objectStoreNames.contains('inventoryState')) {
-          db.createObjectStore('inventoryState', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains(INVENTORY_STATE_STORE_NAME)) {
+          db.createObjectStore(INVENTORY_STATE_STORE_NAME, { keyPath: 'key' });
           // Example: transaction.objectStore('inventoryState').add({ key: 'currentState', unsyncedChanges: false });
         }
 
@@ -155,7 +159,7 @@ export class IndexedDBService {
    * Corresponds to a part of what `loadItems` might do.
    */
   async loadProducts(): Promise<Product[]> {
-    return this.getAll('products');
+    return this.getAll(PRODUCTS_STORE_NAME);
   }
 
   /**
@@ -163,21 +167,21 @@ export class IndexedDBService {
    * Can be used by a more comprehensive `saveItems` function.
    */
   async saveProduct(product: Product): Promise<string> {
-    return this.put('products', product);
+    return this.put(PRODUCTS_STORE_NAME, product);
   }
 
   /**
    * Loads all locations (including their counters and areas with inventory items).
    */
   async loadLocations(): Promise<Location[]> {
-    return this.getAll('locations');
+    return this.getAll(LOCATIONS_STORE_NAME);
   }
 
   /**
    * Saves a single location.
    */
   async saveLocation(location: Location): Promise<string> {
-    return this.put('locations', location);
+    return this.put(LOCATIONS_STORE_NAME, location);
   }
 
   /**
@@ -185,7 +189,7 @@ export class IndexedDBService {
    */
   async getInventoryState(): Promise<InventoryState | undefined> {
     // Assuming a single document for state, keyed 'currentState'
-    return this.get('inventoryState', 'currentState');
+    return this.get(INVENTORY_STATE_STORE_NAME, 'currentState');
   }
 
   /**
@@ -194,7 +198,7 @@ export class IndexedDBService {
   async saveInventoryState(state: InventoryState): Promise<string> {
     // Uses the global StoredInventoryState
     const stateToSave: StoredInventoryState = { ...state, key: 'currentState' };
-    return this.put('inventoryState', stateToSave);
+    return this.put(INVENTORY_STATE_STORE_NAME, stateToSave);
   }
 
   // Example of a more comprehensive "saveItems" that saves all current application data
@@ -212,12 +216,12 @@ export class IndexedDBService {
   }): Promise<void> {
     const db = await this.dbPromise;
     // Start a readwrite transaction. Note: get operations are also allowed in readwrite.
-    const tx = db.transaction(['products', 'locations', 'inventoryState'], 'readwrite');
+    const tx = db.transaction([PRODUCTS_STORE_NAME, LOCATIONS_STORE_NAME, INVENTORY_STATE_STORE_NAME], 'readwrite');
 
     try {
-      const productStore = tx.objectStore('products');
-      const locationStore = tx.objectStore('locations');
-      const stateStore = tx.objectStore('inventoryState');
+      const productStore = tx.objectStore(PRODUCTS_STORE_NAME);
+      const locationStore = tx.objectStore(LOCATIONS_STORE_NAME);
+      const stateStore = tx.objectStore(INVENTORY_STATE_STORE_NAME);
 
       // === Products ===
       const existingProductKeys = await productStore.getAllKeys();
@@ -287,9 +291,9 @@ export class IndexedDBService {
     locations: Location[];
     state: StoredInventoryState | undefined; // Corrected return type for state
   }> {
-    const products = await this.getAll('products');
-    const locations = await this.getAll('locations');
-    const state = await this.get('inventoryState', 'currentState'); // This returns StoredInventoryState | undefined
+    const products = await this.getAll(PRODUCTS_STORE_NAME);
+    const locations = await this.getAll(LOCATIONS_STORE_NAME);
+    const state = await this.get(INVENTORY_STATE_STORE_NAME, 'currentState'); // This returns StoredInventoryState | undefined
     return { products, locations, state };
   }
 }
