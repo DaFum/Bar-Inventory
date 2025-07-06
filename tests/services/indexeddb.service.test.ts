@@ -281,11 +281,7 @@ describe('IndexedDBService', () => {
       const { showToast: requiredShowToastMock } = require('../../src/ui/components/toast-notifications');
 
       Object.defineProperty(window, 'indexedDB', { value: undefined, configurable: true });
-      try {
-        new IndexedDBServiceClass(); // This class instantiation is synchronous
-      } catch (e: any) {
-        expect(e.message).toBe('IndexedDB not supported');
-      }
+      expect(() => new IndexedDBServiceClass()).toThrow('IndexedDB not supported');
       expect(requiredShowToastMock).toHaveBeenCalledWith(
         'IndexedDB wird nicht unterstützt. Daten können nicht gespeichert werden.',
         'error'
