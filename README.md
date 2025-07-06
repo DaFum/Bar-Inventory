@@ -1,69 +1,78 @@
-# Bar Inventory Management System
+# Bar Bestandsverwaltungssystem
 
-## Overview
+## Überblick
 
-The Bar Inventory Management System is a web application designed to help bar managers keep track of their inventory. It allows users to manage categories, areas, and items, and to view inventory levels at different phases: start, end, and difference. The application is built using Vue.js, Vuex, and IndexedDB for local storage.
+Das Bar Bestandsverwaltungssystem ist eine Webanwendung, die Bar-Managern hilft, den Überblick über ihren Bestand zu behalten. Es ermöglicht Benutzern, Kategorien, Bereiche und Artikel zu verwalten und die Bestände in verschiedenen Phasen anzuzeigen: Anfang, Ende und Differenz. Die Anwendung wurde mit TypeScript, HTML und CSS erstellt und verwendet IndexedDB für die lokale Speicherung.
 
-## Features
+## Funktionen
 
-- **Category Management**: Add, edit, and remove categories.
-- **Area Management**: Add, edit, and remove areas within the bar.
-- **Item Management**: Add, edit, and remove inventory items.
-- **Phases**: Track inventory at the start and end of a period, and automatically calculate the difference.
-- **Formula Input**: Enter formulas for inventory quantities that can be dynamically calculated.
-- **View Toggle**: Switch between formula view and sum view for inventory quantities.
-- **Export/Import**: Export inventory data to CSV or JSON files, and import data from JSON files.
-- **Toasts**: Display toast notifications for successful actions.
+- **Kategorienverwaltung**: Kategorien hinzufügen, bearbeiten und entfernen.
+- **Bereichsverwaltung**: Bereiche innerhalb der Bar hinzufügen, bearbeiten und entfernen.
+- **Artikelverwaltung**: Bestandsartikel hinzufügen, bearbeiten und entfernen.
+- **Phasen**: Bestand am Anfang und Ende eines Zeitraums verfolgen und automatisch die Differenz berechnen.
+- **Formeleingabe**: Formeln für Bestandsmengen eingeben, die dynamisch berechnet werden können.
+- **Ansichtsumschaltung**: Zwischen Formelansicht und Summenansicht für Bestandsmengen wechseln.
+- **Export/Import**: Bestandsdaten in CSV- oder JSON-Dateien exportieren und Daten aus JSON-Dateien importieren.
+- **Benachrichtigungen**: Toast-Benachrichtigungen für erfolgreiche Aktionen anzeigen.
+- **Theme-Umschaltung**: Zwischen verschiedenen Farbthemen wechseln.
 
-## Technologies Used
+## Verwendete Technologien
 
-- **Vue.js**: JavaScript framework for building user interfaces.
-- **Vuex**: State management library for Vue.js applications.
-- **IndexedDB**: Low-level API for client-side storage of significant amounts of structured data.
-- **DaisyUI**: Tailwind CSS components for styling.
+- **TypeScript**: Eine statisch typisierte Obermenge von JavaScript.
+- **IndexedDB**: Low-Level-API für die clientseitige Speicherung großer Mengen strukturierter Daten.
+- **HTML/CSS**: Standardtechnologien für die Erstellung von Webseiten.
 
-## Usage
+## Nutzung
 
-### Managing Categories
+### Kategorien verwalten
 
-1. Navigate to the "Manage View" tab.
-2. Under "Categories", you can add new categories by entering the category name and clicking "Add Category".
-3. Existing categories can be removed by clicking the "Remove" button next to the category name.
+1. Navigieren Sie zur Registerkarte "Verwaltungsansicht".
+2. Unter "Kategorien" können Sie neue Kategorien hinzufügen, indem Sie den Kategorienamen eingeben und auf "Kategorie hinzufügen" klicken.
+3. Vorhandene Kategorien können entfernt werden, indem Sie auf die Schaltfläche "Entfernen" neben dem Kategorienamen klicken.
 
-### Managing Areas
+### Bereiche verwalten
 
-1. Navigate to the "Manage View" tab.
-2. Under "Areas", you can add new areas by entering the area name and clicking "Add Area".
-3. Existing areas can be removed by clicking the "Remove" button next to the area name.
+1. Navigieren Sie zur Registerkarte "Verwaltungsansicht".
+2. Unter "Bereiche" können Sie neue Bereiche hinzufügen, indem Sie den Bereichsnamen eingeben und auf "Bereich hinzufügen" klicken.
+3. Vorhandene Bereiche können entfernt werden, indem Sie auf die Schaltfläche "Entfernen" neben dem Bereichsnamen klicken.
 
-### Managing Items
+### Artikel verwalten
 
-1. Navigate to the "Manage View" tab.
-2. Under "Add Item", enter the item name and select a category.
-3. Click "Add Item" to add the item to the inventory.
-4. Existing items can be edited or removed by clicking the respective buttons next to the item name in the inventory list.
+1. Navigieren Sie zur Registerkarte "Verwaltungsansicht".
+2. Geben Sie unter "Artikel hinzufügen" den Artikelnamen ein und wählen Sie eine Kategorie aus.
+3. Klicken Sie auf "Artikel hinzufügen", um den Artikel zum Bestand hinzuzufügen.
+4. Vorhandene Artikel können bearbeitet oder entfernt werden, indem Sie auf die entsprechenden Schaltflächen neben dem Artikelnamen in der Bestandsliste klicken.
 
-### Viewing and Updating Inventory
+### Bestand anzeigen und aktualisieren
 
-1. Navigate to the "List View" tab.
-2. Switch between "Start", "End", and "Difference" phases using the buttons at the top.
-3. Enter inventory quantities using formulas (e.g., `5+10`). The system will dynamically calculate the sum.
-4. Toggle between formula view and sum view using the "Show Formula" / "Show Sum" button.
-5. Notes can be added for the "Difference" phase.
+1. Navigieren Sie zur Registerkarte "Listenansicht".
+2. Wechseln Sie mit den Schaltflächen oben zwischen den Phasen "Anfang", "Ende" und "Differenz".
+3. Geben Sie Bestandsmengen über Formeln ein (z. B. `5+10`). Das System berechnet dynamisch die Summe.
+4. Wechseln Sie mit der Schaltfläche "Formel anzeigen" / "Summe anzeigen" zwischen der Formelansicht und der Summenansicht.
+5. Für die Phase "Differenz" können Notizen hinzugefügt werden.
 
-### Exporting and Importing Data
+### Daten exportieren und importieren
 
-1. **Export to CSV**: Click the "Export to CSV" button to download the inventory data as a CSV file.
-2. **Export Inventory**: Click the "Export Inventory" button to download the inventory data as a JSON file.
-3. **Import Inventory**: Click the "Import Inventory" button and select a JSON file to upload and update the inventory data.
+1. **Export nach CSV**: Klicken Sie auf die Schaltfläche "Export nach CSV", um die Bestandsdaten als CSV-Datei herunterzuladen.
+2. **Bestand exportieren**: Klicken Sie auf die Schaltfläche "Bestand exportieren", um die Bestandsdaten als JSON-Datei herunterzuladen.
+3. **Bestand importieren**: Klicken Sie auf die Schaltfläche "Bestand importieren" und wählen Sie eine JSON-Datei aus, um die Bestandsdaten hochzuladen und zu aktualisieren.
 
-## License
+### Tests ausführen
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Um die Tests auszuführen, verwenden Sie den folgenden Befehl in Ihrem Terminal:
 
-## Acknowledgements
+```bash
+npm test
+```
 
-- [Vue.js](https://vuejs.org/)
-- [Vuex](https://vuex.vuejs.org/)
-- [DaisyUI](https://daisyui.com/)
+Stellen Sie sicher, dass Sie alle Abhängigkeiten installiert haben, bevor Sie die Tests ausführen, indem Sie `npm install` ausführen.
+
+## Lizenz
+
+Dieses Projekt ist unter der MIT-Lizenz lizenziert - siehe die Datei [LICENSE](LICENSE) für Details.
+
+## Danksagungen
+
 - [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
+- [Tailwind CSS](https://tailwindcss.com/) (indirekt über DaisyUI, falls verwendet, ansonsten entfernen)
+- [DaisyUI](https://daisyui.com/) (falls verwendet, ansonsten entfernen)

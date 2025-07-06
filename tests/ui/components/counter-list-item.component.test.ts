@@ -120,15 +120,14 @@ describe('CounterListItemComponent', () => {
   });
 
   describe('Area Management', () => {
-    let manageAreasButton: HTMLButtonElement;
-
-    beforeEach(() => {
-        manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
-        // Click to show area management and initialize its components
-        manageAreasButton.click();
-    });
+    // Removed nested beforeEach and afterEach as 'component' should be from the outer scope.
+    // Tests here will use the 'component' instance from the main beforeEach.
 
     test('clicking "Manage Areas" button should toggle visibility and render internal structure', () => {
+      // 'component' here refers to the instance from the main beforeEach
+      const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
+      manageAreasButton.click(); // First click to show
+
       const areaManagementDiv = component.getElement().querySelector('.area-management-section') as HTMLDivElement;
       expect(areaManagementDiv.style.display).toBe('block'); // Initially shown by click in beforeEach
 
@@ -268,7 +267,11 @@ describe('CounterListItemComponent', () => {
         description: 'Counter with no areas',
         areas: []
       };
-      const componentNoAreas = new CounterListItemComponent(mockLocation, counterWithNoAreas, mockCallbacks);
+      // Define local mocks for this specific test case to avoid TS2304/TS2552
+      const localMockLocation: LocationModel = { id: 'loc-edge', name: 'Edge Case Location', address: 'Addr', counters: [counterWithNoAreas] };
+      const localMockCallbacks: CounterListItemCallbacks = { onEditCounter: jest.fn(), onDeleteCounter: jest.fn() };
+
+      const componentNoAreas = new CounterListItemComponent(localMockLocation, counterWithNoAreas, localMockCallbacks);
       document.body.appendChild(componentNoAreas.getElement());
       
       const manageAreasButton = componentNoAreas.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
@@ -655,4 +658,3 @@ describe('CounterListItemComponent', () => {
       newComponent.getElement().remove();
     });
   });
-});

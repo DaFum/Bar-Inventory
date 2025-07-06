@@ -395,4 +395,4 @@ describe('Inventory View (inventory-view.ts)', () => {
             expect(items[1]!.productId).toBe('prod1'); // Vodka (Spirits)
         });
     });
-});
+// Removed extra });

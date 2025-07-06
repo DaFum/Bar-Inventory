@@ -185,9 +185,17 @@ describe('ExportService', () => {
       expect(parsedJson.counters[0]!.areas[0]!.id).toBe(mockArea.id); // Added non-null assertion
     });
   });
-});
+// }); // Premature closing moved to the end of the file
 
 // Mock Blob constructor
+// Moved this mock to the top of the file for better organization, though Jest hoists mocks.
+// (global as any).Blob = jest.fn((content, options) => ({ content, options }));
+// Actually, this should be fine here as it's a global mock setup, not a module mock.
+// Let's keep it here for now unless it causes issues. If it's meant to mock the Blob for the service,
+// it should be at the top level or Jest-mocked if Blob is imported.
+// Given the usage `(global.Blob as any).mock.calls`, this seems to be a global override for testing.
+
+// Re-instating the global Blob mock as it seems intended for the tests below.
 (global as any).Blob = jest.fn((content, options) => ({ content, options }));
 
   describe('Error handling and edge cases', () => {
@@ -483,4 +491,4 @@ describe('ExportService', () => {
       ]);
     });
   });
-});
+}); // Closes the main ExportService describe block

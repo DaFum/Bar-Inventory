@@ -254,7 +254,7 @@ describe('ProductStore', () => {
       ]);
     });
   });
-});
+// }); // Premature closing moved to the end of the file
 
   describe('Edge Cases and Boundary Conditions', () => {
     describe('Empty and null data scenarios', () => {
@@ -469,21 +469,31 @@ describe('ProductStore', () => {
         // First load some initial products
         await productStore.loadProducts();
         
+        // Define local copies of mocks for this specific test's scope
+        const localMockProduct1: Product = {
+            id: 'prod1', name: 'Test Product A', category: 'Category 1',
+            volume: 750, pricePerBottle: 20
+        };
+        const localMockProduct2: Product = {
+            id: 'prod2', name: 'Test Product B', category: 'Category 2',
+            volume: 500, pricePerBottle: 15
+        };
+
         const newProduct: Product = { id: 'new1', name: 'New Product', category: 'New Cat', volume: 750, pricePerBottle: 25 };
-        const updateProduct: Product = { ...mockProduct1, name: 'Updated Name' };
+        const updateProduct: Product = { ...localMockProduct1, name: 'Updated Name' };
         
         const promises = [
           productStore.addProduct(newProduct),
           productStore.updateProduct(updateProduct),
-          productStore.deleteProduct(mockProduct2.id),
+          productStore.deleteProduct(localMockProduct2.id),
         ];
         
         await Promise.all(promises);
         
         const storedProducts = productStore.getProducts();
         expect(storedProducts).toContainEqual(newProduct);
-        expect(storedProducts.find(p => p.id === mockProduct1.id)?.name).toBe('Updated Name');
-        expect(storedProducts.find(p => p.id === mockProduct2.id)).toBeUndefined();
+        expect(storedProducts.find(p => p.id === localMockProduct1.id)?.name).toBe('Updated Name');
+        expect(storedProducts.find(p => p.id === localMockProduct2.id)).toBeUndefined();
       });
     });
 
@@ -639,9 +649,11 @@ describe('ProductStore', () => {
         for (let i = 1; i < currentProducts.length; i++) {
           const prev = currentProducts[i - 1];
           const curr = currentProducts[i];
-          const prevKey = `${prev.category.toLowerCase()}-${prev.name.toLowerCase()}`;
-          const currKey = `${curr.category.toLowerCase()}-${curr.name.toLowerCase()}`;
-          expect(prevKey <= currKey).toBe(true);
+          if (prev && curr) {
+            const prevKey = `${prev.category.toLowerCase()}-${prev.name.toLowerCase()}`;
+            const currKey = `${curr.category.toLowerCase()}-${curr.name.toLowerCase()}`;
+            expect(prevKey <= currKey).toBe(true);
+          }
         }
       }
     });
@@ -672,3 +684,4 @@ describe('ProductStore', () => {
       expect(sortedIds).toEqual(expect.arrayContaining(['rapid0', 'rapid1', 'rapid2', 'rapid3', 'rapid4', 'rapid5', 'rapid6', 'rapid7', 'rapid8', 'rapid9']));
     });
   });
+}); // Closes the main ProductStore describe block

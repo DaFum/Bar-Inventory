@@ -184,7 +184,7 @@ describe('AreaListComponent', () => {
     expect(items[2].textContent).toBe('Area Gamma');
     expect(items[3].textContent).toBe('Area Omega');
   });
-});
+// }); // Removed premature closing
 
   // Additional comprehensive tests for edge cases and error conditions
 
@@ -659,4 +659,4 @@ describe('AreaListComponent', () => {
       expect(listHostDiv?.children.length).toBe(initialCount);
     });
   });
-});
+}); // This closes the main 'AreaListComponent' describe block
