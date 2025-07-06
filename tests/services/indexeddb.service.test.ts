@@ -170,13 +170,11 @@ const mockIDBFactory = {
   cmp: jest.fn(),
 };
 // Ensure window.indexedDB is defined for the service's initial check
-if (typeof window !== 'undefined') {
-    Object.defineProperty(window, 'indexedDB', {
-        value: mockIDBFactory,
-        writable: true,
-        configurable: true,
-    });
-}
+Object.defineProperty(window, 'indexedDB', {
+    value: mockIDBFactory,
+    writable: true,
+    configurable: true,
+});
 
 
 const mockProduct: Product = { id: 'prod1', name: 'Test Product', category: 'Test Category', itemsPerCrate: 10, pricePer100ml: 1, pricePerBottle: 10, volume: 750 };
