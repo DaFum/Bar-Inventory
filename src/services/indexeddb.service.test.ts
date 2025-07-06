@@ -239,23 +239,13 @@ describe('IndexedDBService', () => {
 
     it('should handle errors if database is not initialized for an operation', async () => {
       let faultyDbService!: IndexedDBService;
-      const originalLocalIndexedDB = (window as any).indexedDB; // Store before isolation
       
-      // We don't need to mock window.indexedDB.open to throw here.
-      // We will make the idb.openDB mock reject.
-      // const mockIDBFactoryIsolated = {
-      //   open: jest.fn().mockImplementation(() => { throw new Error("Simulated open error for faulty service"); }),
-      //   deleteDatabase: jest.fn(),
-      //   cmp: jest.fn(),
-      // };
-
       await jest.isolateModulesAsync(async () => {
-        // (window as any).indexedDB = mockIDBFactoryIsolated; // Not needed if idb.openDB is mocked to fail
 
         const { openDB: isolatedOpenDB } = jest.requireMock('idb');
         // Make the idb's openDB fail for the next instantiation
         isolatedOpenDB.mockRejectedValueOnce(new Error('DB init failed'));
-        
+
         const mod = await import('../../src/services/indexeddb.service');
         // The constructor itself should not throw if window.indexedDB is present.
         // It assigns this.dbPromise = this.initDB();
@@ -265,9 +255,6 @@ describe('IndexedDBService', () => {
         // No complex try-catch needed here for service instantiation if window.indexedDB is valid.
         // The error is expected on faultyDbService.dbPromise.
       });
-
-      // Restore window.indexedDB if it was changed by other parts of the test (though not strictly necessary for this refactor)
-      // (window as any).indexedDB = originalLocalIndexedDB;
 
       expect(faultyDbService).toBeDefined(); // Ensure faultyDbService was assigned
       // Accessing dbPromise should reveal the rejection from initDB()
