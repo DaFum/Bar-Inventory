@@ -91,7 +91,8 @@ const THEME_KEY = 'app-theme';
 const DARK_MODE_CLASS = 'dark-mode';
 
 describe('ThemeService', () => {
-  let themeServiceInstance: ThemeService | undefined;
+  let themeServiceInstance: ThemeService | undefined; // This can be phased out or managed by the array
+  let testServiceInstances: ThemeService[] = [];
   let mockHtmlElement: HTMLElement | null; // Can be null if documentElement is not always present
   const originalLocalStorage = { // Store original localStorage mock functions
       getItem: localStorageMock.getItem,
@@ -107,6 +108,7 @@ describe('ThemeService', () => {
     localStorageMock.removeItem = originalLocalStorage.removeItem;
     localStorageMock.clear = originalLocalStorage.clear;
     localStorageMock.clear(); // Then clear it for the test
+    testServiceInstances = []; // Clear instances at the beginning of each test
 
     systemPrefersDark = false;
     // if (document.body && document.body.classList) { // Check if body and classList exist
@@ -154,10 +156,15 @@ describe('ThemeService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-    if (themeServiceInstance && typeof (themeServiceInstance as any).dispose === 'function') {
-        (themeServiceInstance as any).dispose();
-    }
-    themeServiceInstance = undefined; // Ensure it's reset for the next test
+    // Dispose all tracked instances
+    testServiceInstances.forEach(instance => {
+      if (typeof (instance as any).dispose === 'function') {
+        (instance as any).dispose();
+      }
+    });
+    testServiceInstances = []; // Clear the array
+    themeServiceInstance = undefined; // Also reset the global one if it was used
+
     // Always restore matchMedia to the default mock after each test
     Object.defineProperty(window, 'matchMedia', { value: matchMediaMock, configurable: true });
   });
@@ -167,6 +174,7 @@ describe('ThemeService', () => {
       systemPrefersDark = false;
       localStorageMock.clear();
       const service = new ThemeService();
+      testServiceInstances.push(service);
       expect(service.getCurrentTheme()).toBe('light');
       expect(document.body.classList.contains(DARK_MODE_CLASS)).toBe(false);
       expect(mockHtmlElement!.setAttribute).toHaveBeenCalledWith('data-theme', 'light');
@@ -176,6 +184,7 @@ describe('ThemeService', () => {
       systemPrefersDark = true;
       localStorageMock.clear();
       const service = new ThemeService();
+      testServiceInstances.push(service);
       expect(service.getCurrentTheme()).toBe('dark');
       expect(document.body.classList.contains(DARK_MODE_CLASS)).toBe(true);
       expect(mockHtmlElement!.setAttribute).toHaveBeenCalledWith('data-theme', 'dark');
@@ -185,6 +194,7 @@ describe('ThemeService', () => {
       systemPrefersDark = true; // System prefers dark
       localStorageMock.setItem(THEME_KEY, 'light'); // But stored is light
       const service = new ThemeService();
+      testServiceInstances.push(service);
       expect(service.getCurrentTheme()).toBe('light');
       expect(document.body.classList.contains(DARK_MODE_CLASS)).toBe(false);
     });
@@ -193,6 +203,7 @@ describe('ThemeService', () => {
       systemPrefersDark = false; // System prefers light
       localStorageMock.setItem(THEME_KEY, 'dark'); // But stored is dark
       const service = new ThemeService();
+      testServiceInstances.push(service);
       expect(service.getCurrentTheme()).toBe('dark');
       expect(document.body.classList.contains(DARK_MODE_CLASS)).toBe(true);
     });
@@ -200,7 +211,8 @@ describe('ThemeService', () => {
     test('should apply theme and update chart defaults on initialization', () => {
         // Spy on the prototype method before instantiation
         const updateChartDefaultsSpy = jest.spyOn(ThemeService.prototype as any, 'updateChartDefaults');
-        new ThemeService(); // Instantiate
+        const service = new ThemeService(); // Instantiate
+        testServiceInstances.push(service);
         expect(updateChartDefaultsSpy).toHaveBeenCalled();
         updateChartDefaultsSpy.mockRestore(); // Clean up spy
       });
@@ -209,6 +221,7 @@ describe('ThemeService', () => {
   describe('toggleTheme', () => {
     test('should switch from light to dark theme', () => {
       themeServiceInstance = new ThemeService(); // Initialize for this test
+      testServiceInstances.push(themeServiceInstance);
       themeServiceInstance.toggleTheme();
       expect(themeServiceInstance.getCurrentTheme()).toBe('dark');
       expect(localStorageMock.getItem(THEME_KEY)).toBe('dark');
@@ -220,6 +233,7 @@ describe('ThemeService', () => {
       localStorageMock.setItem(THEME_KEY, 'dark');
       // Re-initialize service to pick up the dark theme from localStorage
       themeServiceInstance = new ThemeService();
+      testServiceInstances.push(themeServiceInstance);
       expect(themeServiceInstance.getCurrentTheme()).toBe('dark'); // Verify initial state
 
       themeServiceInstance.toggleTheme(); // Toggle to light
@@ -231,6 +245,7 @@ describe('ThemeService', () => {
 
     test('should call applyTheme and thus updateChartDefaults on toggle', () => {
         themeServiceInstance = new ThemeService(); // Initialize for this test
+        testServiceInstances.push(themeServiceInstance);
         const applyThemeSpy = jest.spyOn(themeServiceInstance as any, 'applyTheme');
         const updateChartsSpy = jest.spyOn(themeServiceInstance as any, 'updateChartDefaults');
         themeServiceInstance.toggleTheme();
@@ -242,6 +257,7 @@ describe('ThemeService', () => {
   describe('getCurrentTheme', () => {
     test('should return the current theme value', () => {
       themeServiceInstance = new ThemeService(); // Initialize for this test
+      testServiceInstances.push(themeServiceInstance);
       expect(themeServiceInstance.getCurrentTheme()).toBe('light');
       themeServiceInstance.toggleTheme();
       expect(themeServiceInstance.getCurrentTheme()).toBe('dark');
@@ -277,6 +293,7 @@ describe('ThemeService', () => {
       });
       // themeServiceInstance should be new for this describe block or specific tests within it.
       themeServiceInstance = new ThemeService();
+      testServiceInstances.push(themeServiceInstance);
 
       const addEventListenerCalls = inspectableMq.addEventListener.mock.calls;
       const addListenerCalls = inspectableMq.addListener.mock.calls;
@@ -335,6 +352,7 @@ describe('ThemeService', () => {
       });
 
       const serviceWithUserPref = new ThemeService();
+      testServiceInstances.push(serviceWithUserPref);
       expect(serviceWithUserPref.getCurrentTheme()).toBe('light'); // Should be 'light' due to localStorage
 
       // Restore global matchMediaMock immediately after service instantiation for this test
@@ -391,6 +409,7 @@ describe('ThemeService', () => {
       }) as any); // Cast to any to satisfy TypeScript for this temporary broader signature
 
       const serviceForOldBrowser = new ThemeService();
+      testServiceInstances.push(serviceForOldBrowser);
 
       expect(specificMqMock.addListener).toHaveBeenCalledWith(expect.any(Function));
       expect(serviceForOldBrowser.getCurrentTheme()).toBe('light');
@@ -412,6 +431,7 @@ describe('ThemeService', () => {
     test('should set Chart.defaults for light theme', () => {
       localStorageMock.setItem(THEME_KEY, 'light');
       const service = new ThemeService(); // Init as light
+      testServiceInstances.push(service);
 
       expect(Chart.defaults.color).toBe('#333');
       if (Chart.defaults.scale) {
@@ -423,6 +443,7 @@ describe('ThemeService', () => {
     test('should set Chart.defaults for dark theme', () => {
       localStorageMock.setItem(THEME_KEY, 'dark');
       const service = new ThemeService(); // Init as dark
+      testServiceInstances.push(service);
 
       expect(Chart.defaults.color).toBe('#e0e0e0');
       if (Chart.defaults.scale) {
@@ -433,6 +454,7 @@ describe('ThemeService', () => {
 
     test('should call update on all active Chart instances', () => {
       const service = new ThemeService(); // Use local instance
+      testServiceInstances.push(service);
       const mockChartInstance1 = { update: jest.fn(), id: 1 };
       const mockChartInstance2 = { update: jest.fn(), id: 2 };
 
@@ -451,6 +473,7 @@ describe('ThemeService', () => {
 
     test('should not throw if Chart or Chart.defaults are not fully available', () => {
         const service = new ThemeService(); // Create local instance
+        testServiceInstances.push(service);
         const originalChart = (globalThis as any).Chart;
         (globalThis as any).Chart = undefined;
 
@@ -472,14 +495,17 @@ describe('ThemeService', () => {
       const getItemSpy = jest.spyOn(localStorageMock, 'getItem').mockImplementation(() => {
         throw new Error('localStorage.getItem unavailable');
       });
+      let service: ThemeService | undefined;
       expect(() => {
-        new ThemeService();
+        service = new ThemeService();
+        if (service) testServiceInstances.push(service);
       }).not.toThrow();
       getItemSpy.mockRestore();
     });
 
     test('should handle localStorage.setItem throwing an error during toggleTheme', () => {
       const service = new ThemeService();
+      testServiceInstances.push(service);
       const setItemSpy = jest.spyOn(localStorageMock, 'setItem').mockImplementation(() => {
         throw new Error('localStorage.setItem unavailable');
       });
@@ -494,6 +520,7 @@ describe('ThemeService', () => {
       localStorageMock.setItem(THEME_KEY, 'invalid-theme');
       
       const service = new ThemeService();
+      testServiceInstances.push(service);
       // Service should fallback to system default.
       // Given systemPrefersDark is false in the global beforeEach, it should fallback to 'light'.
       expect(service.getCurrentTheme()).toBe('light');
@@ -501,23 +528,36 @@ describe('ThemeService', () => {
 
     test('should handle null/undefined localStorage values gracefully', () => {
       localStorageMock.setItem(THEME_KEY, 'null');
-      expect(() => new ThemeService()).not.toThrow();
+      let service1: ThemeService;
+      expect(() => {
+        service1 = new ThemeService();
+        testServiceInstances.push(service1);
+      }).not.toThrow();
       
       localStorageMock.setItem(THEME_KEY, 'undefined');
-      expect(() => new ThemeService()).not.toThrow();
+      let service2: ThemeService;
+      expect(() => {
+        service2 = new ThemeService();
+        testServiceInstances.push(service2);
+      }).not.toThrow();
       
       localStorageMock.setItem(THEME_KEY, '');
-      expect(() => new ThemeService()).not.toThrow();
+      let service3: ThemeService;
+      expect(() => {
+        service3 = new ThemeService();
+        testServiceInstances.push(service3);
+      }).not.toThrow();
     });
 
     test('should handle missing document.body gracefully', () => {
       const originalBody = document.body;
       try {
         Object.defineProperty(document, 'body', { value: null, writable: true, configurable: true });
-
+        let service: ThemeService | undefined;
         expect(() => {
-          const service = new ThemeService();
-          service.toggleTheme();
+          service = new ThemeService();
+          if (service) testServiceInstances.push(service);
+          service!.toggleTheme();
         }).not.toThrow();
       } finally {
         Object.defineProperty(document, 'body', { value: originalBody, writable: true, configurable: true });
@@ -528,10 +568,11 @@ describe('ThemeService', () => {
       const originalDocumentElement = document.documentElement;
       try {
         Object.defineProperty(document, 'documentElement', { value: null, writable: true, configurable: true });
-
+        let service: ThemeService | undefined;
         expect(() => {
-          const service = new ThemeService();
-          service.toggleTheme();
+          service = new ThemeService();
+          if (service) testServiceInstances.push(service);
+          service!.toggleTheme();
         }).not.toThrow();
       } finally {
         Object.defineProperty(document, 'documentElement', { value: originalDocumentElement, writable: true, configurable: true });
@@ -541,9 +582,10 @@ describe('ThemeService', () => {
     test('should handle matchMedia not being available', () => {
       const originalMatchMedia = window.matchMedia;
       Object.defineProperty(window, 'matchMedia', { value: undefined, writable: true });
-      
+      let service: ThemeService | undefined;
       expect(() => {
-        const service = new ThemeService();
+        service = new ThemeService();
+        if (service) testServiceInstances.push(service);
       }).not.toThrow();
       
       Object.defineProperty(window, 'matchMedia', { value: originalMatchMedia });
@@ -553,6 +595,7 @@ describe('ThemeService', () => {
   describe('Performance and Concurrency', () => {
     test('should handle rapid theme toggles without issues', () => {
       const service = new ThemeService();
+      testServiceInstances.push(service);
       const initialTheme = service.getCurrentTheme();
       
       // Rapidly toggle theme multiple times
@@ -566,7 +609,9 @@ describe('ThemeService', () => {
 
     test('should handle multiple service instances correctly', () => {
       const service1 = new ThemeService();
+      testServiceInstances.push(service1);
       const service2 = new ThemeService();
+      testServiceInstances.push(service2);
       
       expect(service1.getCurrentTheme()).toBe(service2.getCurrentTheme());
       
@@ -574,6 +619,7 @@ describe('ThemeService', () => {
       // Both should reflect the same theme (shared localStorage)
       // Re-create service2 to pick up localStorage change for this specific test logic
       const service2AfterToggle = new ThemeService();
+      testServiceInstances.push(service2AfterToggle);
       expect(service1.getCurrentTheme()).toBe(service2AfterToggle.getCurrentTheme());
     });
 
@@ -583,10 +629,14 @@ describe('ThemeService', () => {
       // Since ThemeService is now imported directly, jest.isolateModulesAsync isn't strictly needed
       // for re-importing ThemeService itself, but it's good for ensuring clean state of its deps if any.
       // However, the core issue was the class definition. Simpler now:
+      const servicesInitialized: ThemeService[] = [];
       const promises = Array.from({ length: 5 }, () => {
           // Each new ThemeService() will read the same localStorage and attach to the same mocked matchMedia
-          return new ThemeService();
+          const service = new ThemeService();
+          servicesInitialized.push(service); // Track for cleanup
+          return service;
       });
+      testServiceInstances.push(...servicesInitialized); // Add to global tracking for afterEach
       
       const services = await Promise.all(promises.map(s => Promise.resolve(s))); // Wrap in promise if needed or just use them
       const themes = services.map(s => s.getCurrentTheme());
@@ -598,27 +648,33 @@ describe('ThemeService', () => {
 
   describe('Memory Management', () => {
     test('should properly clean up event listeners on repeated instantiation', () => {
-      const mediaQueryMock = {
-        matches: false,
-        media: '(prefers-color-scheme: dark)',
-        onchange: null,
+      const mediaQueryMockListenerFunctions = {
         addListener: jest.fn(),
         removeListener: jest.fn(),
         addEventListener: jest.fn(),
         removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
       };
+
+      const mediaQueryMockFactory = () => ({
+        matches: false,
+        media: '(prefers-color-scheme: dark)',
+        onchange: null,
+        ...mediaQueryMockListenerFunctions, // Use shared listener functions
+        dispatchEvent: jest.fn(),
+      });
       
-      matchMediaMock.mockReturnValue(mediaQueryMock as any);
+      matchMediaMock.mockImplementation(mediaQueryMockFactory as any);
       
       // Create multiple instances
       const instances: ThemeService[] = [];
       for (let i = 0; i < 3; i++) {
-        instances.push(new ThemeService());
+        const service = new ThemeService();
+        instances.push(service);
+        // testServiceInstances.push(service); // No, let this test manage its own instances for disposal check
       }
       
       // Should have attached listeners for each instance
-      expect(mediaQueryMock.addEventListener).toHaveBeenCalledTimes(3);
+      expect(mediaQueryMockListenerFunctions.addEventListener).toHaveBeenCalledTimes(3);
 
       // Dispose instances to check if removeEventListener is called
       instances.forEach(instance => {
@@ -628,17 +684,18 @@ describe('ThemeService', () => {
       });
       // Depending on how dispose is implemented, check removeEventListener calls
       // This check assumes dispose calls removeEventListener for the 'change' event
-      expect(mediaQueryMock.removeEventListener).toHaveBeenCalledTimes(instances.length);
+      expect(mediaQueryMockListenerFunctions.removeEventListener).toHaveBeenCalledTimes(instances.length);
     });
   });
 
   describe('Chart.js Integration Edge Cases', () => {
     beforeEach(() => {
         themeServiceInstance = new ThemeService(); // Ensure fresh instance for this block
+        testServiceInstances.push(themeServiceInstance); // Track it
     });
 
     test('should handle Chart instances with missing update method', () => {
-      const service = themeServiceInstance!;
+      const service = themeServiceInstance!; // service is now themeServiceInstance from beforeEach
       const mockChartInstanceWithoutUpdate = { id: 1 }; // No update method
       const mockChartInstanceWithUpdate = { update: jest.fn(), id: 2 };
       
@@ -713,11 +770,19 @@ describe('ThemeService', () => {
 
   describe('Theme Validation and Data Integrity', () => {
     beforeEach(() => {
-        themeServiceInstance = new ThemeService(); // Ensure fresh instance for this block
+        // Ensure themeServiceInstance is undefined before this block's specific setup
+        if (themeServiceInstance && typeof (themeServiceInstance as any).dispose === 'function') {
+            // If a global themeServiceInstance was set by an outer beforeEach, dispose it
+            // This is less likely if the outer beforeEach clears it, but good for safety
+            (themeServiceInstance as any).dispose();
+        }
+        themeServiceInstance = undefined;
+        // Do not push to testServiceInstances here, let individual tests create and track
     });
 
     test('should only accept valid theme values', () => {
       const service = new ThemeService();
+      testServiceInstances.push(service);
       const currentTheme = service.getCurrentTheme();
       
       // getCurrentTheme should always return 'light' or 'dark'
@@ -726,18 +791,22 @@ describe('ThemeService', () => {
 
     test('should maintain theme consistency across page reloads', () => {
       const service1 = new ThemeService();
+      testServiceInstances.push(service1);
       service1.toggleTheme();
       const theme1 = service1.getCurrentTheme();
       
       // Simulate page reload by creating new instance
       const service2 = new ThemeService();
+      testServiceInstances.push(service2);
       const theme2 = service2.getCurrentTheme();
       
       expect(theme1).toBe(theme2);
     });
 
     test('should handle localStorage quota exceeded gracefully', () => {
-      const service = themeServiceInstance!; // Assert non-null as it's set in beforeEach
+      // This test needs its own service instance because themeServiceInstance is not set up for this describe block
+      const service = new ThemeService();
+      testServiceInstances.push(service);
       const originalSetItem = localStorageMock.setItem;
       localStorageMock.setItem = jest.fn(() => {
         throw new Error('QuotaExceededError');
@@ -763,10 +832,11 @@ describe('ThemeService', () => {
       });
       
       Object.defineProperty(window, 'matchMedia', { value: jest.fn(legacyMatchMedia), configurable: true });
-      
+      let service: ThemeService | undefined;
       try {
         expect(() => {
-          new ThemeService();
+          service = new ThemeService();
+          if (service) testServiceInstances.push(service);
         }).not.toThrow();
       } finally {
         Object.defineProperty(window, 'matchMedia', { value: matchMediaMock, configurable: true }); // Restore to the defined mock
@@ -776,10 +846,11 @@ describe('ThemeService', () => {
     test('should handle matchMedia returning null', () => {
       const originalMatchMedia = window.matchMedia; // Still useful to save the current state before this specific test's override
       Object.defineProperty(window, 'matchMedia', { value: jest.fn(() => null), configurable: true });
-      
+      let service: ThemeService | undefined;
       try {
         expect(() => {
-          new ThemeService();
+          service = new ThemeService();
+          if (service) testServiceInstances.push(service);
         }).not.toThrow();
       } finally {
         Object.defineProperty(window, 'matchMedia', { value: matchMediaMock, configurable: true }); // Restore to the defined mock
@@ -789,10 +860,11 @@ describe('ThemeService', () => {
     test('should handle matchMedia throwing an error', () => {
       const originalMatchMedia = window.matchMedia; // Still useful to save the current state
       Object.defineProperty(window, 'matchMedia', { value: jest.fn(() => { throw new Error('matchMedia not supported'); }), configurable: true });
-      
+      let service: ThemeService | undefined;
       try {
         expect(() => {
-          new ThemeService();
+          service = new ThemeService();
+          if (service) testServiceInstances.push(service);
         }).not.toThrow();
       } finally {
         Object.defineProperty(window, 'matchMedia', { value: matchMediaMock, configurable: true }); // Restore to the defined mock
@@ -817,9 +889,10 @@ describe('ThemeService', () => {
           dispatchEvent: jest.fn(),
         };
       }), configurable: true });
-      
+      let service: ThemeService | undefined;
       try {
-        const service = new ThemeService();
+        service = new ThemeService();
+        if (service) testServiceInstances.push(service);
         expect(['light', 'dark']).toContain(service.getCurrentTheme());
       } finally {
         Object.defineProperty(window, 'matchMedia', { value: matchMediaMock, configurable: true }); // Restore to the defined mock
@@ -843,9 +916,10 @@ describe('ThemeService', () => {
         removeEventListener: jest.fn(),
         dispatchEvent: jest.fn(),
       } as any));
-      
+      let service: ThemeService | undefined;
       try {
-        const service = new ThemeService();
+        service = new ThemeService();
+        if (service) testServiceInstances.push(service);
         expect(service.getCurrentTheme()).toBe('dark');
       } finally {
         Object.defineProperty(window, 'matchMedia', { value: matchMediaMock, configurable: true }); // Restore original mock
@@ -863,10 +937,12 @@ describe('ThemeService', () => {
             (themeServiceInstance as any).dispose();
         }
         themeServiceInstance = undefined;
+        // Individual tests in this block will create and track their own instances.
     });
 
     test('should handle setAttribute failing', () => {
       const service = new ThemeService(); // Local instance
+      testServiceInstances.push(service);
       const originalSetAttribute = document.documentElement.setAttribute;
       document.documentElement.setAttribute = jest.fn(() => {
         throw new Error('setAttribute failed');
@@ -881,6 +957,7 @@ describe('ThemeService', () => {
 
     test('should handle classList operations failing', () => {
       const service = new ThemeService(); // Use a local instance
+      testServiceInstances.push(service);
       const originalAdd = document.body.classList.add;
       const originalRemove = document.body.classList.remove;
       
@@ -903,6 +980,7 @@ describe('ThemeService', () => {
   describe('State Management', () => {
     test('should maintain internal state consistency', () => {
       const service = new ThemeService();
+      testServiceInstances.push(service);
       const initialTheme = service.getCurrentTheme();
       
       // Toggle and check state
@@ -917,6 +995,7 @@ describe('ThemeService', () => {
 
     test('should handle external localStorage changes', () => {
       const service = new ThemeService();
+      testServiceInstances.push(service);
       const currentTheme = service.getCurrentTheme();
       
       // Simulate external change to localStorage
@@ -924,13 +1003,16 @@ describe('ThemeService', () => {
       
       // Create new instance to pick up the change
       const newService = new ThemeService();
+      testServiceInstances.push(newService);
       expect(newService.getCurrentTheme()).not.toBe(currentTheme);
     });
   });
 
   describe('Accessibility and User Experience', () => {
     beforeEach(() => {
-        themeServiceInstance = new ThemeService(); // Ensure fresh instance for this block
+        // This describe block uses themeServiceInstance, so initialize and track it.
+        themeServiceInstance = new ThemeService();
+        testServiceInstances.push(themeServiceInstance);
         // Re-initialize mockHtmlElement and spy for this describe block
         mockHtmlElement = document.documentElement;
         if (mockHtmlElement && typeof mockHtmlElement.setAttribute === 'function') {
@@ -942,7 +1024,7 @@ describe('ThemeService', () => {
         if(document.body) document.body.className = '';
     });
 
-    test.skip('should apply theme consistently to all required DOM elements', () => {
+    test('should apply theme consistently to all required DOM elements', () => {
       if (!themeServiceInstance) throw new Error("themeServiceInstance not initialized for this test");
 
       themeServiceInstance.toggleTheme(); // Switch to dark
@@ -974,6 +1056,7 @@ describe('ThemeService', () => {
       
       matchMediaMock.mockReturnValue(mockMq as any);
       const service = new ThemeService();
+      testServiceInstances.push(service); // Track this instance
       
       // Get the listener
       const listener = mockMq.addEventListener.mock.calls[0]?.[1] || mockMq.addListener.mock.calls[0]?.[0];

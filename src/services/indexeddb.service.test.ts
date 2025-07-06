@@ -237,53 +237,47 @@ describe('IndexedDBService', () => {
       await expect(dbService.saveProduct(testProduct)).rejects.toThrow('Failed to save product');
     });
 
-    // it('should handle errors if database is not initialized for an operation', async () => {
-    //   let faultyDbService!: IndexedDBService;
-    //   const originalLocalIndexedDB = (window as any).indexedDB; // Store before isolation
+    it('should handle errors if database is not initialized for an operation', async () => {
+      let faultyDbService!: IndexedDBService;
+      const originalLocalIndexedDB = (window as any).indexedDB; // Store before isolation
       
-    //   const mockIDBFactoryIsolated = {
-    //     open: jest.fn().mockImplementation(() => { throw new Error("Simulated open error for faulty service"); }), // Make open itself throw for this test
-    //     deleteDatabase: jest.fn(),
-    //     cmp: jest.fn(),
-    //   };
+      // We don't need to mock window.indexedDB.open to throw here.
+      // We will make the idb.openDB mock reject.
+      // const mockIDBFactoryIsolated = {
+      //   open: jest.fn().mockImplementation(() => { throw new Error("Simulated open error for faulty service"); }),
+      //   deleteDatabase: jest.fn(),
+      //   cmp: jest.fn(),
+      // };
 
-    //   await jest.isolateModulesAsync(async () => {
-    //     (window as any).indexedDB = mockIDBFactoryIsolated; // Set for this isolated scope
+      await jest.isolateModulesAsync(async () => {
+        // (window as any).indexedDB = mockIDBFactoryIsolated; // Not needed if idb.openDB is mocked to fail
 
-    //     const { openDB: isolatedOpenDB } = jest.requireMock('idb');
-    //     // Make the idb's openDB fail, which is what the service uses
-    //     isolatedOpenDB.mockRejectedValueOnce(new Error('DB init failed'));
+        const { openDB: isolatedOpenDB } = jest.requireMock('idb');
+        // Make the idb's openDB fail for the next instantiation
+        isolatedOpenDB.mockRejectedValueOnce(new Error('DB init failed'));
         
-    //     const mod = await import('../../src/services/indexeddb.service');
-    //     try {
-    //       faultyDbService = new mod.IndexedDBService(); // This should use the failing openDB
-    //     } catch (e) {
-    //       // If constructor throws 'IndexedDB not supported', it means window.indexedDB was not set correctly for isolation
-    //       // If it throws 'DB init failed' (or similar from openDB), that's expected.
-    //       if ((e as Error).message !== 'DB init failed' && (e as Error).message !== 'IndexedDB not supported') { // Allow for either error during faulty init
-    //          // We expect an error here, so if it's not what we expect, rethrow or fail.
-    //          // For this test, the key is that dbPromise will be rejected.
-    //       }
-    //        if (!faultyDbService && (e as Error).message === 'IndexedDB not supported') {
-    //          // If service construction itself failed because window.indexedDB was missing in isolation, create a dummy
-    //          faultyDbService = { dbPromise: Promise.reject(new Error('DB init failed (simulated due to constructor fail)')) } as any;
-    //        } else if (!faultyDbService) {
-    //          // If some other error, still create a dummy to test dbPromise
-    //          faultyDbService = { dbPromise: Promise.reject(e) } as any;
-    //        }
-    //     }
-    //   });
+        const mod = await import('../../src/services/indexeddb.service');
+        // The constructor itself should not throw if window.indexedDB is present.
+        // It assigns this.dbPromise = this.initDB();
+        // this.initDB() calls openDB, which will reject.
+        faultyDbService = new mod.IndexedDBService();
 
-    //   (window as any).indexedDB = originalLocalIndexedDB; // Restore after isolation
+        // No complex try-catch needed here for service instantiation if window.indexedDB is valid.
+        // The error is expected on faultyDbService.dbPromise.
+      });
 
-    //   expect(faultyDbService).toBeDefined(); // Ensure faultyDbService was assigned
-    //   await expect((faultyDbService as any).dbPromise).rejects.toThrow('DB init failed');
+      // Restore window.indexedDB if it was changed by other parts of the test (though not strictly necessary for this refactor)
+      // (window as any).indexedDB = originalLocalIndexedDB;
 
-    //   const testProduct: Product = {id: '1', name: 'test', category: 'test', itemsPerCrate:1, pricePerBottle:1, pricePer100ml:1, volume:1};
-    //   // This call should also fail because dbPromise is rejected.
-    //   // The service methods typically await this.dbPromise first.
-    //   await expect(faultyDbService.saveProduct(testProduct)).rejects.toThrow('DB init failed');
-    // });
+      expect(faultyDbService).toBeDefined(); // Ensure faultyDbService was assigned
+      // Accessing dbPromise should reveal the rejection from initDB()
+      await expect((faultyDbService as any).dbPromise).rejects.toThrow('DB init failed');
+
+      const testProduct: Product = {id: '1', name: 'test', category: 'test', itemsPerCrate:1, pricePerBottle:1, pricePer100ml:1, volume:1};
+      // This call should also fail because dbPromise is rejected.
+      // The service methods typically await this.dbPromise first.
+      await expect(faultyDbService.saveProduct(testProduct)).rejects.toThrow('DB init failed');
+    });
   });
 
   describe('Data Migration (Conceptual)', () => {
