@@ -109,9 +109,7 @@ export const createMockDatabase = (): MockDatabaseInstance => {
 
   const objectStoreNamesState = {
     _stores: new Set<string>(),
-    get contains() {
-        return jest.fn((name: string) => objectStoreNamesState._stores.has(name));
-    },
+    contains: jest.fn((name: string) => objectStoreNamesState._stores.has(name)),
     get mockContainsProductStore() { return objectStoreNamesState._stores.has('products'); },
     set mockContainsProductStore(value: boolean) { value ? objectStoreNamesState._stores.add('products') : objectStoreNamesState._stores.delete('products'); },
     get mockContainsLocationStore() { return objectStoreNamesState._stores.has('locations'); },
