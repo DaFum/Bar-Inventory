@@ -327,10 +327,6 @@ describe('Location Manager (location-manager.ts)', () => {
     expect(mockedShowToastFn).toHaveBeenCalledWith(expect.stringContaining('erfolgreich als JSON exportiert'), 'success');
 
     linkClickSpy.mockRestore();
-
-    // Restore original functions
-    global.URL.createObjectURL = originalCreate;
-    global.URL.revokeObjectURL = originalRevoke;
   });
 
   test('store subscription should refresh counter list if active location is updated', () => {
