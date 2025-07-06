@@ -199,7 +199,6 @@ let originalMockTransactionImplementation: any;
 describe('IndexedDBService', () => {
   // Re-assign mocks for each test to ensure isolation
   let mockDb: jest.Mocked<IDBPDatabase<BarInventoryDBSchemaType>>;
-  let currentMockTransaction: typeof mockTransactionInstance;
   let currentMockProductStore: jest.Mocked<ReturnType<typeof mockStoreActions>>;
   let currentMockLocationStore: jest.Mocked<ReturnType<typeof mockStoreActions>>;
   let currentMockInventoryStateStore: jest.Mocked<ReturnType<typeof mockStoreActions>>;
