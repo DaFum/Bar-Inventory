@@ -95,7 +95,6 @@ let IndexedDBServiceClass: any; // The class itself for testing constructor erro
 let showToastMock: jest.Mock;
 
 // To store and restore mockTransaction's implementation - this might become part of mock-helpers or be handled differently
-// let originalMockTransactionImplementation: any; // Potentially remove if mockTransaction creation is fully delegated
 
 describe('IndexedDBService', () => {
   // These will now reference instances from mock-helpers
