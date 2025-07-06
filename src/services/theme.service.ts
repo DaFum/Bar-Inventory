@@ -129,9 +129,9 @@ export class ThemeService {
 
         if (Chart.instances) { // Check if Chart.instances itself exists
             Object.values(Chart.instances).forEach((instance: any) => {
-                if (instance && typeof instance.update === 'function') {
+              if (instance && typeof instance.update === 'function') {
                 instance.update();
-                }
+              }
             });
         }
       }
