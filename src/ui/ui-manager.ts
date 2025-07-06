@@ -106,7 +106,8 @@ function navigateTo(viewName: ViewName): void {
  * Aktualisiert die Navigationsleiste, indem die Schaltfläche der aktuellen Ansicht hervorgehoben und die Hervorhebung bei allen anderen entfernt wird.
  */
 function updateActiveNavButton(): void {
-  document.querySelectorAll('#main-nav .nav-button').forEach((button) => {
+  if (!appContainer) return; // Add a guard for appContainer
+  appContainer.querySelectorAll('#main-nav .nav-button').forEach((button) => { // Query within appContainer
     if (button.getAttribute('data-view') === currentView) {
       button.classList.add('active');
     } else {

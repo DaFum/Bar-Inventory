@@ -73,9 +73,9 @@ const THEME_KEY = 'app-theme';
 const DARK_MODE_CLASS = 'dark-mode';
 
 describe('ThemeService', () => {
-  let themeServiceInstance: ThemeServiceType;
+  let themeServiceInstance: ThemeServiceType | undefined;
   let mockHtmlElement: HTMLElement;
-  let ActualThemeServiceClass: new () => ThemeServiceType; // To store the dynamically imported class
+  let ActualThemeServiceClass: (new () => ThemeServiceType) | undefined; // To store the dynamically imported class
 
   beforeEach(async () => {
     localStorageMock.clear();
@@ -105,7 +105,9 @@ describe('ThemeService', () => {
       const themeServiceModule = await import('../../src/services/theme.service');
       ActualThemeServiceClass = themeServiceModule.ThemeService;
     });
-
+    if (!ActualThemeServiceClass) {
+      throw new Error("ActualThemeServiceClass was not initialized.");
+    }
     themeServiceInstance = new ActualThemeServiceClass();
   });
 
@@ -115,6 +117,7 @@ describe('ThemeService', () => {
 
   describe('Constructor (Initialization)', () => {
     test('should initialize to "light" theme if no stored theme and system prefers light', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       systemPrefersDark = false;
       localStorageMock.clear();
       const service = new ActualThemeServiceClass();
@@ -124,6 +127,7 @@ describe('ThemeService', () => {
     });
 
     test('should initialize to "dark" theme if no stored theme and system prefers dark', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       systemPrefersDark = true;
       localStorageMock.clear();
       const service = new ActualThemeServiceClass();
@@ -133,6 +137,7 @@ describe('ThemeService', () => {
     });
 
     test('should initialize to stored theme ("light") if it exists, ignoring system preference', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       systemPrefersDark = true; // System prefers dark
       localStorageMock.setItem(THEME_KEY, 'light'); // But stored is light
       const service = new ActualThemeServiceClass();
@@ -141,6 +146,7 @@ describe('ThemeService', () => {
     });
 
     test('should initialize to stored theme ("dark") if it exists, ignoring system preference', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       systemPrefersDark = false; // System prefers light
       localStorageMock.setItem(THEME_KEY, 'dark'); // But stored is dark
       const service = new ActualThemeServiceClass();
@@ -149,6 +155,7 @@ describe('ThemeService', () => {
     });
 
     test('should apply theme and update chart defaults on initialization', () => {
+        if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
         // Spy on the prototype method before instantiation
         const updateChartDefaultsSpy = jest.spyOn(ActualThemeServiceClass.prototype as any, 'updateChartDefaults');
         new ActualThemeServiceClass(); // Instantiate
@@ -159,6 +166,7 @@ describe('ThemeService', () => {
 
   describe('toggleTheme', () => {
     test('should switch from light to dark theme', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       // Initial state is light (default or set by beforeEach)
       themeServiceInstance.toggleTheme();
       expect(themeServiceInstance.getCurrentTheme()).toBe('dark');
@@ -168,6 +176,7 @@ describe('ThemeService', () => {
     });
 
     test('should switch from dark to light theme', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       // Set initial to dark
       localStorageMock.setItem(THEME_KEY, 'dark');
       const serviceInDark = new ActualThemeServiceClass();
@@ -180,6 +189,7 @@ describe('ThemeService', () => {
     });
 
     test('should call applyTheme and thus updateChartDefaults on toggle', () => {
+        if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
         const applyThemeSpy = jest.spyOn(themeServiceInstance as any, 'applyTheme');
         const updateChartsSpy = jest.spyOn(themeServiceInstance as any, 'updateChartDefaults');
         themeServiceInstance.toggleTheme();
@@ -190,6 +200,7 @@ describe('ThemeService', () => {
 
   describe('getCurrentTheme', () => {
     test('should return the current theme value', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       expect(themeServiceInstance.getCurrentTheme()).toBe('light'); // Default from beforeEach
       themeServiceInstance.toggleTheme();
       expect(themeServiceInstance.getCurrentTheme()).toBe('dark');
@@ -223,7 +234,7 @@ describe('ThemeService', () => {
         }
         return originalMatchMediaImpl(query);
       });
-
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       themeServiceInstance = new ActualThemeServiceClass();
 
       const addEventListenerCalls = inspectableMq.addEventListener.mock.calls;
@@ -244,6 +255,7 @@ describe('ThemeService', () => {
     });
 
     test('should change theme if system theme changes and no user theme is set', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       // themeServiceInstance is already light, systemPrefersDark is false.
       expect(themeServiceInstance.getCurrentTheme()).toBe('light');
 
@@ -257,6 +269,7 @@ describe('ThemeService', () => {
     });
 
     test('should NOT change theme if system theme changes but a user theme IS set in localStorage', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       localStorageMock.setItem(THEME_KEY, 'light');
       systemPrefersDark = false; // System initially prefers light
 
@@ -311,6 +324,7 @@ describe('ThemeService', () => {
     });
 
     test('should use addListener if addEventListener is not available on mediaQuery', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       localStorageMock.clear();
       systemPrefersDark = false;
 
@@ -357,6 +371,7 @@ describe('ThemeService', () => {
 
   describe('updateChartDefaults', () => {
     test('should set Chart.defaults for light theme', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       localStorageMock.setItem(THEME_KEY, 'light');
       const service = new ActualThemeServiceClass(); // Init as light
 
@@ -368,6 +383,7 @@ describe('ThemeService', () => {
     });
 
     test('should set Chart.defaults for dark theme', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       localStorageMock.setItem(THEME_KEY, 'dark');
       const service = new ActualThemeServiceClass(); // Init as dark
 
@@ -379,6 +395,7 @@ describe('ThemeService', () => {
     });
 
     test('should call update on all active Chart instances', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       const mockChartInstance1 = { update: jest.fn(), id: 1 }; // Charts have an ID
       const mockChartInstance2 = { update: jest.fn(), id: 2 };
 
@@ -398,6 +415,7 @@ describe('ThemeService', () => {
     });
 
     test('should not throw if Chart or Chart.defaults are not fully available', () => {
+        if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
         // Simulate Chart not being fully loaded or in a weird state
         const originalChart = (globalThis as any).Chart; // Use globalThis for broader compatibility
         (globalThis as any).Chart = undefined; // Remove Chart global
@@ -414,10 +432,10 @@ describe('ThemeService', () => {
         (globalThis as any).Chart = originalChart; // Restore
       });
   });
-});
 
   describe('Edge Cases and Error Handling', () => {
     test('should handle localStorage being unavailable', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       // Mock localStorage to throw an error
       const originalLocalStorage = window.localStorage;
       Object.defineProperty(window, 'localStorage', {
@@ -440,6 +458,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle malformed data in localStorage', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       // Set invalid theme value
       localStorageMock.setItem(THEME_KEY, 'invalid-theme');
       
@@ -449,6 +468,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle null/undefined localStorage values gracefully', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       localStorageMock.setItem(THEME_KEY, 'null');
       expect(() => new ActualThemeServiceClass()).not.toThrow();
       
@@ -460,6 +480,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle missing document.body gracefully', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       const originalBody = document.body;
       Object.defineProperty(document, 'body', { value: null, writable: true });
       
@@ -472,6 +493,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle missing document.documentElement gracefully', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       const originalDocumentElement = document.documentElement;
       Object.defineProperty(document, 'documentElement', { value: null, writable: true });
       
@@ -484,6 +506,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle matchMedia not being available', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       const originalMatchMedia = window.matchMedia;
       Object.defineProperty(window, 'matchMedia', { value: undefined, writable: true });
       
@@ -497,6 +520,7 @@ describe('ThemeService', () => {
 
   describe('Performance and Concurrency', () => {
     test('should handle rapid theme toggles without issues', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       const service = new ActualThemeServiceClass();
       const initialTheme = service.getCurrentTheme();
       
@@ -510,6 +534,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle multiple service instances correctly', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       const service1 = new ActualThemeServiceClass();
       const service2 = new ActualThemeServiceClass();
       
@@ -540,6 +565,7 @@ describe('ThemeService', () => {
 
   describe('Memory Management', () => {
     test('should properly clean up event listeners on repeated instantiation', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       const mediaQueryMock = {
         matches: false,
         media: '(prefers-color-scheme: dark)',
@@ -565,6 +591,7 @@ describe('ThemeService', () => {
 
   describe('Chart.js Integration Edge Cases', () => {
     test('should handle Chart instances with missing update method', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       const mockChartInstanceWithoutUpdate = { id: 1 }; // No update method
       const mockChartInstanceWithUpdate = { update: jest.fn(), id: 2 };
       
@@ -581,6 +608,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle Chart instances as array instead of object', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       // Some Chart.js versions might use array
       (Chart.instances as any) = [
         { update: jest.fn(), id: 1 },
@@ -593,6 +621,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle Chart.defaults with missing nested properties', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       // Simulate incomplete Chart.defaults structure
       const originalDefaults = Chart.defaults;
       Chart.defaults = {} as any;
@@ -605,6 +634,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle Chart.defaults.scale being null', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       const originalScale = Chart.defaults.scale;
       Chart.defaults.scale = null as any;
       
@@ -616,6 +646,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle Chart.defaults.plugins being null', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       const originalPlugins = Chart.defaults.plugins;
       Chart.defaults.plugins = null as any;
       
@@ -629,6 +660,7 @@ describe('ThemeService', () => {
 
   describe('Theme Validation and Data Integrity', () => {
     test('should only accept valid theme values', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       const service = new ActualThemeServiceClass();
       const currentTheme = service.getCurrentTheme();
       
@@ -637,6 +669,7 @@ describe('ThemeService', () => {
     });
 
     test('should maintain theme consistency across page reloads', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       const service1 = new ActualThemeServiceClass();
       service1.toggleTheme();
       const theme1 = service1.getCurrentTheme();
@@ -649,6 +682,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle localStorage quota exceeded gracefully', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       const originalSetItem = localStorageMock.setItem;
       localStorageMock.setItem = jest.fn(() => {
         throw new Error('QuotaExceededError');
@@ -664,6 +698,7 @@ describe('ThemeService', () => {
 
   describe('Browser Compatibility', () => {
     test('should work with older browsers without modern matchMedia features', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       const legacyMatchMedia = (query: string) => ({
         matches: false,
         media: query,
@@ -681,6 +716,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle matchMedia returning null', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       matchMediaMock.mockReturnValue(null);
       
       expect(() => {
@@ -689,6 +725,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle matchMedia throwing an error', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       matchMediaMock.mockImplementation(() => {
         throw new Error('matchMedia not supported');
       });
@@ -701,6 +738,7 @@ describe('ThemeService', () => {
 
   describe('System Theme Detection Edge Cases', () => {
     test('should handle system theme detection when matchMedia returns different values', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       let callCount = 0;
       matchMediaMock.mockImplementation((query: string) => {
         callCount++;
@@ -721,6 +759,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle multiple media queries being checked', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       const queryResults = new Map([
         ['(prefers-color-scheme: dark)', true],
         ['(prefers-color-scheme: light)', false],
@@ -745,6 +784,7 @@ describe('ThemeService', () => {
 
   describe('Integration with DOM APIs', () => {
     test('should handle setAttribute failing', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       const originalSetAttribute = document.documentElement.setAttribute;
       document.documentElement.setAttribute = jest.fn(() => {
         throw new Error('setAttribute failed');
@@ -758,6 +798,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle classList operations failing', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       const originalAdd = document.body.classList.add;
       const originalRemove = document.body.classList.remove;
       
@@ -779,6 +820,7 @@ describe('ThemeService', () => {
 
   describe('State Management', () => {
     test('should maintain internal state consistency', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       const service = new ActualThemeServiceClass();
       const initialTheme = service.getCurrentTheme();
       
@@ -793,6 +835,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle external localStorage changes', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       const service = new ActualThemeServiceClass();
       const currentTheme = service.getCurrentTheme();
       
@@ -807,6 +850,7 @@ describe('ThemeService', () => {
 
   describe('Accessibility and User Experience', () => {
     test('should apply theme consistently to all required DOM elements', () => {
+      if (!themeServiceInstance) throw new Error("Test setup error: themeServiceInstance not defined");
       themeServiceInstance.toggleTheme(); // Switch to dark
       
       expect(document.body.classList.contains(DARK_MODE_CLASS)).toBe(true);
@@ -819,6 +863,7 @@ describe('ThemeService', () => {
     });
 
     test('should handle rapid system theme changes', () => {
+      if (!ActualThemeServiceClass) throw new Error("Test setup error: ActualThemeServiceClass not defined");
       localStorageMock.clear(); // Ensure we follow system preference
       
       const mockMq = {

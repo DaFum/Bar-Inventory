@@ -109,6 +109,7 @@ let notifySubscribers: (locations: Location[]) => void;
 describe('Location Manager (location-manager.ts)', () => {
   let container: HTMLElement;
   let mockLocations: Location[];
+  // Removed describe-level originalCreateObjectURL and originalRevokeObjectURL
 
   const mockLocation1: Location = { id: 'loc1', name: 'Bar Central', address: '123 Main St', counters: [] };
   const mockLocation2: Location = { id: 'loc2', name: 'The Hideout', address: '456 Oak Ave', counters: [] };
@@ -307,7 +308,11 @@ describe('Location Manager (location-manager.ts)', () => {
   test('handleExportAllLocationsJson should trigger download', async () => {
     const exportBtn = container.querySelector('#export-all-locations-json-btn') as HTMLButtonElement;
     const fakeUrl = 'blob:http://localhost/fake-uuid';
-    // Ensure URL.createObjectURL and revokeObjectURL are mocked on global.URL or window.URL
+
+    // Store original functions
+    const originalCreate = global.URL.createObjectURL;
+    const originalRevoke = global.URL.revokeObjectURL;
+
     global.URL.createObjectURL = jest.fn(() => fakeUrl);
     global.URL.revokeObjectURL = jest.fn();
 
@@ -316,25 +321,16 @@ describe('Location Manager (location-manager.ts)', () => {
     exportBtn.click();
 
     expect(locationStore.getLocations).toHaveBeenCalled();
-    expect(global.URL.createObjectURL).toHaveBeenCalledTimes(1); // Check it was called
+    expect(global.URL.createObjectURL).toHaveBeenCalledTimes(1);
     expect(linkClickSpy).toHaveBeenCalled();
-    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith(fakeUrl); // Check it was called with the URL
+    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith(fakeUrl);
     expect(mockedShowToastFn).toHaveBeenCalledWith(expect.stringContaining('erfolgreich als JSON exportiert'), 'success');
 
     linkClickSpy.mockRestore();
-    // Clean up global URL mocks by restoring original (potentially undefined) values
-    // This requires storing them before overwriting, if we want to be perfectly clean.
-    // For now, deleting is okay if they were definitely not there before this test.
-    // A safer approach if other tests might use/mock URL:
-    // const originalCreateObjectURL = global.URL.createObjectURL;
-    // const originalRevokeObjectURL = global.URL.revokeObjectURL;
-    // ... assign jest.fn() ...
-    // global.URL.createObjectURL = originalCreateObjectURL;
-    // global.URL.revokeObjectURL = originalRevokeObjectURL;
-    // For simplicity of this fix, given they were not present in JSDOM:
-    // Restore original references after the test
-    global.URL.createObjectURL = originalCreateObjectURL;
-    global.URL.revokeObjectURL = originalRevokeObjectURL;
+
+    // Restore original functions
+    global.URL.createObjectURL = originalCreate;
+    global.URL.revokeObjectURL = originalRevoke;
   });
 
   test('store subscription should refresh counter list if active location is updated', () => {
