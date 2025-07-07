@@ -32,8 +32,8 @@ describe('AreaListComponent', () => {
       onDelete: jest.fn(),
     };
     initialAreas = [
-      { id: 'area1', name: 'Area Alpha', displayOrder: 2, inventoryItems: [] },
-      { id: 'area2', name: 'Area Beta', displayOrder: 1, inventoryItems: [] },
+      { id: 'area1', name: 'Area Alpha', displayOrder: 2, inventoryItems: [{ productId: 'p1', startBottles: 1}] },
+      { id: 'area2', name: 'Area Beta', displayOrder: 1, inventoryItems: [{ productId: 'p2', startCrates: 2}] },
       { id: 'area3', name: 'Area Gamma', inventoryItems: [] }, // No displayOrder
     ];
     // Clear all instances and calls to constructor and methods of AreaListItemComponent mock
@@ -599,9 +599,9 @@ describe('AreaListComponent', () => {
         { 
           id: 'minimal-1', 
           name: 'Minimal Area', 
-          inventoryItems: [
-            { id: 'item1', name: 'Item 1', quantity: 5 },
-            { id: 'item2', name: 'Item 2', quantity: 3 }
+          inventoryItems: [ // Converted to InventoryEntry
+            { productId: 'prod_A', startBottles: 5 },
+            { productId: 'prod_B', startOpenVolumeMl: 300 }
           ] 
         },
       ];
@@ -631,21 +631,26 @@ describe('AreaListComponent', () => {
       expect(listHostDiv?.children.length).toBe(initialAreas.length);
     });
 
-    test('should handle updating area to have undefined displayOrder', () => {
-      const areaToUpdate = initialAreas[0];
-      if (!areaToUpdate) throw new Error("Test assumption failed: initialAreas[0] is undefined");
+    test('should handle updating area to behave as if displayOrder is not set', () => {
+      const areaToUpdate = initialAreas[0]!; // Area Alpha, displayOrder: 2
       
-      const updatedArea = { ...areaToUpdate, displayOrder: undefined };
+      // Create an object that omits displayOrder
+      const { displayOrder, ...areaWithoutDisplayOrder } = areaToUpdate;
+      const updatedTestArea: Area = {
+        ...areaWithoutDisplayOrder,
+        name: 'Alpha Undefined Order'
+        // displayOrder is omitted, should be treated as if not set (sorted last by name)
+      };
       
-      expect(() => {
-        areaListComponent.updateArea(updatedArea);
-      }).not.toThrow();
+      areaListComponent.updateArea(updatedTestArea);
       
-      // Should move to end of list since displayOrder is now undefined
       const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
       const items = Array.from(listHostDiv?.children || []);
-      const lastItem = items[items.length - 1];
-      expect(lastItem?.textContent).toBe(areaToUpdate.name);
+      // Original: Beta (1), Alpha (2), Gamma (N/A)
+      // After update: Beta (1), Gamma (N/A), Alpha Undefined Order (N/A)
+      // So "Alpha Undefined Order" should be last among those with no specific order if sorted by name after Gamma
+      const itemNames = items.map(item => item.textContent);
+      expect(itemNames).toEqual(['Area Beta', 'Area Gamma', 'Alpha Undefined Order']);
     });
 
     test('should handle removeArea with non-existent ID', () => {

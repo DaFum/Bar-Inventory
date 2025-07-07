@@ -1,5 +1,5 @@
 import { locationStore } from '../../src/state/location.store'; // Import the instance
-import { Location, Counter, Area } from '../../src/models';
+import { Location, Counter, Area, InventoryEntry } from '../../src/models'; // Added InventoryEntry
 import { dbService } from '../../src/services/indexeddb.service';
 import { generateId } from '../../src/utils/helpers';
 
