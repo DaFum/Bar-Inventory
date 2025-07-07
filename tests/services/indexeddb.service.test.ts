@@ -34,21 +34,17 @@ import {
   mockDbInstance as mockHelperDbInstance, // Renamed to avoid conflict
   mockDBCallbacks as mockHelperDBCallbacks, // Renamed to avoid conflict
   mockOpenDB as mockHelperOpenDB, // Renamed to avoid conflict
-  // mockIDBFactory as mockHelperIDBFactory, // Renamed to avoid conflict
   setupGlobalIndexedDBMock,
   resetAllMocks,
   createMockDatabase,
-  // mockProductInstance, // Use local if customized per test suite, or import if generic
-  // mockLocationInstance,
-  // mockInventoryStateInstance,
-  // mockStoredInventoryStateInstance,
+  createMockTransaction, // Added import
   getCurrentTransactionDonePromise,
   MockStoreActions,
-  MockTransactionInstance,
+  // MockTransactionInstance, // Type not directly used, createMockTransaction returns it
   MockDatabaseInstance,
   resetMockStoreActionInstances,
 } from './mock-helpers/indexeddb.mocks';
-import { IDBPDatabase, IDBPTransaction } from 'idb';
+import { IDBPDatabase, IDBPTransaction, StoreNames } from 'idb'; // Added StoreNames
 
 
 // Use the DATABASE_NAME and DATABASE_VERSION from mock-helpers
@@ -222,36 +218,17 @@ describe('IndexedDBService', () => {
   });
 
   describe('Schema Upgrades (upgrade callback)', () => {
-    beforeEach(() => {
-        // Resetting store existence is now handled by createMockDatabase() in the main beforeEach
-        // and the objectStoreNamesState within mockDbInstance in mock-helpers.
-        // We can ensure the db version starts at 0 to force an upgrade for version 1 tests.
-        if (mockDb) { // mockDb is created in the outer beforeEach
-            mockDb.version = 0;
-            mockDb.objectStoreNames.mockContainsProductStore = false;
-            mockDb.objectStoreNames.mockContainsLocationStore = false;
-            mockDb.objectStoreNames.mockContainsInventoryStateStore = false;
-            mockDb.createObjectStore.mockClear();
-        }
-    });
+    beforeEach(async () => { // Made async for service re-initialization
+        // This block's beforeEach will re-initialize mockDb with version 0 and clear stores.
+        // It also re-initializes dbService with this fresh state.
+        mockDb = createMockDatabase(0);
+        mockDb.objectStoreNames._stores.clear(); // Make sure no stores "exist"
+        // The mockContains flags are now driven by _stores in the mock helper
+        // mockDb.objectStoreNames.mockContainsProductStore = false;
+        // mockDb.objectStoreNames.mockContainsLocationStore = false;
+        // mockDb.objectStoreNames.mockContainsInventoryStateStore = false;
+        if (mockDb.createObjectStore) mockDb.createObjectStore.mockClear();
 
-    test('should create all object stores and indexes if db is new (oldVersion < 1)', async () => {
-        // This relies on the mockOpenDB and its upgrade simulation calling the upgrade callback.
-        // The service is instantiated in beforeEach, triggering this.
-        // We need to ensure that mockDb starts with version 0 and no stores.
-        mockDb.version = 0;
-        mockDb.objectStoreNames.mockContainsProductStore = false;
-        mockDb.objectStoreNames.mockContainsLocationStore = false;
-        mockDb.objectStoreNames.mockContainsInventoryStateStore = false;
-
-        // Re-initialize service to ensure openDB is called with this state
-        // This requires isolating module loading again, or structuring tests to allow
-        // service instantiation within the test.
-        // For simplicity, we'll rely on the beforeEach's instantiation, assuming
-        // the mockDb state set here is picked up by mockOpenDB.
-        // (This might need adjustment if mockOpenDB's closure captures initial mockDb state too early)
-
-        // To be certain, re-run service init logic if beforeEach state isn't enough:
         await jest.isolateModulesAsync(async () => {
             const { IndexedDBService } = await import('../../src/services/indexeddb.service');
             dbService = new IndexedDBService();
@@ -260,10 +237,15 @@ describe('IndexedDBService', () => {
                 await mockHelperOpenDB.mock.results[lastOpenDBCall].value;
             }
         });
-        // The store actions should now point to the potentially new ones created during upgrade.
+        // Re-assign store mocks after service re-initialization as they might be new instances
         currentMockProductStore = mockProductStoreActionsInstance;
+        currentMockLocationStore = mockLocationStoreActionsInstance;
+        currentMockInventoryStateStore = mockInventoryStateStoreActionsInstance;
+    });
 
-
+    test('should create all object stores and indexes if db is new (oldVersion < 1)', async () => {
+        // Service is initialized in this describe's beforeEach with a version 0 DB.
+        // mockOpenDB's upgrade callback should have been triggered.
         expect(mockDb.createObjectStore).toHaveBeenCalledWith('products', { keyPath: 'id' });
         expect(mockDb.createObjectStore).toHaveBeenCalledWith('locations', { keyPath: 'id' });
         expect(mockDb.createObjectStore).toHaveBeenCalledWith('inventoryState', { keyPath: 'key' });
@@ -271,35 +253,46 @@ describe('IndexedDBService', () => {
     });
 
     test('should not attempt to create stores if they exist and version is current', async () => {
-        mockDb.version = DATABASE_VERSION; // Current version
-        mockDb.objectStoreNames.mockContainsProductStore = true;
-        mockDb.objectStoreNames.mockContainsLocationStore = true;
-        mockDb.objectStoreNames.mockContainsInventoryStateStore = true;
-        mockDb.createObjectStore.mockClear();
+        // Setup: Create a DB that is already at the current version and has stores.
+        mockDb = createMockDatabase(DATABASE_VERSION); // Set to current version
+        mockDb.objectStoreNames._stores.add('products');
+        mockDb.objectStoreNames._stores.add('locations');
+        mockDb.objectStoreNames._stores.add('inventoryState');
+        if (mockDb.createObjectStore) mockDb.createObjectStore.mockClear();
 
-        // Re-initialize service
+        // Re-initialize service with this specific DB state
         await jest.isolateModulesAsync(async () => {
             const { IndexedDBService } = await import('../../src/services/indexeddb.service');
-            dbService = new IndexedDBService();
-             const lastOpenDBCall = mockHelperOpenDB.mock.calls.length - 1;
+            dbService = new IndexedDBService(); // This will call openDB
+            const lastOpenDBCall = mockHelperOpenDB.mock.calls.length - 1;
             if (lastOpenDBCall >= 0 && mockHelperOpenDB.mock.results[lastOpenDBCall]) {
-                await mockHelperOpenDB.mock.results[lastOpenDBCall].value;
+                await mockHelperOpenDB.mock.results[lastOpenDBCall].value; // Wait for openDB to complete
             }
         });
 
+        // Assert: createObjectStore should not have been called as DB is up-to-date.
         expect(mockDb.createObjectStore).not.toHaveBeenCalled();
     });
 
     test('should call upgrade callback with correct versions for a future upgrade (e.g., v1 to v2)', async () => {
-      mockDb.version = 1;
-      mockDb.objectStoreNames.mockContainsProductStore = true;
-      mockDb.objectStoreNames.mockContainsLocationStore = true;
-      mockDb.objectStoreNames.mockContainsInventoryStateStore = true;
-      mockDb.createObjectStore.mockClear();
+      // Setup: DB starts at version 1.
+      mockDb = createMockDatabase(1);
+      mockDb.objectStoreNames._stores.add('products');
+      mockDb.objectStoreNames._stores.add('locations');
+      mockDb.objectStoreNames._stores.add('inventoryState');
+      if (mockDb.createObjectStore) mockDb.createObjectStore.mockClear();
 
-      // The upgrade function is captured by mockHelperOpenDB.
-      // We need to ensure the service has been initialized for mockHelperDBCallbacks.upgrade to be set.
-      // This is done in the main beforeEach.
+      // Initialize service (this captures the upgrade callback via mockOpenDB)
+      // We need a new service instance to ensure openDB is called with the new mockDb state
+      await jest.isolateModulesAsync(async () => {
+          const { IndexedDBService } = await import('../../src/services/indexeddb.service');
+          const serviceForThisTest = new IndexedDBService(); // Call openDB with current mockDb state
+          // Wait for openDB to resolve
+          const lastOpenDBCall = mockHelperOpenDB.mock.calls.length - 1;
+          if (lastOpenDBCall >= 0 && mockHelperOpenDB.mock.results[lastOpenDBCall]) {
+              await mockHelperOpenDB.mock.results[lastOpenDBCall].value;
+          }
+      });
       expect(mockHelperDBCallbacks.upgrade).toBeDefined();
 
       const consoleSpy = jest.spyOn(console, 'log');
@@ -402,9 +395,9 @@ describe('IndexedDBService', () => {
         const error = new Error('Transaction failed');
         currentMockProductStore.getAllKeys.mockResolvedValue([]);
         currentMockLocationStore.getAllKeys.mockResolvedValue([]);
-        currentMockProductStore.put.mockResolvedValue('prod1');
-        currentMockLocationStore.put.mockResolvedValue('loc1');
-        currentMockInventoryStateStore.put.mockResolvedValue('currentState');
+      currentMockProductStore.put.mockResolvedValue('prod1' as IDBValidKey);
+      currentMockLocationStore.put.mockResolvedValue('loc1' as IDBValidKey);
+      currentMockInventoryStateStore.put.mockResolvedValue('currentState' as IDBValidKey);
 
         const transactionSpy = jest.spyOn(mockDb, 'transaction');
         transactionSpy.mockImplementationOnce((storeNames, mode) => {
@@ -488,9 +481,9 @@ describe('IndexedDBService', () => {
       currentMockProductStore.getAllKeys.mockResolvedValue([]);
       currentMockLocationStore.getAllKeys.mockResolvedValue([]);
       // Default for put operations (can be overridden in tests)
-      currentMockProductStore.put.mockImplementation(async (item: Product) => item.id);
-      currentMockLocationStore.put.mockImplementation(async (item: Location) => item.id);
-      currentMockInventoryStateStore.put.mockImplementation(async (item: StoredInventoryStateType) => item.key);
+      currentMockProductStore.put.mockImplementation(async (value: Product, key?: IDBValidKey): Promise<IDBValidKey> => value.id as IDBValidKey);
+      currentMockLocationStore.put.mockImplementation(async (value: Location, key?: IDBValidKey): Promise<IDBValidKey> => value.id as IDBValidKey);
+      currentMockInventoryStateStore.put.mockImplementation(async (value: StoredInventoryStateType, key?: IDBValidKey): Promise<IDBValidKey> => value.key as IDBValidKey);
     });
 
     describe('saveAllApplicationData', () => {
@@ -649,7 +642,7 @@ describe('IndexedDBService', () => {
     const inventoryState2: InventoryState = { products: [product2], locations: [location2], unsyncedChanges: true };
 
 
-    test('should handle multiple saveAllApplicationData calls initiated concurrently', async () => {
+    test('should handle multiple saveAllApplicationData calls initiated concurrently, ensuring deterministic outcomes', async () => {
       const data1 = {
         products: [product1],
         locations: [location1],
@@ -664,101 +657,140 @@ describe('IndexedDBService', () => {
       };
       const storedState2: StoredInventoryStateType = { ...inventoryState2, key: 'currentState' };
 
-      // Mock getAllKeys to simulate an empty database initially for both "transactions"
-      // The actual transaction queuing will determine the final state.
-      currentMockProductStore.getAllKeys.mockResolvedValue([]);
-      currentMockLocationStore.getAllKeys.mockResolvedValue([]);
+      const originalTransactionMock = mockDb.transaction; // Save the original mock from beforeEach
 
-      // Initiate both save operations without awaiting the first one before starting the second
-      const promise1 = dbService.saveAllApplicationData(data1);
-      const promise2 = dbService.saveAllApplicationData(data2);
+      // Scenario 1: data1's transaction initiates, then data2's, data1 completes, then data2 completes.
+      // data2 should be the final state.
+      // --------------------------------------------------------------------------------------------
+      {
+        // Clear specific mock call histories relevant to this scenario
+        mockDb.transaction.mockClear();
+        currentMockProductStore.put.mockClear();
+        currentMockProductStore.delete.mockClear();
+        currentMockProductStore.getAllKeys.mockClear();
+        currentMockLocationStore.put.mockClear();
+        currentMockLocationStore.delete.mockClear();
+        currentMockLocationStore.getAllKeys.mockClear();
+        currentMockInventoryStateStore.put.mockClear();
+        showToastMock.mockClear();
 
-      // Await both promises to complete
-      await Promise.all([promise1, promise2]);
+        let data1TxDoneResolve: () => void;
+        let data2TxDoneResolve: () => void;
 
-      // Due to the nature of JavaScript's single thread and how promises are typically resolved,
-      // and how our mock transaction works (one after the other if `await` is used internally by `idb` mock),
-      // the operations will likely be serialized. The second call would overwrite the first.
-      // We need to check the final state of the database.
+        // Use mockDb from the outer scope, which is correctly typed and initialized
+        mockDb.transaction = jest.fn()
+          .mockImplementationOnce((storeNames: StoreNames<BarInventoryDBSchemaType>[], mode: IDBTransactionMode) => { // For data1
+            const tx = createMockTransaction(storeNames, mode as any, mockDb);
+            tx.done = new Promise<void>(resolve => { data1TxDoneResolve = resolve; });
+            return tx as any;
+          })
+          .mockImplementationOnce((storeNames: StoreNames<BarInventoryDBSchemaType>[], mode: IDBTransactionMode) => { // For data2
+            const tx = createMockTransaction(storeNames, mode as any, mockDb);
+            tx.done = new Promise<void>(resolve => { data2TxDoneResolve = resolve; });
+            return tx as any;
+          }) as MockDatabaseInstance['transaction']; // Ensure the assignment matches the type
 
-      // Verify that transaction was called at least twice (or more, depending on internal retries if any)
-      expect(mockDb.transaction).toHaveBeenCalledTimes(2);
+        // Mock getAllKeys: data1 sees empty, data2 sees data1's items
+        currentMockProductStore.getAllKeys.mockResolvedValueOnce([]).mockResolvedValueOnce([product1.id]);
+        currentMockLocationStore.getAllKeys.mockResolvedValueOnce([]).mockResolvedValueOnce([location1.id]);
 
+        const promise1 = dbService.saveAllApplicationData(data1);
+        const promise2 = dbService.saveAllApplicationData(data2);
 
-      // Check which data was effectively written.
-      // This depends on the exact behavior of the service and mock transaction handling.
-      // Assuming the last one "wins" if they are serialized.
-      // The mocks for put/delete should reflect the final state.
-      // Let's check that product2 (from data2) is present and product1 is not (or was overwritten).
-      // This requires inspecting the arguments to put and delete.
+        // Resolve transactions: data1 finishes, then data2 finishes.
+        // @ts-ignore
+        if (data1TxDoneResolve) data1TxDoneResolve(); else throw new Error("data1TxDoneResolve not set");
+        // @ts-ignore
+        if (data2TxDoneResolve) data2TxDoneResolve(); else throw new Error("data2TxDoneResolve not set");
 
-      // To simplify, we'll check if the *final* state reflects data2.
-      // This means 'p2' and 'l2' were put, and 'currentState' was updated with inventoryState2.
-      // And if data1 was processed first, then 'p1', 'l1' would have been deleted by the second call.
-      // If data2 was processed first, then 'p2', 'l2' would have been deleted by the first call (if data1 was empty).
+        await Promise.all([promise1, promise2]);
 
-      // Given our saveAllApplicationData logic (delete existing then put new):
-      // If data1 runs, then data2:
-      //  - data1 puts p1, l1, state1.
-      //  - data2 deletes p1, l1 (because they are not in data2's list) and puts p2, l2, state2.
-      // Final state: p2, l2, state2.
+        expect(mockDb.transaction).toHaveBeenCalledTimes(2); // Use mockDb directly
 
-      // If data2 runs, then data1:
-      //  - data2 puts p2, l2, state2.
-      //  - data1 deletes p2, l2 (because they are not in data1's list) and puts p1, l1, state1.
-      // Final state: p1, l1, state1.
+        // Assert data2 is the final state
+        // Check the last calls for put operations
+        expect(currentMockProductStore.put.mock.calls[currentMockProductStore.put.mock.calls.length - 1][0]).toEqual(product2);
+        expect(currentMockLocationStore.put.mock.calls[currentMockLocationStore.put.mock.calls.length - 1][0]).toEqual(location2);
+        expect(currentMockInventoryStateStore.put.mock.calls[currentMockInventoryStateStore.put.mock.calls.length - 1][0]).toEqual(storedState2);
 
-      // The actual order is non-deterministic without deeper control over promise execution.
-      // However, Jest resolves promises in a specific order. Let's assume data2 is last.
-      // We should verify that the mocks were called appropriately.
+        expect(currentMockProductStore.delete).toHaveBeenCalledWith(product1.id);
+        expect(currentMockLocationStore.delete).toHaveBeenCalledWith(location1.id);
 
-      // Check calls for data1 processing (these might be subsequently deleted)
-      // expect(currentMockProductStore.put).toHaveBeenCalledWith(product1);
-      // expect(currentMockLocationStore.put).toHaveBeenCalledWith(location1);
-      // expect(currentMockInventoryStateStore.put).toHaveBeenCalledWith(storedState1);
+        expect(currentMockProductStore.put).toHaveBeenCalledTimes(2);
+        expect(currentMockLocationStore.put).toHaveBeenCalledTimes(2);
+        expect(currentMockInventoryStateStore.put).toHaveBeenCalledTimes(2);
 
-      // Check calls for data2 processing (these should be the final state)
-      expect(currentMockProductStore.put).toHaveBeenCalledWith(product2);
-      expect(currentMockLocationStore.put).toHaveBeenCalledWith(location2);
-      expect(currentMockInventoryStateStore.put).toHaveBeenCalledWith(storedState2);
+        expect(showToastMock).toHaveBeenCalledWith('Anwendungsdaten erfolgreich gespeichert.', 'success');
+        expect(showToastMock).toHaveBeenCalledTimes(2);
+      }
 
-      // Check that items from the "other" call were deleted if they were processed first.
-      // This is hard to assert definitively without knowing the execution order.
-      // A simpler check is that the number of puts is as expected for the "winning" call.
-      expect(currentMockProductStore.put).toHaveBeenCalledTimes(1); // Assuming only the last call's items remain
-      expect(currentMockLocationStore.put).toHaveBeenCalledTimes(1);
-      expect(currentMockInventoryStateStore.put).toHaveBeenCalledTimes(1);
+      // Scenario 2: data2's transaction initiates, then data1's, data2 completes, then data1 completes.
+      // data1 should be the final state.
+      // --------------------------------------------------------------------------------------------
+      {
+        // Clear specific mock call histories for this scenario
+        mockDb.transaction.mockClear();
+        currentMockProductStore.put.mockClear();
+        currentMockProductStore.delete.mockClear();
+        currentMockProductStore.getAllKeys.mockClear();
+        currentMockLocationStore.put.mockClear();
+        currentMockLocationStore.delete.mockClear();
+        currentMockLocationStore.getAllKeys.mockClear();
+        currentMockInventoryStateStore.put.mockClear();
+        showToastMock.mockClear();
 
+        let data2TxDoneResolveScenario2: () => void;
+        let data1TxDoneResolveScenario2: () => void;
 
-      // And that obsolete items (from the call that ran "first" and was then "overwritten") were deleted.
-      // If data1 ran first, then data2 ran: p1 and l1 should be deleted.
-      // If data2 ran first, then data1 ran: p2 and l2 should be deleted.
-      // The mock for `getAllKeys` in `saveAllApplicationData` will determine what's "obsolete".
-      // Let's assume the second call to `saveAllApplicationData` (data2) sees an empty DB because `getAllKeys` is mocked once.
-      // This test setup isn't perfect for true concurrency race conditions.
-      // It mostly tests if multiple calls can proceed without throwing unexpected errors.
-      // A more robust test would involve controlling the resolution of promises within `saveAllApplicationData`
-      // or having `getAllKeys` return different values for different calls.
+        mockDb.transaction = jest.fn()
+          .mockImplementationOnce((storeNames: StoreNames<BarInventoryDBSchemaType>[], mode: IDBTransactionMode) => { // For data2
+            const tx = createMockTransaction(storeNames, mode as any, mockDb);
+            tx.done = new Promise<void>(resolve => { data2TxDoneResolveScenario2 = resolve; });
+            return tx as any;
+          })
+          .mockImplementationOnce((storeNames: StoreNames<BarInventoryDBSchemaType>[], mode: IDBTransactionMode) => { // For data1
+            const tx = createMockTransaction(storeNames, mode as any, mockDb);
+            tx.done = new Promise<void>(resolve => { data1TxDoneResolveScenario2 = resolve; });
+            return tx as any;
+          }) as MockDatabaseInstance['transaction'];
 
-      // For now, let's assume the last call (data2) defines the final state and previous data is cleared.
-      // This implies that when the second `saveAllApplicationData` runs, it first clears whatever the first one put.
-      // The number of `delete` calls would be for items in the "first" save that are not in the "second".
-      // If data1 ran first: delete p1, delete l1.
-      // If data2 ran first: delete p2, delete l2.
+        currentMockProductStore.getAllKeys.mockResolvedValueOnce([]).mockResolvedValueOnce([product2.id]);
+        currentMockLocationStore.getAllKeys.mockResolvedValueOnce([]).mockResolvedValueOnce([location2.id]);
 
-      // Given the current `saveAllApplicationData` logic, it fetches all keys, then deletes those not in the new set, then puts new/updated.
-      // If `currentMockProductStore.getAllKeys` is always empty, then no deletes will occur for "obsolete" items from a previous concurrent call.
-      // This highlights a limitation in this specific test setup for "true" concurrency.
+        const promiseB = dbService.saveAllApplicationData(data2);
+        const promiseA = dbService.saveAllApplicationData(data1);
 
-      // Let's refine the mock for getAllKeys to reflect the state *after* the first save, for the second save to process.
-      // This is still tricky as we don't know which promise resolves first.
+        // @ts-ignore
+        if (data2TxDoneResolveScenario2) data2TxDoneResolveScenario2(); else throw new Error("data2TxDoneResolveScenario2 not set");
+        // @ts-ignore
+        if (data1TxDoneResolveScenario2) data1TxDoneResolveScenario2(); else throw new Error("data1TxDoneResolveScenario2 not set");
 
-      // A simpler assertion for now: no errors were thrown and the toast for success was shown (implies tx.done resolved).
-      // And the number of transactions matches the number of calls.
-      // The actual data state check is less reliable here without more control.
-      expect(showToastMock).toHaveBeenCalledWith('Anwendungsdaten erfolgreich gespeichert.', 'success');
-      // It might be called twice if both succeed independently.
-      expect(showToastMock).toHaveBeenCalledTimes(2);
+        await Promise.all([promiseA, promiseB]);
+
+        expect(mockDb.transaction).toHaveBeenCalledTimes(2); // Use mockDb directly
+
+        expect(currentMockProductStore.put.mock.calls[currentMockProductStore.put.mock.calls.length - 1][0]).toEqual(product1);
+        expect(currentMockLocationStore.put.mock.calls[currentMockLocationStore.put.mock.calls.length - 1][0]).toEqual(location1);
+        expect(currentMockInventoryStateStore.put.mock.calls[currentMockInventoryStateStore.put.mock.calls.length - 1][0]).toEqual(storedState1);
+
+        expect(currentMockProductStore.delete).toHaveBeenCalledWith(product2.id);
+        expect(currentMockLocationStore.delete).toHaveBeenCalledWith(location2.id);
+
+        expect(currentMockProductStore.put).toHaveBeenCalledTimes(2);
+        expect(currentMockLocationStore.put).toHaveBeenCalledTimes(2);
+        expect(currentMockInventoryStateStore.put).toHaveBeenCalledTimes(2);
+
+        expect(showToastMock).toHaveBeenCalledWith('Anwendungsdaten erfolgreich gespeichert.', 'success');
+        expect(showToastMock).toHaveBeenCalledTimes(2);
+      }
+
+      // Restore original transaction mock behavior from beforeEach for subsequent tests
+      // This is important because mockDb is shared across tests in the main describe block.
+      // The beforeEach in the main describe block re-creates mockDb.transaction as a basic jest.fn().
+      // So, originalTransactionMock holds that basic jest.fn().
+      if (mockDb) { // Ensure mockDb is defined before trying to assign to its transaction property
+        mockDb.transaction = originalTransactionMock;
+      }
     });
 
     test('should handle concurrent saveAllApplicationData and loadAllApplicationData calls', async () => {
@@ -1131,19 +1163,14 @@ describe('IndexedDBService', () => {
 
     test('should not save any data if getAllKeys for products fails', async () => {
       const error = new Error('Failed to get all product keys');
-      // Mock the specific store action to fail
       currentMockProductStore.getAllKeys.mockRejectedValueOnce(error);
 
-      // Setup the transaction mock so its 'done' promise will also be rejected
-      // because an operation within it failed.
       const transactionSpy = jest.spyOn(mockDb, 'transaction');
       transactionSpy.mockImplementationOnce((storeNames, mode) => {
-          const tx = createMockTransaction(storeNames as any, mode as any, mockDb);
-          // If an operation like getAllKeys fails, the transaction.done should reject.
-          tx.done = Promise.reject(error);
-          return tx as any;
+          const txInternal = createMockTransaction(storeNames as any, mode as any, mockDb);
+          txInternal.done = Promise.reject(error); // Simulate tx abort due to operation failure
+          return txInternal as any;
       });
-
 
       await expect(dbService.saveAllApplicationData(testData)).rejects.toThrow(error.message);
 
@@ -1176,14 +1203,14 @@ describe('IndexedDBService', () => {
 
     test('should not save locations or state if putting a product fails', async () => {
       const error = new Error('Failed to put product');
-      currentMockProductStore.put.mockImplementation(async (item) => { // Use mockImplementation to fail on specific item or always
-        if (item.id === product1.id) {
-          return Promise.reject(error);
+      currentMockProductStore.put.mockImplementation(async (value: Product, key?: IDBValidKey): Promise<IDBValidKey> => {
+        if (value.id === product1.id) {
+          throw error;
         }
-        return Promise.resolve(item.id);
+        return value.id as IDBValidKey;
       });
 
-      const transactionSpy = setupFailingTransaction(error);
+      const transactionSpy = setupFailingTransaction(error); // This already makes tx.done reject
 
       await expect(dbService.saveAllApplicationData(testData)).rejects.toThrow(error.message);
 
@@ -1199,15 +1226,15 @@ describe('IndexedDBService', () => {
 
     test('should not save state if putting a location fails', async () => {
       const error = new Error('Failed to put location');
-      currentMockProductStore.put.mockResolvedValue('id'); // Products save fine
-      currentMockLocationStore.put.mockImplementation(async (item) => {
-        if (item.id === location1.id) {
-          return Promise.reject(error);
+      currentMockProductStore.put.mockResolvedValue('id' as IDBValidKey); // Products save fine
+      currentMockLocationStore.put.mockImplementation(async (value: Location, key?: IDBValidKey): Promise<IDBValidKey> => {
+        if (value.id === location1.id) {
+          throw error;
         }
-        return Promise.resolve(item.id);
+        return value.id as IDBValidKey;
       });
 
-      const transactionSpy = setupFailingTransaction(error);
+      const transactionSpy = setupFailingTransaction(error); // This already makes tx.done reject
 
       await expect(dbService.saveAllApplicationData(testData)).rejects.toThrow(error.message);
 
