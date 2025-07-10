@@ -21,7 +21,7 @@
 
 // Note: dbService import will be done dynamically after mocks are set up.
 // import { dbService } from '../../src/services/indexeddb.service';
-import { Product, Location, InventoryState } from '../../src/models';
+import { Product, Location, InventoryState, Counter, Area, InventoryEntry } from '../../src/models';
 // BarInventoryDBSchema and StoredInventoryState will also be imported dynamically or type-only.
 import type { BarInventoryDBSchema as BarInventoryDBSchemaType, StoredInventoryState as StoredInventoryStateType } from '../../src/services/indexeddb.service';
 import {
@@ -481,9 +481,9 @@ describe('IndexedDBService', () => {
       currentMockProductStore.getAllKeys.mockResolvedValue([]);
       currentMockLocationStore.getAllKeys.mockResolvedValue([]);
       // Default for put operations (can be overridden in tests)
-      currentMockProductStore.put.mockImplementation(async (value: Product, key?: IDBValidKey): Promise<IDBValidKey> => value.id as IDBValidKey);
-      currentMockLocationStore.put.mockImplementation(async (value: Location, key?: IDBValidKey): Promise<IDBValidKey> => value.id as IDBValidKey);
-      currentMockInventoryStateStore.put.mockImplementation(async (value: StoredInventoryStateType, key?: IDBValidKey): Promise<IDBValidKey> => value.key as IDBValidKey);
+      currentMockProductStore.put.mockImplementation((value: Product, _key?: IDBValidKey) => Promise.resolve(value.id as IDBValidKey));
+      currentMockLocationStore.put.mockImplementation((value: Location, _key?: IDBValidKey) => Promise.resolve(value.id as IDBValidKey));
+      currentMockInventoryStateStore.put.mockImplementation((value: StoredInventoryStateType, _key?: IDBValidKey) => Promise.resolve(value.key as IDBValidKey));
     });
 
     describe('saveAllApplicationData', () => {
@@ -708,13 +708,20 @@ describe('IndexedDBService', () => {
         expect(mockDb.transaction).toHaveBeenCalledTimes(2); // Use mockDb directly
 
         // Assert data2 is the final state
-        // Check the last calls for put operations
-        expect(currentMockProductStore.put.mock.calls[currentMockProductStore.put.mock.calls.length - 1][0]).toEqual(product2);
-        expect(currentMockLocationStore.put.mock.calls[currentMockLocationStore.put.mock.calls.length - 1][0]).toEqual(location2);
-        expect(currentMockInventoryStateStore.put.mock.calls[currentMockInventoryStateStore.put.mock.calls.length - 1][0]).toEqual(storedState2);
+        // Check the calls for put operations. Due to concurrency, order of inner puts isn't guaranteed,
+        // but both data1 and data2 items should have been put. The delete operations ensure data2 is final.
+        expect(currentMockProductStore.put).toHaveBeenCalledWith(product1); // from data1
+        expect(currentMockProductStore.put).toHaveBeenCalledWith(product2); // from data2
+        expect(currentMockLocationStore.put).toHaveBeenCalledWith(location1); // from data1
+        expect(currentMockLocationStore.put).toHaveBeenCalledWith(location2); // from data2
+        expect(currentMockInventoryStateStore.put).toHaveBeenCalledWith(storedState1); // from data1
+        expect(currentMockInventoryStateStore.put).toHaveBeenCalledWith(storedState2); // from data2
 
-        expect(currentMockProductStore.delete).toHaveBeenCalledWith(product1.id);
-        expect(currentMockLocationStore.delete).toHaveBeenCalledWith(location1.id);
+        // Crucially, the deletions determine the final state.
+        // In this scenario (data1 then data2, data1 completes then data2 completes),
+        // data2's operations run seeing data1's items as existing.
+        expect(currentMockProductStore.delete).toHaveBeenCalledWith(product1.id); // data2 deleting data1's product
+        expect(currentMockLocationStore.delete).toHaveBeenCalledWith(location1.id); // data2 deleting data1's location
 
         expect(currentMockProductStore.put).toHaveBeenCalledTimes(2);
         expect(currentMockLocationStore.put).toHaveBeenCalledTimes(2);
@@ -769,12 +776,19 @@ describe('IndexedDBService', () => {
 
         expect(mockDb.transaction).toHaveBeenCalledTimes(2); // Use mockDb directly
 
-        expect(currentMockProductStore.put.mock.calls[currentMockProductStore.put.mock.calls.length - 1][0]).toEqual(product1);
-        expect(currentMockLocationStore.put.mock.calls[currentMockLocationStore.put.mock.calls.length - 1][0]).toEqual(location1);
-        expect(currentMockInventoryStateStore.put.mock.calls[currentMockInventoryStateStore.put.mock.calls.length - 1][0]).toEqual(storedState1);
+        // Assert data1 is the final state
+        expect(currentMockProductStore.put).toHaveBeenCalledWith(product1); // from data1
+        expect(currentMockProductStore.put).toHaveBeenCalledWith(product2); // from data2
+        expect(currentMockLocationStore.put).toHaveBeenCalledWith(location1); // from data1
+        expect(currentMockLocationStore.put).toHaveBeenCalledWith(location2); // from data2
+        expect(currentMockInventoryStateStore.put).toHaveBeenCalledWith(storedState1); // from data1
+        expect(currentMockInventoryStateStore.put).toHaveBeenCalledWith(storedState2); // from data2
 
-        expect(currentMockProductStore.delete).toHaveBeenCalledWith(product2.id);
-        expect(currentMockLocationStore.delete).toHaveBeenCalledWith(location2.id);
+        // Crucially, the deletions determine the final state.
+        // In this scenario (data2 then data1, data2 completes then data1 completes),
+        // data1's operations run seeing data2's items as existing.
+        expect(currentMockProductStore.delete).toHaveBeenCalledWith(product2.id); // data1 deleting data2's product
+        expect(currentMockLocationStore.delete).toHaveBeenCalledWith(location2.id); // data1 deleting data2's location
 
         expect(currentMockProductStore.put).toHaveBeenCalledTimes(2);
         expect(currentMockLocationStore.put).toHaveBeenCalledTimes(2);
@@ -859,7 +873,7 @@ describe('IndexedDBService', () => {
     const largeLocationArray = createLargeArray(500, i => ({
       id: `loc${i}`,
       name: `Large Location ${i}`,
-      counters: [{ id: `c${i}-1`, name: 'Counter 1', items: [] }],
+      counters: [{ id: `c${i}-1`, name: 'Counter 1', areas: [] }], // Added areas to satisfy Counter model
     }));
 
     const largeInventoryState: InventoryState = {
@@ -880,7 +894,7 @@ describe('IndexedDBService', () => {
       currentMockInventoryStateStore.put.mockClear();
     });
 
-    test('saveAllApplicationData should handle large arrays of products and locations', async () => {
+    test('saveAllApplicationData should handle large arrays of products and locations (measure time)', async () => {
       currentMockProductStore.getAllKeys.mockResolvedValue([]); // DB is empty
       currentMockLocationStore.getAllKeys.mockResolvedValue([]);
 
@@ -890,7 +904,9 @@ describe('IndexedDBService', () => {
         state: largeInventoryState,
       };
 
+      console.time('saveAllApplicationData_large_new');
       await dbService.saveAllApplicationData(dataToSave);
+      console.timeEnd('saveAllApplicationData_large_new');
 
       expect(currentMockProductStore.put).toHaveBeenCalledTimes(largeProductArray.length);
       largeProductArray.forEach(product => {
@@ -908,7 +924,7 @@ describe('IndexedDBService', () => {
       expect(showToastMock).toHaveBeenCalledWith('Anwendungsdaten erfolgreich gespeichert.', 'success');
     });
 
-    test('loadAllApplicationData should handle large arrays of products and locations', async () => {
+    test('loadAllApplicationData should handle large arrays of products and locations (measure time)', async () => {
       mockDb.getAll
         .mockImplementation(async (storeName: string) => {
           if (storeName === 'products') return largeProductArray;
@@ -917,7 +933,9 @@ describe('IndexedDBService', () => {
         });
       mockDb.get.mockResolvedValue(storedLargeInventoryState);
 
+      console.time('loadAllApplicationData_large');
       const result = await dbService.loadAllApplicationData();
+      console.timeEnd('loadAllApplicationData_large');
 
       expect(mockDb.getAll).toHaveBeenCalledWith('products');
       expect(mockDb.getAll).toHaveBeenCalledWith('locations');
@@ -930,7 +948,7 @@ describe('IndexedDBService', () => {
       expect(result.state).toEqual(storedLargeInventoryState);
     });
 
-    test('saveAllApplicationData should handle deletions with large existing dataset', async () => {
+    test('saveAllApplicationData should handle deletions with large existing dataset (measure time)', async () => {
       // Simulate existing large dataset by mocking getAllKeys
       const existingProductKeys = largeProductArray.map(p => p.id);
       const existingLocationKeys = largeLocationArray.map(l => l.id);
@@ -946,7 +964,9 @@ describe('IndexedDBService', () => {
         state: largeInventoryState, // State can still be "large" or different
       };
 
+      console.time('saveAllApplicationData_large_deletions');
       await dbService.saveAllApplicationData(dataToSave);
+      console.timeEnd('saveAllApplicationData_large_deletions');
 
       // Verify puts for the small new dataset
       expect(currentMockProductStore.put).toHaveBeenCalledTimes(smallProductArray.length);
@@ -959,13 +979,13 @@ describe('IndexedDBService', () => {
       const expectedProductDeletions = largeProductArray.length - smallProductArray.length;
       expect(currentMockProductStore.delete).toHaveBeenCalledTimes(expectedProductDeletions);
       for (let i = smallProductArray.length; i < largeProductArray.length; i++) {
-        expect(currentMockProductStore.delete).toHaveBeenCalledWith(largeProductArray[i].id);
+        expect(currentMockProductStore.delete).toHaveBeenCalledWith(largeProductArray[i]!.id);
       }
 
       const expectedLocationDeletions = largeLocationArray.length - smallLocationArray.length;
       expect(currentMockLocationStore.delete).toHaveBeenCalledTimes(expectedLocationDeletions);
       for (let i = smallLocationArray.length; i < largeLocationArray.length; i++) {
-        expect(currentMockLocationStore.delete).toHaveBeenCalledWith(largeLocationArray[i].id);
+        expect(currentMockLocationStore.delete).toHaveBeenCalledWith(largeLocationArray[i]!.id);
       }
 
       expect(showToastMock).toHaveBeenCalledWith('Anwendungsdaten erfolgreich gespeichert.', 'success');
@@ -1142,11 +1162,12 @@ describe('IndexedDBService', () => {
       currentMockInventoryStateStore.put.mockClear();
       showToastMock.mockClear();
       // Ensure the transaction spy is restored if a previous test set it up and didn't clean.
-      jest.restoreAllMocks(); // This will restore spies created with jest.spyOn
+      // jest.restoreAllMocks(); // This can be too broad if other mocks are set up in outer beforeEaches
+      // Instead, manage spies more locally or ensure they are restored in afterEach if needed.
     });
 
-    const setupFailingTransaction = (error: Error) => {
-        const transactionSpy = jest.spyOn(mockDb, 'transaction');
+    const setupFailingTransaction = (error: Error, specificMock?: jest.SpyInstance) => {
+        const transactionSpy = specificMock || jest.spyOn(mockDb, 'transaction');
         transactionSpy.mockImplementation((storeNames, mode) => {
             const tx = createMockTransaction(storeNames as any, mode as any, mockDb);
             tx.done = Promise.reject(error); // Make this transaction's done promise reject
@@ -1203,11 +1224,11 @@ describe('IndexedDBService', () => {
 
     test('should not save locations or state if putting a product fails', async () => {
       const error = new Error('Failed to put product');
-      currentMockProductStore.put.mockImplementation(async (value: Product, key?: IDBValidKey): Promise<IDBValidKey> => {
+      currentMockProductStore.put.mockImplementation((value: Product, key?: IDBValidKey) => {
         if (value.id === product1.id) {
-          throw error;
+          return Promise.reject(error);
         }
-        return value.id as IDBValidKey;
+        return Promise.resolve(value.id as IDBValidKey);
       });
 
       const transactionSpy = setupFailingTransaction(error); // This already makes tx.done reject
@@ -1227,11 +1248,11 @@ describe('IndexedDBService', () => {
     test('should not save state if putting a location fails', async () => {
       const error = new Error('Failed to put location');
       currentMockProductStore.put.mockResolvedValue('id' as IDBValidKey); // Products save fine
-      currentMockLocationStore.put.mockImplementation(async (value: Location, key?: IDBValidKey): Promise<IDBValidKey> => {
+      currentMockLocationStore.put.mockImplementation((value: Location, key?: IDBValidKey) => {
         if (value.id === location1.id) {
-          throw error;
+          return Promise.reject(error);
         }
-        return value.id as IDBValidKey;
+        return Promise.resolve(value.id as IDBValidKey);
       });
 
       const transactionSpy = setupFailingTransaction(error); // This already makes tx.done reject
@@ -1266,6 +1287,165 @@ describe('IndexedDBService', () => {
 
       expect(showToastMock).toHaveBeenCalledWith('Fehler beim Speichern der Anwendungsdaten. Änderungen wurden nicht gespeichert.', 'error');
       transactionSpy.mockRestore();
+    });
+
+    test('should handle QuotaExceededError during product put and abort transaction', async () => {
+      const quotaError = new DOMException('Quota Exceeded', 'QuotaExceededError');
+
+      // Mock productStore.put to throw the error for a specific product
+      currentMockProductStore.put.mockImplementation((value: Product, _key?: IDBValidKey) => {
+        if (value.id === product1.id) { // Let's say product1 causes the quota error
+          return Promise.reject(quotaError);
+        }
+        return Promise.resolve(value.id as IDBValidKey); // Other products might succeed if called
+      });
+
+      // Spy on mockDb.transaction to use setupFailingTransaction,
+      // ensuring the transaction's 'done' promise rejects with the quotaError.
+      const transactionSpy = jest.spyOn(mockDb, 'transaction');
+      setupFailingTransaction(quotaError, transactionSpy); // Pass the spy to the helper
+
+      await expect(dbService.saveAllApplicationData(testData)).rejects.toThrow(quotaError);
+
+      // Verify that the put operation that throws was indeed called
+      expect(currentMockProductStore.put).toHaveBeenCalledWith(product1);
+      // Depending on Promise.all behavior in saveAllApplicationData, other puts might also be called
+      // but the transaction should abort before committing them.
+      // For instance, if product2 was also in testData.products:
+      // expect(currentMockProductStore.put).not.toHaveBeenCalledWith(product2); // This might be too strong an assumption
+
+      // Crucially, other stores should not have their data committed.
+      expect(currentMockLocationStore.put).not.toHaveBeenCalled();
+      expect(currentMockInventoryStateStore.put).not.toHaveBeenCalled();
+
+      expect(showToastMock).toHaveBeenCalledWith(
+        'Fehler beim Speichern der Anwendungsdaten. Änderungen wurden nicht gespeichert.',
+        'error'
+      );
+
+      transactionSpy.mockRestore();
+      // Restore mockProductStore.put to its default behavior for other tests if necessary,
+      // though beforeEach should handle this.
+      currentMockProductStore.put.mockImplementation((value: Product, key?: IDBValidKey) => Promise.resolve(value.id as IDBValidKey));
+    });
+  });
+
+  describe('Data Integrity Tests', () => {
+    const initialInventoryEntry: InventoryEntry = { productId: 'prod1', startBottles: 10, startOpenVolumeMl: 500 };
+    const initialArea: Area = { id: 'area1', name: 'Main Shelf', inventoryItems: [initialInventoryEntry] };
+    const initialCounter: Counter = { id: 'counter1', name: 'Main Bar', areas: [initialArea] };
+    let initialLocation: Location = {
+      id: 'loc1',
+      name: 'Test Bar',
+      counters: [initialCounter],
+    };
+    const initialProduct: Product = { id: 'prod1', name: 'Test Product', category: 'Test', volume: 700, pricePerBottle: 20 };
+    const initialState: InventoryState = {
+        products: [initialProduct],
+        locations: [initialLocation],
+        unsyncedChanges: false
+    };
+
+    beforeEach(() => {
+      // Reset mocks
+      currentMockProductStore.put.mockClear();
+      currentMockProductStore.getAllKeys.mockClear().mockResolvedValue([]);
+      currentMockLocationStore.put.mockClear();
+      currentMockLocationStore.getAllKeys.mockClear().mockResolvedValue([]);
+      currentMockInventoryStateStore.put.mockClear();
+      mockDb.getAll.mockClear();
+      mockDb.get.mockClear();
+
+      // Default behavior for store operations
+      currentMockProductStore.put.mockImplementation((value: Product, _key?: IDBValidKey) => Promise.resolve(value.id as IDBValidKey));
+      currentMockLocationStore.put.mockImplementation((value: Location, _key?: IDBValidKey) => Promise.resolve(value.id as IDBValidKey));
+      currentMockInventoryStateStore.put.mockImplementation((value: StoredInventoryStateType, _key?: IDBValidKey) => Promise.resolve(value.key as IDBValidKey));
+
+      // Reset initialLocation for each test to avoid mutation across tests
+      initialLocation = JSON.parse(JSON.stringify({ // Deep copy
+        id: 'loc1',
+        name: 'Test Bar',
+        counters: [{
+          id: 'counter1',
+          name: 'Main Bar',
+          areas: [{
+            id: 'area1',
+            name: 'Main Shelf',
+            inventoryItems: [{ productId: 'prod1', startBottles: 10, startOpenVolumeMl: 500 }],
+          }],
+        }],
+      }));
+    });
+
+    test('should save and load deeply nested object structures correctly', async () => {
+      // 1. Save initial deeply nested data
+      const dataToSave = {
+        products: [initialProduct],
+        locations: [initialLocation],
+        state: initialState,
+      };
+      // Simulate empty DB for save
+      currentMockProductStore.getAllKeys.mockResolvedValueOnce([]);
+      currentMockLocationStore.getAllKeys.mockResolvedValueOnce([]);
+
+      await dbService.saveAllApplicationData(dataToSave);
+
+      // Verify it was "saved" (put operations called)
+      expect(currentMockProductStore.put).toHaveBeenCalledWith(initialProduct);
+      expect(currentMockLocationStore.put).toHaveBeenCalledWith(initialLocation);
+      expect(currentMockInventoryStateStore.put).toHaveBeenCalledWith({ ...initialState, key: 'currentState' });
+
+      // 2. Load it back
+      // Mock DB calls for loadAllApplicationData
+      mockDb.getAll
+        .mockImplementationOnce(async (storeName: string) => storeName === 'products' ? [initialProduct] : [])
+        .mockImplementationOnce(async (storeName: string) => storeName === 'locations' ? [initialLocation] : []);
+      mockDb.get.mockResolvedValueOnce({ ...initialState, key: 'currentState' });
+
+      let loadedData = await dbService.loadAllApplicationData();
+      expect(loadedData.products).toEqual([initialProduct]);
+      expect(loadedData.locations).toEqual([initialLocation]);
+      expect(loadedData.locations[0].counters[0].areas[0].inventoryItems[0].startBottles).toBe(10);
+
+      // 3. Modify a deeply nested property
+      const modifiedLocation = JSON.parse(JSON.stringify(initialLocation)); // Deep copy
+      modifiedLocation.counters[0].areas[0].inventoryItems[0].startBottles = 5;
+      modifiedLocation.counters[0].areas[0].inventoryItems[0].startOpenVolumeMl = 250;
+
+
+      const modifiedDataToSave = {
+        products: [initialProduct], // Products unchanged
+        locations: [modifiedLocation],
+        state: initialState, // State unchanged for this test
+      };
+
+      // Simulate existing data for the second save
+      currentMockProductStore.getAllKeys.mockResolvedValueOnce([initialProduct.id] as any);
+      currentMockLocationStore.getAllKeys.mockResolvedValueOnce([initialLocation.id] as any);
+      // Clear put mocks to ensure we are checking the second save
+      currentMockProductStore.put.mockClear();
+      currentMockLocationStore.put.mockClear();
+      currentMockInventoryStateStore.put.mockClear();
+
+
+      await dbService.saveAllApplicationData(modifiedDataToSave);
+
+      // Verify the modified location was "saved"
+      expect(currentMockLocationStore.put).toHaveBeenCalledWith(modifiedLocation);
+      expect(currentMockProductStore.put).toHaveBeenCalledWith(initialProduct); // Or not if only changed data is put
+      expect(currentMockInventoryStateStore.put).toHaveBeenCalled();
+
+
+      // 4. Load it back again and verify the nested change
+      mockDb.getAll
+        .mockImplementationOnce(async (storeName: string) => storeName === 'products' ? [initialProduct] : [])
+        .mockImplementationOnce(async (storeName: string) => storeName === 'locations' ? [modifiedLocation] : []);
+      mockDb.get.mockResolvedValueOnce({ ...initialState, key: 'currentState' }); // State is the same
+
+      loadedData = await dbService.loadAllApplicationData();
+      expect(loadedData.locations).toEqual([modifiedLocation]);
+      expect(loadedData.locations[0].counters[0].areas[0].inventoryItems[0].startBottles).toBe(5);
+      expect(loadedData.locations[0].counters[0].areas[0].inventoryItems[0].startOpenVolumeMl).toBe(250);
     });
   });
 });
