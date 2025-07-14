@@ -289,10 +289,10 @@ describe('ExportService', () => {
   describe('Data formatting and validation', () => {
     it('should format numbers consistently in CSV', () => {
       const productsWithDecimals = [
-        { id: 'p1', name: 'Product A', volume: 700.5, pricePerBottle: 20.999, pricePer100ml: 2.8571428571 }
+        { id: 'p1', name: 'Product A', category: 'TestCat', volume: 700.5, pricePerBottle: 20.999, pricePer100ml: 2.8571428571 }
       ];
       
-      exportService.exportProductsToCsv(productsWithDecimals);
+      exportService.exportProductsToCsv(productsWithDecimals as Product[]);
       const blobContent = (global.Blob as any).mock.calls[0][0][0];
       expect(blobContent).toContain('700.5');
       expect(blobContent).toContain('20.999');

@@ -12,8 +12,10 @@ jest.mock('../../src/services/indexeddb.service', () => ({
   },
 }));
 
+// Improved mock for generateId to ensure uniqueness in tests
+let mockIdCounter = 0;
 jest.mock('../../src/utils/helpers', () => ({
-  generateId: jest.fn((prefix: string) => `${prefix}-mock-id-${Math.random().toString(36).substr(2, 5)}`),
+  generateId: jest.fn((prefix: string) => `${prefix}-mock-id-${mockIdCounter++}`),
 }));
 
 describe('LocationStore', () => {
@@ -548,8 +550,19 @@ describe('LocationStore', () => {
   });
 
   describe('State Management', () => {
-    // Define local initialMockLocations for this describe block
-    const localInitialMockLocations = JSON.parse(JSON.stringify(initialMockLocations));
+    let localInitialMockLocations: Location[];
+
+    beforeEach(() => {
+      // Ensure initialMockLocations (from the outer scope's beforeEach) is defined before use
+      if (!initialMockLocations) {
+        // This would happen if the outer beforeEach hasn't run, which is unexpected
+        // but good to be defensive or to re-initialize if necessary for this specific suite.
+        // For this fix, we assume the outer beforeEach has run and initialMockLocations is populated.
+        // If not, the test setup is more fundamentally flawed.
+        throw new Error("initialMockLocations was not initialized by outer beforeEach. Test setup error.");
+      }
+      localInitialMockLocations = JSON.parse(JSON.stringify(initialMockLocations));
+    });
 
     it('should return immutable data from getLocations', async () => {
       await locationStore.loadLocations();
