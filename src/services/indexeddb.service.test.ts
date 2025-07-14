@@ -238,32 +238,29 @@ describe('IndexedDBService', () => {
     });
 
     it('should handle errors if database is not initialized for an operation', async () => {
-      let faultyDbService!: IndexedDBService;
+      // Get the mock for openDB from the 'idb' library
+      const { openDB: mockedOpenDB } = jest.requireMock('idb');
       
-      await jest.isolateModulesAsync(async () => {
+      // Configure the mock to reject for the next call (which will be during faultyDbService instantiation)
+      const dbInitError = new Error('DB init failed');
+      mockedOpenDB.mockRejectedValueOnce(dbInitError);
 
-        const { openDB: isolatedOpenDB } = jest.requireMock('idb');
-        // Make the idb's openDB fail for the next instantiation
-        isolatedOpenDB.mockRejectedValueOnce(new Error('DB init failed'));
-
-        const mod = await import('../../src/services/indexeddb.service');
-        // The constructor itself should not throw if window.indexedDB is present.
-        // It assigns this.dbPromise = this.initDB();
-        // this.initDB() calls openDB, which will reject.
-        faultyDbService = new mod.IndexedDBService();
-
-        // No complex try-catch needed here for service instantiation if window.indexedDB is valid.
-        // The error is expected on faultyDbService.dbPromise.
-      });
-
-      expect(faultyDbService).toBeDefined(); // Ensure faultyDbService was assigned
-      // Accessing dbPromise should reveal the rejection from initDB()
-      await expect((faultyDbService as any).dbPromise).rejects.toThrow('DB init failed');
+      let faultyDbService: IndexedDBService | null = null;
+      try {
+        faultyDbService = new ActualDBService(); // This will call initDB, which calls the now-rejecting openDB
+      } catch (e) {
+        // Constructor itself should not throw if window.indexedDB is valid; error is in the promise
+      }
+      expect(faultyDbService).toBeDefined();
 
       const testProduct: Product = {id: '1', name: 'test', category: 'test', itemsPerCrate:1, pricePerBottle:1, pricePer100ml:1, volume:1};
-      // This call should also fail because dbPromise is rejected.
-      // The service methods typically await this.dbPromise first.
-      await expect(faultyDbService.saveProduct(testProduct)).rejects.toThrow('DB init failed');
+
+      // Service methods should reject because this.dbPromise will be a rejected promise.
+      await expect(faultyDbService!.saveProduct(testProduct)).rejects.toThrow(dbInitError);
+
+      // Optionally, also check the dbPromise if it's accessible and part of the test contract
+      // This line might be removed if dbPromise is considered a private implementation detail.
+      await expect((faultyDbService as any).dbPromise).rejects.toThrow(dbInitError);
     });
   });
 

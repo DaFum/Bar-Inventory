@@ -308,6 +308,9 @@ describe('Location Manager (location-manager.ts)', () => {
     const exportBtn = container.querySelector('#export-all-locations-json-btn') as HTMLButtonElement;
     const fakeUrl = 'blob:http://localhost/fake-uuid';
     // Ensure URL.createObjectURL and revokeObjectURL are mocked on global.URL or window.URL
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    const originalRevokeObjectURL = global.URL.revokeObjectURL;
+
     global.URL.createObjectURL = jest.fn(() => fakeUrl);
     global.URL.revokeObjectURL = jest.fn();
 
@@ -322,17 +325,7 @@ describe('Location Manager (location-manager.ts)', () => {
     expect(mockedShowToastFn).toHaveBeenCalledWith(expect.stringContaining('erfolgreich als JSON exportiert'), 'success');
 
     linkClickSpy.mockRestore();
-    // Clean up global URL mocks by restoring original (potentially undefined) values
-    // This requires storing them before overwriting, if we want to be perfectly clean.
-    // For now, deleting is okay if they were definitely not there before this test.
-    // A safer approach if other tests might use/mock URL:
-    // const originalCreateObjectURL = global.URL.createObjectURL;
-    // const originalRevokeObjectURL = global.URL.revokeObjectURL;
-    // ... assign jest.fn() ...
-    // global.URL.createObjectURL = originalCreateObjectURL;
-    // global.URL.revokeObjectURL = originalRevokeObjectURL;
-    // For simplicity of this fix, given they were not present in JSDOM:
-    // Restore original references after the test
+    // Restore original URL methods
     global.URL.createObjectURL = originalCreateObjectURL;
     global.URL.revokeObjectURL = originalRevokeObjectURL;
   });

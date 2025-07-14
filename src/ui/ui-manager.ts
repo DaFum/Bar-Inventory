@@ -80,25 +80,24 @@ function navigateTo(viewName: ViewName): void {
   viewContainer.innerHTML = '';
   updateActiveNavButton();
 
-  switch (viewName) {
-    case 'locations':
-      initLocationManager(viewContainer);
-      break;
-    case 'products':
-      initProductManager(viewContainer);
-      break;
-    case 'inventory':
-      initInventoryView(viewContainer);
-      break;
-    case 'analytics': // Handle Analytics View
-      initAnalyticsView(viewContainer);
-      break;
-    case 'settings':
-      viewContainer.innerHTML = '<h2>Einstellungen (Demnächst)</h2>';
-      break;
-    default:
-      viewContainer.innerHTML = '<p>Unbekannte Ansicht.</p>';
+  const views = {
+    locations: initLocationManager,
+    products: initProductManager,
+    inventory: initInventoryView,
+    analytics: initAnalyticsView,
+    settings: (container: HTMLElement) => {
+      container.innerHTML = '<h2>Einstellungen (Demnächst)</h2>';
+    },
+  };
+
+  const initView = views[viewName];
+
+  if (initView) {
+    initView(viewContainer);
+  } else {
+    viewContainer.innerHTML = '<p>Unbekannte Ansicht.</p>';
   }
+
   console.log(`Navigated to ${viewName}`);
 }
 

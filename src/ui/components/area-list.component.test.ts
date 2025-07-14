@@ -54,9 +54,9 @@ describe('AreaListComponent', () => {
     expect(items.length).toBe(initialAreas.length);
     // Check order: Beta (1), Alpha (2), Gamma (N/A, then by name)
     if (!items[0] || !items[1] || !items[2]) throw new Error("Test assumption failed: not enough items in constructor test");
-    expect(items[0].textContent).toBe('Area Beta');
-    expect(items[1].textContent).toBe('Area Alpha');
-    expect(items[2].textContent).toBe('Area Gamma');
+      expect(items[0]?.textContent).toBe('Area Beta');
+      expect(items[1]?.textContent).toBe('Area Alpha');
+      expect(items[2]?.textContent).toBe('Area Gamma');
   });
 
   test('setAreas should re-render the list with new sorted areas', () => {
@@ -71,8 +71,8 @@ describe('AreaListComponent', () => {
     const items = listHostDiv!.children;
     expect(items.length).toBe(newAreas.length);
     if (!items[0] || !items[1]) throw new Error("Test assumption failed: not enough items in setAreas test");
-    expect(items[0].textContent).toBe('Area Epsilon');
-    expect(items[1].textContent).toBe('Area Delta');
+      expect(items[0]?.textContent).toBe('Area Epsilon');
+      expect(items[1]?.textContent).toBe('Area Delta');
   });
 
   test('setAreas with empty array should display "no areas" message', () => {
@@ -89,8 +89,8 @@ describe('AreaListComponent', () => {
     const items = listHostDiv!.children;
     expect(items.length).toBe(initialAreas.length + 1);
     if (!items[0] || !items[1]) throw new Error("Test assumption failed: not enough items in addArea test");
-    expect(items[0].textContent).toBe('Area Zero'); // Zero (0)
-    expect(items[1].textContent).toBe('Area Beta');  // Beta (1)
+    expect(items[0]?.textContent).toBe('Area Zero'); // Zero (0)
+    expect(items[1]?.textContent).toBe('Area Beta');  // Beta (1)
     expect(AreaListItemComponent).toHaveBeenCalledTimes(initialAreas.length + 1);
   });
 
@@ -107,7 +107,7 @@ describe('AreaListComponent', () => {
     const items = listHostDiv!.children;
     expect(items.length).toBe(1);
     if (!items[0]) throw new Error("Test assumption failed: item not found in addArea to empty list test");
-    expect(items[0].textContent).toBe('First Area');
+    expect(items[0]?.textContent).toBe('First Area');
   });
 
 
@@ -128,7 +128,7 @@ describe('AreaListComponent', () => {
     const items = listHostDiv!.children;
     expect(items.length).toBe(initialAreas.length);
     if (!items[0] || !items[1] || !items[2]) throw new Error("Test assumption failed: not enough items for updateArea order check");
-    const texts = Array.from(items).map(item => item.textContent);
+    const texts = Array.from(items).map(item => item?.textContent);
     expect(texts).toEqual(['Area Alpha', 'Area Beta Updated', 'Area Gamma']);
   });
 
@@ -140,7 +140,7 @@ describe('AreaListComponent', () => {
     const items = listHostDiv!.children;
     expect(items.length).toBe(initialAreas.length + 1);
     if (!items[0]) throw new Error("Test assumption failed: item not found for updateArea non-existent test");
-    expect(items[0].textContent).toBe('New via Update'); // Should be at the top due to displayOrder 0
+    expect(items[0]?.textContent).toBe('New via Update'); // Should be at the top due to displayOrder 0
   });
 
   test('removeArea should remove the item from the list and DOM', () => {
@@ -156,7 +156,7 @@ describe('AreaListComponent', () => {
     const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
     const items = listHostDiv!.children;
     expect(items.length).toBe(initialAreas.length - 1);
-    expect(Array.from(items).find(item => item.textContent === 'Area Beta')).toBeUndefined();
+    expect(Array.from(items).find(item => item?.textContent === 'Area Beta')).toBeUndefined();
   });
 
   test('removeArea last item should display "no areas" message', () => {
@@ -179,10 +179,10 @@ describe('AreaListComponent', () => {
     const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
     const items = listHostDiv!.children;
     if (!items[0] || !items[1] || !items[2] || !items[3]) throw new Error("Test assumption failed: not enough items for sorting logic test");
-    expect(items[0].textContent).toBe('Area Beta');
-    expect(items[1].textContent).toBe('Area Alpha');
-    expect(items[2].textContent).toBe('Area Gamma');
-    expect(items[3].textContent).toBe('Area Omega');
+    expect(items[0]?.textContent).toBe('Area Beta');
+    expect(items[1]?.textContent).toBe('Area Alpha');
+    expect(items[2]?.textContent).toBe('Area Gamma');
+    expect(items[3]?.textContent).toBe('Area Omega');
   });
 });
 
@@ -455,7 +455,7 @@ describe('AreaListComponent', () => {
       
       // Verify only Mixed 2 remains
       const mixedArea = Array.from(listHostDiv?.children || []).find(
-        item => item.textContent === 'Mixed 2'
+        (item: HTMLElement) => item.textContent === 'Mixed 2'
       );
       expect(mixedArea).toBeDefined();
     });
@@ -488,7 +488,7 @@ describe('AreaListComponent', () => {
       expect(listHostDiv?.children.length).toBe(3);
       
       // Verify order: Added After Set (0), New Area 2 (2), New Area 1 Updated (3)
-      const items = Array.from(listHostDiv?.children || []);
+      const items = Array.from(listHostDiv?.children || []) as HTMLElement[];
       expect(items[0]?.textContent).toBe('Added After Set');
       expect(items[1]?.textContent).toBe('New Area 2');
       expect(items[2]?.textContent).toBe('New Area 1 Updated');
@@ -600,8 +600,8 @@ describe('AreaListComponent', () => {
           id: 'minimal-1', 
           name: 'Minimal Area', 
           inventoryItems: [
-            { id: 'item1', name: 'Item 1', quantity: 5 },
-            { id: 'item2', name: 'Item 2', quantity: 3 }
+            { productId: 'item1', startBottles: 5, currentBottles: 5, history: [] },
+            { productId: 'item2', startBottles: 3, currentBottles: 3, history: [] }
           ] 
         },
       ];

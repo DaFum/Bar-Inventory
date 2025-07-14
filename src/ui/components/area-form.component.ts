@@ -63,7 +63,9 @@ export class AreaFormComponent extends BaseComponent<HTMLDivElement> {
             </form>
         `;
         this.bindElements();
-        this.attachEventListeners();
+        if (this.formElement) {
+            this.attachEventListeners();
+        }
     }
 
     private bindElements(): void {
