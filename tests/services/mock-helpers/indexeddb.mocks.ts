@@ -104,14 +104,14 @@ export type MockDatabaseInstance = Omit<IDBPDatabase<BarInventoryDBSchemaType>, 
     >;
     createObjectStore: jest.Mock<IDBPObjectStore<BarInventoryDBSchemaType, any, any, any>, [StoreNames<BarInventoryDBSchemaType>, IDBObjectStoreParameters?]>,
     deleteObjectStore: jest.Mock<void, [StoreNames<BarInventoryDBSchemaType>]>,
-    close: jest.Mock<void, []>(),
+    close: jest.Mock<void, []>,
     // Direct DB operations (shortcuts, not always recommended to use over transactions)
-    get: jest.fn<Promise<any | undefined>, [StoreNames<BarInventoryDBSchemaType>, IDBValidKey | IDBKeyRange]>(),
-    getAll: jest.fn<Promise<any[]>, [StoreNames<BarInventoryDBSchemaType>, (IDBValidKey | IDBKeyRange | null | undefined)?, number?]>(),
-    put: jest.fn<Promise<IDBValidKey>, [StoreNames<BarInventoryDBSchemaType>, any, IDBValidKey?]>(),
-    add: jest.fn<Promise<IDBValidKey>, [StoreNames<BarInventoryDBSchemaType>, any, IDBValidKey?]>(),
-    delete: jest.fn<Promise<void>, [StoreNames<BarInventoryDBSchemaType>, IDBValidKey | IDBKeyRange]>(),
-    clear: jest.fn<Promise<void>, [StoreNames<BarInventoryDBSchemaType>]>(),
+    get: jest.fn<Promise<any | undefined>, [StoreNames<BarInventoryDBSchemaType>, IDBValidKey | IDBKeyRange]>,
+    getAll: jest.fn<Promise<any[]>, [StoreNames<BarInventoryDBSchemaType>, (IDBValidKey | IDBKeyRange | null | undefined)?, number?]>,
+    put: jest.fn<Promise<IDBValidKey>, [StoreNames<BarInventoryDBSchemaType>, any, IDBValidKey?]>,
+    add: jest.fn<Promise<IDBValidKey>, [StoreNames<BarInventoryDBSchemaType>, any, IDBValidKey?]>,
+    delete: jest.fn<Promise<void>, [StoreNames<BarInventoryDBSchemaType>, IDBValidKey | IDBKeyRange]>,
+    clear: jest.fn<Promise<void>, [StoreNames<BarInventoryDBSchemaType>]>,
 };
 
 
