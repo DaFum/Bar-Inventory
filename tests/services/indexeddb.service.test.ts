@@ -481,12 +481,18 @@ describe('IndexedDBService', () => {
       currentMockProductStore.getAllKeys.mockResolvedValue([]);
       currentMockLocationStore.getAllKeys.mockResolvedValue([]);
       // Default for put operations (can be overridden in tests)
-      currentMockProductStore.put.mockImplementation((value: Product, _key?: IDBValidKey) => Promise.resolve(value.id as IDBValidKey));
-      currentMockLocationStore.put.mockImplementation((value: Location, _key?: IDBValidKey) => Promise.resolve(value.id as IDBValidKey));
-      currentMockInventoryStateStore.put.mockImplementation((value: StoredInventoryStateType, _key?: IDBValidKey) => Promise.resolve(value.key as IDBValidKey));
+      currentMockProductStore.put.mockImplementation(async (value: Product, _key?: IDBValidKey) => value.id as IDBValidKey);
+      currentMockLocationStore.put.mockImplementation(async (value: Location, _key?: IDBValidKey) => value.id as IDBValidKey);
+      currentMockInventoryStateStore.put.mockImplementation(async (value: StoredInventoryStateType, _key?: IDBValidKey) => value.key as IDBValidKey);
     });
 
-    describe('saveAllApplicationData', () => {
+    // This describe block was for concurrency tests, but the problematic mocks are inside
+    // "Transaction Failure Scenario Tests" and "Data Integrity Tests"
+    // The following sections need to be located and fixed.
+    // For now, this is a placeholder for the diff tool.
+    // I will need to locate the specific lines 1227, 1251, 1296 etc. in subsequent calls.
+
+    describe('saveAllApplicationData', () => { // This is just one of the describe blocks
       test('should add all new items and state if DB is empty', async () => {
         const dataToSave = {
           products: [product1, product2],
@@ -885,13 +891,13 @@ describe('IndexedDBService', () => {
 
     beforeEach(() => {
       // Reset mocks for put/delete/getAllKeys for each large data test
-      currentMockProductStore.put.mockClear();
+      currentMockProductStore.put.mockClear().mockImplementation(async (value: Product) => value.id as IDBValidKey);
       currentMockProductStore.delete.mockClear();
       currentMockProductStore.getAllKeys.mockClear();
-      currentMockLocationStore.put.mockClear();
+      currentMockLocationStore.put.mockClear().mockImplementation(async (value: Location) => value.id as IDBValidKey);
       currentMockLocationStore.delete.mockClear();
       currentMockLocationStore.getAllKeys.mockClear();
-      currentMockInventoryStateStore.put.mockClear();
+      currentMockInventoryStateStore.put.mockClear().mockImplementation(async (value: StoredInventoryStateType) => value.key as IDBValidKey);
     });
 
     test('saveAllApplicationData should handle large arrays of products and locations (measure time)', async () => {
@@ -1224,11 +1230,11 @@ describe('IndexedDBService', () => {
 
     test('should not save locations or state if putting a product fails', async () => {
       const error = new Error('Failed to put product');
-      currentMockProductStore.put.mockImplementation((value: Product, key?: IDBValidKey) => {
+      currentMockProductStore.put.mockImplementation(async (value: Product, key?: IDBValidKey) => {
         if (value.id === product1.id) {
-          return Promise.reject(error);
+          throw error; // Reject explicitly in async function
         }
-        return Promise.resolve(value.id as IDBValidKey);
+        return value.id as IDBValidKey;
       });
 
       const transactionSpy = setupFailingTransaction(error); // This already makes tx.done reject
@@ -1247,12 +1253,12 @@ describe('IndexedDBService', () => {
 
     test('should not save state if putting a location fails', async () => {
       const error = new Error('Failed to put location');
-      currentMockProductStore.put.mockResolvedValue('id' as IDBValidKey); // Products save fine
-      currentMockLocationStore.put.mockImplementation((value: Location, key?: IDBValidKey) => {
+      currentMockProductStore.put.mockImplementation(async (value: Product, _key?: IDBValidKey) => value.id as IDBValidKey); // Products save fine
+      currentMockLocationStore.put.mockImplementation(async (value: Location, key?: IDBValidKey) => {
         if (value.id === location1.id) {
-          return Promise.reject(error);
+          throw error; // Reject explicitly
         }
-        return Promise.resolve(value.id as IDBValidKey);
+        return value.id as IDBValidKey;
       });
 
       const transactionSpy = setupFailingTransaction(error); // This already makes tx.done reject
@@ -1272,9 +1278,9 @@ describe('IndexedDBService', () => {
     test('should show error if saving inventory state fails, even if products/locations saved in transaction ops', async () => {
       // This tests if the final tx.done rejection is handled, even if individual ops appeared to succeed.
       const error = new Error('Failed to put inventory state');
-      currentMockProductStore.put.mockResolvedValue('id');
-      currentMockLocationStore.put.mockResolvedValue('id');
-      currentMockInventoryStateStore.put.mockRejectedValueOnce(error); // State saving fails
+      currentMockProductStore.put.mockImplementation(async (value: Product, _key?: IDBValidKey) => value.id as IDBValidKey);
+      currentMockLocationStore.put.mockImplementation(async (value: Location, _key?: IDBValidKey) => value.id as IDBValidKey);
+      currentMockInventoryStateStore.put.mockImplementation(async (value: StoredInventoryStateType, _key?: IDBValidKey) => { throw error; }); // State saving fails
 
       const transactionSpy = setupFailingTransaction(error);
 
@@ -1357,9 +1363,9 @@ describe('IndexedDBService', () => {
       mockDb.get.mockClear();
 
       // Default behavior for store operations
-      currentMockProductStore.put.mockImplementation((value: Product, _key?: IDBValidKey) => Promise.resolve(value.id as IDBValidKey));
-      currentMockLocationStore.put.mockImplementation((value: Location, _key?: IDBValidKey) => Promise.resolve(value.id as IDBValidKey));
-      currentMockInventoryStateStore.put.mockImplementation((value: StoredInventoryStateType, _key?: IDBValidKey) => Promise.resolve(value.key as IDBValidKey));
+      currentMockProductStore.put.mockImplementation(async (value: Product, _key?: IDBValidKey) => value.id as IDBValidKey);
+      currentMockLocationStore.put.mockImplementation(async (value: Location, _key?: IDBValidKey) => value.id as IDBValidKey);
+      currentMockInventoryStateStore.put.mockImplementation(async (value: StoredInventoryStateType, _key?: IDBValidKey) => value.key as IDBValidKey);
 
       // Reset initialLocation for each test to avoid mutation across tests
       initialLocation = JSON.parse(JSON.stringify({ // Deep copy

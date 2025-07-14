@@ -4,37 +4,36 @@
 // However, we can check if `app.ts` attempts to load `main.ts`.
 // One way is to see if `main.ts`'s code (like console logs from Application class) runs when `app.ts` is imported.
 
-// Mock main.ts to see if app.ts tries to load it.
-// This is a bit of a "presence" test.
-let mainTSRun = false;
-jest.mock('../../src/main', () => {
-  // This mock will be used when app.ts executes `import './main';`
-  // We can set a flag or log something here.
-  mainTSRun = true;
-  // console.log("Mocked main.ts loaded"); // For debugging test setup
-});
+// app.ts now contains the Application class directly.
+// We'll test that instantiating it (which happens on import) logs expected messages.
 
-describe('App Module (app.ts)', () => {
+// Mock ui-manager as app.ts will try to initialize it.
+jest.mock('../../src/ui/ui-manager', () => ({
+  initializeApp: jest.fn(),
+}));
+
+describe('App Module (app.ts) - Consolidated', () => {
+  let consoleLogSpy: jest.SpyInstance;
+
   beforeEach(() => {
-    // Reset the flag before each test
-    mainTSRun = false;
-    // Reset modules to ensure app.ts runs its top-level code again if needed,
-    // though for simple import, this might not be strictly necessary for this test.
+    // Reset modules to ensure app.ts runs its top-level code again.
     jest.resetModules();
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
   });
 
-  test('should load and execute main.ts', () => {
-    // When app.ts is imported, it should in turn import './main'.
-    // Our mock for './main' will set mainTSRun to true.
-    require('../../src/app');
-    expect(mainTSRun).toBe(true);
-  });
-
-  test('should log to console when app module is loaded', () => {
-    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    require('../../src/app');
-    // Check for the specific log message from app.ts
-    expect(consoleLogSpy).toHaveBeenCalledWith("App module loaded. Main execution starts in main.ts.");
+  afterEach(() => {
     consoleLogSpy.mockRestore();
+  });
+
+  test('should log initialization messages when loaded', () => {
+    // Importing/requiring app.ts will execute its top-level code, including `new Application()`.
+    require('../../src/app');
+
+    // Check for the messages logged by the Application constructor and the final log from app.ts
+    expect(consoleLogSpy).toHaveBeenCalledWith('Application initializing...');
+    // The DOM related logs ("DOM content loaded...") are conditional and harder to test here
+    // without full DOM setup, which is covered by app-initialization.test.ts.
+    // So we focus on the direct logs from app.ts execution.
+    expect(consoleLogSpy).toHaveBeenCalledWith("App module (app.ts) loaded and application instantiated.");
   });
 });

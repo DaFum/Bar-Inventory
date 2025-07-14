@@ -35,7 +35,16 @@ class ProductStore {
 
   private notifySubscribers(): void {
     const sortedProducts = this.sortProducts(this.products);
-    this.subscribers.forEach((callback) => callback(sortedProducts));
+    this.subscribers.forEach((callback) => {
+      try {
+        callback(sortedProducts);
+      } catch (error) {
+        console.error('ProductStore: Error in subscriber during notify:', error);
+        // Optionally, re-throw if the store should not suppress subscriber errors,
+        // but for robustness of notifying other subscribers, catching here is good.
+        // If re-throwing, the test expectation might need to change.
+      }
+    });
   }
 
   /**

@@ -242,8 +242,8 @@ describe('CounterFormComponent', () => {
     // before component construction, but this requires careful setup.
     // The current bindElements is called in constructor after render, so we'd need to alter render's output.
   });
-});
 
+  // All subsequent describe blocks should be nested within the main 'CounterFormComponent' describe
   describe('Input Validation and Sanitization', () => {
     let nameInput: HTMLInputElement;
     let descriptionInput: HTMLInputElement;
