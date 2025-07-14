@@ -4,7 +4,7 @@ jest.mock('../src/ui/ui-manager', () => ({
 }));
 // No top-level import of initializeApp from '../src/ui/ui-manager' here
 
-describe('Application Initialization (main.ts)', () => {
+describe('Application Initialization (app.ts)', () => {
   let appContainerElement: HTMLElement; // Renamed to avoid confusion with module-level vars
   let originalDocumentReadyState: DocumentReadyState;
   let domContentLoadedListeners: EventListenerOrEventListenerObject[] = [];
@@ -68,9 +68,10 @@ describe('Application Initialization (main.ts)', () => {
   test('should instantiate Application and call initializeApp if DOM is already loaded', () => {
     document.body.appendChild(appContainerElement); // Ensure container is in DOM
     (document.readyState as any) = 'complete';
-    require('../src/main'); // main.ts runs and should use the initializeAppMock
+    require('../src/app'); // app.ts runs and should use the initializeAppMock
     expect(consoleLogSpy).toHaveBeenCalledWith('Application initializing...');
-    expect(consoleLogSpy).toHaveBeenCalledWith('DOM content loaded, app container found.');
+    // Updated log message from consolidated app.ts
+    expect(consoleLogSpy).toHaveBeenCalledWith('DOM content loaded, app container found. Initializing UI.');
     expect(initializeAppMock).toHaveBeenCalledWith(appContainerElement);
     expect(initializeAppMock).toHaveBeenCalledTimes(1);
   });
@@ -78,13 +79,14 @@ describe('Application Initialization (main.ts)', () => {
   test('should instantiate Application and call initializeApp after DOMContentLoaded event', () => {
     document.body.appendChild(appContainerElement); // Ensure container is in DOM
     (document.readyState as any) = 'loading';
-    require('../src/main'); // main.ts runs and should use the initializeAppMock
+    require('../src/app'); // app.ts runs and should use the initializeAppMock
     expect(consoleLogSpy).toHaveBeenCalledWith('Application initializing...');
     expect(initializeAppMock).not.toHaveBeenCalled(); // Should not be called yet
 
     simulateDOMLoaded(); // Simulate the DOMContentLoaded event
 
-    expect(consoleLogSpy).toHaveBeenCalledWith('DOM content loaded, app container found.');
+    // Updated log message from consolidated app.ts
+    expect(consoleLogSpy).toHaveBeenCalledWith('DOM content loaded, app container found. Initializing UI.');
     expect(initializeAppMock).toHaveBeenCalledWith(appContainerElement);
     expect(initializeAppMock).toHaveBeenCalledTimes(1);
   });
@@ -92,10 +94,11 @@ describe('Application Initialization (main.ts)', () => {
   test('should log an error if app-container is not found', () => {
     // appContainerElement is NOT appended to body for this test
     (document.readyState as any) = 'complete';
-    require('../src/main'); // main.ts runs and should use the initializeAppMock
+    require('../src/app'); // app.ts runs and should use the initializeAppMock
 
     expect(consoleLogSpy).toHaveBeenCalledWith('Application initializing...');
     expect(initializeAppMock).not.toHaveBeenCalled();
-    expect(consoleErrorSpy).toHaveBeenCalledWith('App container not found in HTML.');
+    // Updated error message from consolidated app.ts
+    expect(consoleErrorSpy).toHaveBeenCalledWith("App container 'app-container' not found in HTML. UI cannot be initialized.");
   });
 });

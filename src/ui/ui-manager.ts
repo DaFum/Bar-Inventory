@@ -80,24 +80,32 @@ function navigateTo(viewName: ViewName): void {
   viewContainer.innerHTML = '';
   updateActiveNavButton();
 
-  switch (viewName) {
-    case 'locations':
-      initLocationManager(viewContainer);
-      break;
-    case 'products':
-      initProductManager(viewContainer);
-      break;
-    case 'inventory':
-      initInventoryView(viewContainer);
-      break;
-    case 'analytics': // Handle Analytics View
-      initAnalyticsView(viewContainer);
-      break;
-    case 'settings':
-      viewContainer.innerHTML = '<h2>Einstellungen (Demnächst)</h2>';
-      break;
-    default:
-      viewContainer.innerHTML = '<p>Unbekannte Ansicht.</p>';
+  try {
+    switch (viewName) {
+      case 'locations':
+        initLocationManager(viewContainer);
+        break;
+      case 'products':
+        initProductManager(viewContainer);
+        break;
+      case 'inventory':
+        initInventoryView(viewContainer);
+        break;
+      case 'analytics': // Handle Analytics View
+        initAnalyticsView(viewContainer);
+        break;
+      case 'settings':
+        viewContainer.innerHTML = '<h2>Einstellungen (Demnächst)</h2>';
+        break;
+      default:
+        viewContainer.innerHTML = '<p>Unbekannte Ansicht.</p>';
+    }
+  } catch (error) {
+    console.error(`Error initializing view ${viewName}:`, error);
+    viewContainer.innerHTML = `<div class="error-message">Fehler beim Laden der Ansicht '${viewName}'. Bitte versuchen Sie es später erneut oder laden Sie die Anwendung neu.</div>`;
+    // Optionally, show a toast notification as well, though the inline message is more direct for a view failure.
+    // import { showToast } from './components/toast-notifications'; // Would need this import
+    // showToast(`Fehler beim Laden der Ansicht: ${viewName}`, 'error');
   }
   console.log(`Navigated to ${viewName}`);
 }
@@ -107,7 +115,8 @@ function navigateTo(viewName: ViewName): void {
  */
 function updateActiveNavButton(): void {
   if (!appContainer) return; // Add a guard for appContainer
-  appContainer.querySelectorAll('#main-nav .nav-button').forEach((button) => { // Query within appContainer
+  appContainer.querySelectorAll('#main-nav .nav-button').forEach((button) => {
+    // Query within appContainer
     if (button.getAttribute('data-view') === currentView) {
       button.classList.add('active');
     } else {

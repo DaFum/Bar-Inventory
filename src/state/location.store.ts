@@ -16,10 +16,35 @@ class LocationStore {
     // Initial data loading can be triggered here or explicitly by the application.
   }
 
+  // Private helper to find a location or throw an error
+  private _getLocationOrFail(locationId: string): Location {
+    const location = this.locations.find((loc) => loc.id === locationId);
+    if (!location) {
+      throw new Error(`Location with id ${locationId} not found.`);
+    }
+    return location;
+  }
+
+  // Private helper to find a counter in a location or throw an error
+  private _getCounterOrFail(location: Location, counterId: string): Counter {
+    const counter = location.counters.find((c) => c.id === counterId);
+    if (!counter) {
+      throw new Error(`Counter with id ${counterId} not found in location ${location.name} (${location.id}).`);
+    }
+    return counter;
+  }
+
   private notifySubscribers(): void {
     // Locations are not currently sorted by default in the store before notifying.
     // Sorting can be handled by components if needed, or implemented here.
-    this.subscribers.forEach((callback) => callback([...this.locations])); // Return a copy
+    this.subscribers.forEach((callback) => {
+      try {
+        callback([...this.locations]); // Return a copy
+      } catch (error) {
+        console.error('LocationStore: Error in subscriber during notify:', error);
+        // Continue notifying other subscribers
+      }
+    });
   }
 
   /**
@@ -53,10 +78,11 @@ class LocationStore {
   /**
    * Gets a specific location by its ID from the local cache.
    * @param locationId - The ID of the location to retrieve.
-   * @returns The location if found, otherwise undefined.
+   * @returns A deep copy of the location if found, otherwise undefined.
    */
   getLocationById(locationId: string): Location | undefined {
-    return this.locations.find((loc) => loc.id === locationId);
+    const location = this.locations.find((loc) => loc.id === locationId);
+    return location ? JSON.parse(JSON.stringify(location)) : undefined;
   }
 
   /**
@@ -140,10 +166,14 @@ class LocationStore {
    */
   async deleteLocation(locationId: string): Promise<void> {
     try {
+      // Ensure location exists before attempting to delete from DB or local cache
+      this._getLocationOrFail(locationId); // This will throw if not found
+
       await dbService.delete('locations', locationId);
       this.locations = this.locations.filter((l) => l.id !== locationId);
       this.notifySubscribers();
     } catch (error) {
+      // Log if it's not the "not found" error from _getLocationOrFail, or rethrow all
       console.error('LocationStore: Error deleting location', error);
       throw error;
     }
@@ -161,12 +191,14 @@ class LocationStore {
     locationId: string,
     counterData: Pick<Counter, 'name' | 'description'>
   ): Promise<Counter> {
-    const location = this.locations.find((l) => l.id === locationId); // Find in local cache
-    if (!location) throw new Error(`Location with id ${locationId} not found to add counter.`);
+    if (!counterData.name?.trim()) {
+      throw new Error('Tresenname darf nicht leer sein');
+    }
+    const location = this._getLocationOrFail(locationId);
 
     const newCounter: Counter = {
       id: generateId('ctr'),
-      name: counterData.name,
+      name: counterData.name.trim(),
       areas: [],
     };
     if (counterData.description !== undefined) {
@@ -179,13 +211,12 @@ class LocationStore {
   }
 
   async updateCounter(locationId: string, updatedCounter: Counter): Promise<Counter> {
-    const location = this.locations.find((l) => l.id === locationId);
-    if (!location)
-      throw new Error(`Location with id ${locationId} not found for updating counter.`);
-
+    const location = this._getLocationOrFail(locationId);
     const counterIndex = location.counters.findIndex((c) => c.id === updatedCounter.id);
-    if (counterIndex === -1)
+
+    if (counterIndex === -1) {
       throw new Error(`Counter with id ${updatedCounter.id} not found in location ${locationId}.`);
+    }
 
     location.counters[counterIndex] = updatedCounter;
     await this.updateLocation(location); // Saves the whole location and notifies
@@ -193,11 +224,14 @@ class LocationStore {
   }
 
   async deleteCounter(locationId: string, counterId: string): Promise<void> {
-    const location = this.locations.find((l) => l.id === locationId);
-    if (!location)
-      throw new Error(`Location with id ${locationId} not found for deleting counter.`);
+    const location = this._getLocationOrFail(locationId);
+    const counterIndex = location.counters.findIndex(c => c.id === counterId);
 
-    location.counters = location.counters.filter((c) => c.id !== counterId);
+    if (counterIndex === -1) {
+      throw new Error(`Counter with id ${counterId} not found in location ${location.name} for deletion.`);
+    }
+
+    location.counters.splice(counterIndex, 1);
     await this.updateLocation(location); // Saves the whole location and notifies
   }
 
@@ -207,14 +241,15 @@ class LocationStore {
     counterId: string,
     areaData: Pick<Area, 'name' | 'description' | 'displayOrder'>
   ): Promise<Area> {
-    const location = this.locations.find((l) => l.id === locationId);
-    if (!location) throw new Error(`Location ${locationId} not found.`);
-    const counter = location.counters.find((c) => c.id === counterId);
-    if (!counter) throw new Error(`Counter ${counterId} not found in location ${locationId}.`);
+    if (!areaData.name?.trim()) {
+      throw new Error('Bereichsname darf nicht leer sein');
+    }
+    const location = this._getLocationOrFail(locationId);
+    const counter = this._getCounterOrFail(location, counterId);
 
     const newArea: Area = {
       id: generateId('area'),
-      name: areaData.name,
+      name: areaData.name.trim(),
       inventoryItems: [], // Initialize with empty inventoryItems
     };
     if (areaData.description !== undefined) {
@@ -230,14 +265,13 @@ class LocationStore {
   }
 
   async updateArea(locationId: string, counterId: string, updatedArea: Area): Promise<Area> {
-    const location = this.locations.find((l) => l.id === locationId);
-    if (!location) throw new Error(`Location ${locationId} not found.`);
-    const counter = location.counters.find((c) => c.id === counterId);
-    if (!counter) throw new Error(`Counter ${counterId} not found in location ${locationId}.`);
-
+    const location = this._getLocationOrFail(locationId);
+    const counter = this._getCounterOrFail(location, counterId);
     const areaIndex = counter.areas.findIndex((a) => a.id === updatedArea.id);
-    if (areaIndex === -1)
+
+    if (areaIndex === -1) {
       throw new Error(`Area ${updatedArea.id} not found in counter ${counterId}.`);
+    }
 
     counter.areas[areaIndex] = updatedArea;
     this.sortAreas(counter); // Sort areas after updating
@@ -246,14 +280,17 @@ class LocationStore {
   }
 
   async deleteArea(locationId: string, counterId: string, areaId: string): Promise<void> {
-    const location = this.locations.find((l) => l.id === locationId);
-    if (!location) throw new Error(`Location ${locationId} not found.`);
-    const counter = location.counters.find((c) => c.id === counterId);
-    if (!counter) throw new Error(`Counter ${counterId} not found in location ${locationId}.`);
+    const location = this._getLocationOrFail(locationId);
+    const counter = this._getCounterOrFail(location, counterId);
+    const areaIndex = counter.areas.findIndex(a => a.id === areaId);
 
-    counter.areas = counter.areas.filter((a) => a.id !== areaId);
+    if (areaIndex === -1) {
+      throw new Error(`Area with id ${areaId} not found in counter ${counter.name} for deletion.`);
+    }
+
+    counter.areas.splice(areaIndex, 1);
     // No need to re-sort here if only removing, but doesn't hurt if sortAreas is idempotent
-    // this.sortAreas(counter);
+    // this.sortAreas(counter); // Sorting after delete is optional, can be removed if not desired
     await this.updateLocation(location); // Saves the whole location and notifies
   }
 

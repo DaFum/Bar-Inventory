@@ -1,13 +1,42 @@
-// Main application logic will go here.
-// This file could orchestrate different parts of the application,
-// such as initializing services, loading data, and setting up the UI.
+// Main application entry point.
+// Handles DOMContentLoaded and initializes the UI.
 
-// For now, it mainly imports main.ts which handles the DOMContentLoaded and UI setup.
-import './main';
+import { initializeApp } from "./ui/ui-manager";
 
-console.log("App module loaded. Main execution starts in main.ts.");
+class Application {
+  constructor() {
+    this.initialize();
+  }
 
-// Future:
-// - Initialize services (IndexedDB, PWA Service Worker registration)
-// - Load initial configuration or user settings
-// - Potentially handle routing if it's a more complex SPA not handled by ui-manager alone.
+  private initialize(): void {
+    console.log("Application initializing...");
+    // Setup basic event listeners or initial UI components
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => {
+        this.setupApp();
+      });
+    } else {
+      // DOMContentLoaded has already fired
+      this.setupApp();
+    }
+  }
+
+  private setupApp(): void {
+    const appContainer = document.getElementById("app-container");
+    if (appContainer) {
+      console.log("DOM content loaded, app container found. Initializing UI.");
+      initializeApp(appContainer);
+    } else {
+      console.error("App container 'app-container' not found in HTML. UI cannot be initialized.");
+      // Consider showing a user-facing error here if possible, though
+      // if app-container is missing, there's nowhere to put it.
+      // A simple alert could be a last resort for such a critical failure.
+      // alert("Kritischer Fehler: App-Container nicht gefunden. Die Anwendung kann nicht starten.");
+    }
+  }
+}
+
+// Instantiate the application to start it
+new Application();
+
+console.log("App module (app.ts) loaded and application instantiated.");
