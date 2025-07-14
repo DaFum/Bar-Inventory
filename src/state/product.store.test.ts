@@ -1,3 +1,4 @@
+console.log('TEST FILE VERSION: v4');
 import { productStore } from './product.store'; // Import the instance
 import { Product } from '../models';
 import { dbService } from '../services/indexeddb.service';
@@ -12,13 +13,13 @@ jest.mock('../services/indexeddb.service', () => ({
 }));
 
 describe('ProductStore', () => {
+  // These are defined at the describe level, accessible to all tests within this describe block
   const mockProduct1: Product = {
     id: 'prod1',
     name: 'Test Product A',
     category: 'Category 1',
     volume: 750,
     pricePerBottle: 20,
-    // Add other required fields from your Product model if any
   };
   const mockProduct2: Product = {
     id: 'prod2',
@@ -27,6 +28,7 @@ describe('ProductStore', () => {
     volume: 500,
     pricePerBottle: 15,
   };
+  // mockProductsList is also defined here, based on the above
   const mockProductsList: Product[] = [mockProduct1, mockProduct2];
 
   beforeEach(() => {
@@ -50,12 +52,12 @@ describe('ProductStore', () => {
 
       expect(dbService.loadProducts).toHaveBeenCalledTimes(1);
       const expectedSortedProducts = [...mockProductsList].sort((a,b) => {
-        const catA = a.category.toLowerCase();
-        const catB = b.category.toLowerCase();
+        const catA = a.category?.toLowerCase() ?? '';
+        const catB = b.category?.toLowerCase() ?? '';
         if (catA < catB) return -1;
         if (catA > catB) return 1;
-        const nameA = a.name.toLowerCase();
-        const nameB = b.name.toLowerCase();
+        const nameA = a.name?.toLowerCase() ?? '';
+        const nameB = b.name?.toLowerCase() ?? '';
         if (nameA < nameB) return -1;
         if (nameA > nameB) return 1;
         return 0;
@@ -308,7 +310,9 @@ describe('ProductStore', () => {
         };
 
         await productStore.addProduct(extremeProduct);
-        expect(productStore.getProducts()).toContainEqual(extremeProduct);
+        const products = productStore.getProducts();
+        const found = products.find(p => p.id === 'extreme1');
+        expect(found).toEqual(extremeProduct);
       });
 
       it('should handle products with zero and negative values', async () => {
@@ -321,7 +325,9 @@ describe('ProductStore', () => {
         };
 
         await productStore.addProduct(zeroProduct);
-        expect(productStore.getProducts()).toContainEqual(zeroProduct);
+        const products = productStore.getProducts();
+        const found = products.find(p => p.id === 'zero1');
+        expect(found).toEqual(zeroProduct);
       });
 
       it('should handle products with special characters in names and categories', async () => {
@@ -334,7 +340,9 @@ describe('ProductStore', () => {
         };
 
         await productStore.addProduct(specialCharsProduct);
-        expect(productStore.getProducts()).toContainEqual(specialCharsProduct);
+        const products = productStore.getProducts();
+        const found = products.find(p => p.id === 'special1');
+        expect(found).toEqual(specialCharsProduct);
       });
     });
 
@@ -460,7 +468,7 @@ describe('ProductStore', () => {
         
         const storedProducts = productStore.getProducts();
         products.forEach(product => {
-          expect(storedProducts).toContainEqual(product);
+          expect(storedProducts.find(p => p.id === product.id)).toEqual(product);
         });
         expect(dbService.saveProduct).toHaveBeenCalledTimes(3);
       });
@@ -481,7 +489,7 @@ describe('ProductStore', () => {
         await Promise.all(promises);
         
         const storedProducts = productStore.getProducts();
-        expect(storedProducts).toContainEqual(newProduct);
+        expect(storedProducts.find(p => p.id === 'new1')).toEqual(newProduct);
         expect(storedProducts.find(p => p.id === mockProduct1.id)?.name).toBe('Updated Name');
         expect(storedProducts.find(p => p.id === mockProduct2.id)).toBeUndefined();
       });
@@ -525,8 +533,8 @@ describe('ProductStore', () => {
         await expect(productStore.addProduct(product2)).rejects.toThrow('Second save failed');
         
         // First product should be in the store, second should not
-        expect(productStore.getProducts()).toContainEqual(product1);
-        expect(productStore.getProducts()).not.toContainEqual(product2);
+        expect(productStore.getProducts().find(p => p.id === 'batch1')).toEqual(product1);
+        expect(productStore.getProducts().find(p => p.id === 'batch2')).toBeUndefined();
       });
     });
 
@@ -589,7 +597,9 @@ describe('ProductStore', () => {
         const nonExistentProduct: Product = { id: 'nonexistent', name: 'Ghost', category: 'Test', volume: 750, pricePerBottle: 20 };
         await productStore.updateProduct(nonExistentProduct);
         
-        expect(productStore.getProducts()).toContainEqual(nonExistentProduct);
+        const products = productStore.getProducts();
+        const found = products.find(p => p.id === 'nonexistent');
+        expect(found).toEqual(nonExistentProduct);
         
         // Try to delete non-existent product
         await expect(productStore.deleteProduct('nonexistent-id')).resolves.not.toThrow();
@@ -610,7 +620,7 @@ describe('ProductStore', () => {
       const newProduct: Product = { id: 'lifecycle1', name: 'Lifecycle Product', category: 'Test', volume: 750, pricePerBottle: 20 };
       await productStore.addProduct(newProduct);
       expect(subscriber).toHaveBeenCalledTimes(2);
-      expect(productStore.getProducts()).toContainEqual(newProduct);
+      expect(productStore.getProducts().find(p => p.id === 'lifecycle1')).toEqual(newProduct);
       
       // Update the product
       const updatedProduct = { ...newProduct, name: 'Updated Lifecycle Product' };
@@ -639,8 +649,8 @@ describe('ProductStore', () => {
         for (let i = 1; i < currentProducts.length; i++) {
           const prev = currentProducts[i - 1];
           const curr = currentProducts[i];
-          const prevKey = `${prev.category.toLowerCase()}-${prev.name.toLowerCase()}`;
-          const currKey = `${curr.category.toLowerCase()}-${curr.name.toLowerCase()}`;
+          const prevKey = `${prev!.category.toLowerCase()}-${prev!.name.toLowerCase()}`;
+          const currKey = `${curr!.category.toLowerCase()}-${curr!.name.toLowerCase()}`;
           expect(prevKey <= currKey).toBe(true);
         }
       }

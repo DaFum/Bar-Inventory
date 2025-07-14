@@ -46,6 +46,7 @@ describe('AreaFormComponent', () => {
     let mockOnSubmit: jest.MockedFunction<(areaData: any) => Promise<void>>;
     let mockOnCancel: jest.MockedFunction<() => void>;
     let mockArea: Area;
+    let options: AreaFormComponentOptions;
 
     beforeEach(() => {
         // Reset all mocks (includes mockedShowToastFn)
@@ -646,7 +647,7 @@ describe('AreaFormComponent', () => {
 });
     describe('Advanced Accessibility Testing', () => {
         beforeEach(() => {
-            const options: AreaFormComponentOptions = {
+            options = {
                 onSubmit: mockOnSubmit,
                 onCancel: mockOnCancel
             };

@@ -469,7 +469,8 @@ describe('LocationStore', () => {
       const finalArea = updatedCounter?.areas.find(a => a.id === areaId);
       
       expect(finalArea?.inventoryItems).toHaveLength(1);
-      expect(finalArea?.inventoryItems[0]?.name).toBe('Test Item');
+      // Assuming 'item1' is the productId. If name is needed, it should be fetched using ProductStore
+      expect(finalArea?.inventoryItems[0]?.productId).toBe('item1');
     });
   });
 
