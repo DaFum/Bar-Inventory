@@ -1,4 +1,4 @@
-import { dbService, BarInventoryDBSchema } from './indexeddb.service';
+import { dbService } from './indexeddb.service';
 import { Product, Location } from '../models';
 import { AppState } from '../state/app-state';
 
