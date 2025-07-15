@@ -309,7 +309,7 @@ function prepareInventoryItemsForArea(): void {
     tableHTML += `</tbody></table>`;
     tableContainer.innerHTML = tableHTML;
     addInputEventListeners();
-    const drake = dragula([document.getElementById('inventory-list-body')!], {
+    const drake = dragula([tableContainer.querySelector('tbody')!], {
         moves: function (el, source, handle, sibling) {
             return handle?.classList.contains('drag-handle') ?? false;
         },
