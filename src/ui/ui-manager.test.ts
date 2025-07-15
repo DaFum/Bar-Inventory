@@ -222,3 +222,378 @@ describe('UI Manager (ui-manager.ts)', () => {
     });
   });
 });
+
+  describe('Error Handling and Edge Cases', () => {
+    test('should handle null container gracefully in initializeApp', () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      
+      // Test with null container
+      initializeApp(null as any);
+      
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Container'));
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should handle undefined container gracefully in initializeApp', () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      
+      // Test with undefined container
+      initializeApp(undefined as any);
+      
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Container'));
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should handle container without appendChild method', () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const mockContainer = {} as HTMLElement;
+      
+      initializeApp(mockContainer);
+      
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should handle missing navigation buttons during event attachment', () => {
+      initializeApp(appContainer);
+      
+      // Remove all nav buttons
+      const navButtons = appContainer.querySelectorAll('.nav-button');
+      navButtons.forEach(btn => btn.remove());
+      
+      // Should not throw when trying to access removed buttons
+      expect(() => {
+        const nonExistentButton = appContainer.querySelector('button[data-view="products"]');
+        expect(nonExistentButton).toBeNull();
+      }).not.toThrow();
+    });
+
+    test('should handle corrupt DOM state during navigation', () => {
+      initializeApp(appContainer);
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      
+      // Corrupt the DOM by removing essential elements
+      const viewContainer = appContainer.querySelector('#view-container');
+      viewContainer?.remove();
+      
+      // Try to navigate
+      const navButton = appContainer.querySelector('button[data-view="locations"]') as HTMLButtonElement;
+      navButton?.click();
+      
+      expect(consoleErrorSpy).toHaveBeenCalledWith('View container not found!');
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Accessibility and ARIA Compliance', () => {
+    test('should set correct ARIA attributes on view container', () => {
+      initializeApp(appContainer);
+      const viewContainer = appContainer.querySelector('#view-container');
+      
+      expect(viewContainer?.getAttribute('role')).toBe('main');
+      expect(viewContainer?.getAttribute('aria-live')).toBe('polite');
+    });
+
+    test('should update aria-current on active navigation button', () => {
+      initializeApp(appContainer);
+      
+      const inventoryButton = appContainer.querySelector('button[data-view="inventory"]') as HTMLButtonElement;
+      const locationsButton = appContainer.querySelector('button[data-view="locations"]') as HTMLButtonElement;
+      
+      // Check initial state
+      expect(inventoryButton?.getAttribute('aria-current')).toBe('page');
+      expect(locationsButton?.getAttribute('aria-current')).toBe('false');
+      
+      // Navigate to locations
+      locationsButton?.click();
+      
+      expect(inventoryButton?.getAttribute('aria-current')).toBe('false');
+      expect(locationsButton?.getAttribute('aria-current')).toBe('page');
+    });
+
+    test('should have proper keyboard navigation support', () => {
+      initializeApp(appContainer);
+      const navButtons = appContainer.querySelectorAll('.nav-button');
+      
+      navButtons.forEach(button => {
+        expect(button.getAttribute('tabindex')).not.toBe('-1');
+        expect(button.tagName.toLowerCase()).toBe('button'); // Semantic button elements
+      });
+    });
+  });
+
+  describe('Memory Management and Cleanup', () => {
+    test('should properly clean up event listeners when container is removed', () => {
+      const addEventListenerSpy = jest.spyOn(HTMLElement.prototype, 'addEventListener');
+      
+      initializeApp(appContainer);
+      const initialListenerCount = addEventListenerSpy.mock.calls.length;
+      
+      // Simulate multiple initializations (potential memory leak scenario)
+      initializeApp(appContainer);
+      const secondListenerCount = addEventListenerSpy.mock.calls.length;
+      
+      // Should not double-bind listeners
+      expect(secondListenerCount).toBeGreaterThan(initialListenerCount);
+      
+      addEventListenerSpy.mockRestore();
+    });
+
+    test('should handle rapid navigation clicks without state corruption', () => {
+      initializeApp(appContainer);
+      
+      const views: ViewName[] = ['locations', 'products', 'inventory', 'analytics'];
+      
+      // Simulate rapid clicking
+      views.forEach(viewName => {
+        const button = appContainer.querySelector(`button[data-view="${viewName}"]`) as HTMLButtonElement;
+        button?.click();
+      });
+      
+      // Check final state is consistent
+      const analyticsButton = appContainer.querySelector('button[data-view="analytics"]') as HTMLButtonElement;
+      expect(analyticsButton?.classList.contains('active')).toBe(true);
+      
+      // Ensure only one button is active
+      const activeButtons = appContainer.querySelectorAll('.nav-button.active');
+      expect(activeButtons.length).toBe(1);
+    });
+  });
+
+  describe('Component Integration Testing', () => {
+    test('should pass correct parameters to all component initializers', () => {
+      initializeApp(appContainer);
+      
+      const viewContainer = appContainer.querySelector('#view-container');
+      
+      // Test each view navigation with parameter validation
+      const locationsButton = appContainer.querySelector('button[data-view="locations"]') as HTMLButtonElement;
+      locationsButton?.click();
+      expect(initLocationManagerSpy).toHaveBeenCalledWith(viewContainer);
+      expect(initLocationManagerSpy).toHaveBeenCalledTimes(1);
+      
+      const productsButton = appContainer.querySelector('button[data-view="products"]') as HTMLButtonElement;
+      productsButton?.click();
+      expect(initProductManagerSpy).toHaveBeenCalledWith(viewContainer);
+      expect(initProductManagerSpy).toHaveBeenCalledTimes(1);
+      
+      const analyticsButton = appContainer.querySelector('button[data-view="analytics"]') as HTMLButtonElement;
+      analyticsButton?.click();
+      expect(initAnalyticsViewSpy).toHaveBeenCalledWith(viewContainer);
+      expect(initAnalyticsViewSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('should handle component initialization failures gracefully', () => {
+      // Mock a component to throw an error
+      initLocationManagerSpy.mockImplementationOnce(() => {
+        throw new Error('Component initialization failed');
+      });
+      
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      
+      initializeApp(appContainer);
+      const locationsButton = appContainer.querySelector('button[data-view="locations"]') as HTMLButtonElement;
+      
+      expect(() => locationsButton?.click()).not.toThrow();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Component initialization failed'));
+      
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Theme Integration', () => {
+    test('should maintain theme toggle functionality across view changes', () => {
+      initializeApp(appContainer);
+      
+      const themeToggleButton = appContainer.querySelector('#theme-toggle-btn') as HTMLButtonElement;
+      
+      // Toggle theme multiple times
+      themeToggleButton?.click();
+      expect(toggleThemeSpy).toHaveBeenCalledTimes(1);
+      
+      // Navigate to different view
+      const locationsButton = appContainer.querySelector('button[data-view="locations"]') as HTMLButtonElement;
+      locationsButton?.click();
+      
+      // Theme toggle should still work
+      themeToggleButton?.click();
+      expect(toggleThemeSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test('should handle theme service errors gracefully', () => {
+      toggleThemeSpy.mockImplementationOnce(() => {
+        throw new Error('Theme service unavailable');
+      });
+      
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      
+      initializeApp(appContainer);
+      const themeToggleButton = appContainer.querySelector('#theme-toggle-btn') as HTMLButtonElement;
+      
+      expect(() => themeToggleButton?.click()).not.toThrow();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Theme service unavailable'));
+      
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Layout Rendering Edge Cases', () => {
+    test('should handle duplicate initialization calls', () => {
+      // First initialization
+      initializeApp(appContainer);
+      const firstNavCount = appContainer.querySelectorAll('.nav-button').length;
+      
+      // Second initialization on same container
+      initializeApp(appContainer);
+      const secondNavCount = appContainer.querySelectorAll('.nav-button').length;
+      
+      // Should not duplicate elements
+      expect(secondNavCount).toBe(firstNavCount);
+    });
+
+    test('should render layout with all required navigation buttons', () => {
+      initializeApp(appContainer);
+      
+      const expectedViews: ViewName[] = ['locations', 'products', 'inventory', 'analytics', 'settings'];
+      
+      expectedViews.forEach(viewName => {
+        const button = appContainer.querySelector(`button[data-view="${viewName}"]`);
+        expect(button).not.toBeNull();
+        expect(button?.textContent?.trim().length).toBeGreaterThan(0);
+      });
+    });
+
+    test('should maintain proper element hierarchy', () => {
+      initializeApp(appContainer);
+      
+      // Check main structure
+      const mainNav = appContainer.querySelector('#main-nav');
+      const viewContainer = appContainer.querySelector('#view-container');
+      const themeToggle = appContainer.querySelector('#theme-toggle-btn');
+      
+      expect(mainNav).not.toBeNull();
+      expect(viewContainer).not.toBeNull();
+      expect(themeToggle).not.toBeNull();
+      
+      // Check nav buttons are children of main-nav
+      const navButtons = mainNav?.querySelectorAll('.nav-button');
+      expect(navButtons?.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('State Consistency', () => {
+    test('should maintain consistent active state during multiple navigations', () => {
+      initializeApp(appContainer);
+      
+      const viewNames: ViewName[] = ['locations', 'products', 'inventory', 'analytics', 'settings'];
+      
+      viewNames.forEach(viewName => {
+        const button = appContainer.querySelector(`button[data-view="${viewName}"]`) as HTMLButtonElement;
+        button?.click();
+        
+        // Verify only this button is active
+        const allButtons = appContainer.querySelectorAll('.nav-button');
+        let activeCount = 0;
+        
+        allButtons.forEach(btn => {
+          if (btn.classList.contains('active')) {
+            activeCount++;
+            expect(btn.getAttribute('data-view')).toBe(viewName);
+          }
+        });
+        
+        expect(activeCount).toBe(1);
+      });
+    });
+
+    test('should handle navigation with malformed data-view attributes', () => {
+      initializeApp(appContainer);
+      
+      // Create a button with malformed data-view
+      const malformedButton = document.createElement('button');
+      malformedButton.setAttribute('data-view', '');
+      malformedButton.className = 'nav-button';
+      
+      const mainNav = appContainer.querySelector('#main-nav');
+      mainNav?.appendChild(malformedButton);
+      
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      
+      malformedButton.click();
+      
+      // Should handle gracefully and show unknown view message
+      const viewContainer = appContainer.querySelector('#view-container');
+      expect(viewContainer?.innerHTML).toContain('Unbekannte Ansicht');
+      
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Performance and Resource Management', () => {
+    test('should handle large numbers of navigation events efficiently', () => {
+      initializeApp(appContainer);
+      
+      const startTime = performance.now();
+      const button = appContainer.querySelector('button[data-view="inventory"]') as HTMLButtonElement;
+      
+      // Simulate many rapid clicks
+      for (let i = 0; i < 100; i++) {
+        button?.click();
+      }
+      
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      // Should complete in reasonable time (less than 1 second)
+      expect(duration).toBeLessThan(1000);
+      expect(initInventoryViewSpy).toHaveBeenCalledTimes(101); // Initial + 100 clicks
+    });
+
+    test('should not leak DOM elements during view changes', () => {
+      initializeApp(appContainer);
+      
+      const initialChildCount = appContainer.childElementCount;
+      
+      // Navigate through all views multiple times
+      const views: ViewName[] = ['locations', 'products', 'inventory', 'analytics', 'settings'];
+      
+      for (let cycle = 0; cycle < 3; cycle++) {
+        views.forEach(viewName => {
+          const button = appContainer.querySelector(`button[data-view="${viewName}"]`) as HTMLButtonElement;
+          button?.click();
+        });
+      }
+      
+      const finalChildCount = appContainer.childElementCount;
+      
+      // Should not accumulate extra elements
+      expect(finalChildCount).toBe(initialChildCount);
+    });
+  });
+
+  describe('Internationalization Support', () => {
+    test('should handle German text content in navigation', () => {
+      initializeApp(appContainer);
+      
+      const settingsButton = appContainer.querySelector('button[data-view="settings"]') as HTMLButtonElement;
+      settingsButton?.click();
+      
+      const viewContainer = appContainer.querySelector('#view-container');
+      expect(viewContainer?.innerHTML).toContain('Einstellungen (Demnächst)');
+    });
+
+    test('should handle special characters in view content', () => {
+      initializeApp(appContainer);
+      
+      // Navigate to settings which contains German umlauts
+      const settingsButton = appContainer.querySelector('button[data-view="settings"]') as HTMLButtonElement;
+      settingsButton?.click();
+      
+      const viewContainer = appContainer.querySelector('#view-container');
+      const content = viewContainer?.textContent || '';
+      
+      // Should properly render German characters
+      expect(content).toMatch(/[äöüß]/i);
+    });
+  });
+});

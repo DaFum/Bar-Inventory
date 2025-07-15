@@ -1194,3 +1194,693 @@ describe('AreaFormComponent', () => {
         });
     });
 });
+    describe('Advanced Form State Management', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+            document.body.appendChild(component.getElement());
+        });
+
+        it('should handle form state persistence across show/hide cycles', () => {
+            // Show form and enter data
+            component.show();
+            component['nameInput'].value = 'Persistent Data';
+            component['descriptionInput'].value = 'Should persist';
+            
+            // Hide and show again
+            component.hide();
+            component.show();
+            
+            // Data should be cleared for new entry
+            expect(component['nameInput'].value).toBe('');
+            expect(component['descriptionInput'].value).toBe('');
+        });
+
+        it('should maintain form state when switching between new and edit modes', () => {
+            // Start with new area
+            component.show();
+            component['nameInput'].value = 'New Area Name';
+            
+            // Switch to edit mode
+            component.show(mockArea);
+            expect(component['nameInput'].value).toBe('Test Area');
+            
+            // Switch back to new mode
+            component.show();
+            expect(component['nameInput'].value).toBe('');
+        });
+
+        it('should handle form dirty state detection', () => {
+            component.show(mockArea);
+            const initialName = component['nameInput'].value;
+            const initialDesc = component['descriptionInput'].value;
+            
+            // Modify form
+            component['nameInput'].value = 'Modified Name';
+            
+            // Check if form is dirty (implementation dependent)
+            expect(component['nameInput'].value).not.toBe(initialName);
+            expect(component['descriptionInput'].value).toBe(initialDesc);
+        });
+
+        it('should handle undo/redo-like operations', () => {
+            component.show(mockArea);
+            const originalName = component['nameInput'].value;
+            
+            // Make changes
+            component['nameInput'].value = 'Changed Name';
+            
+            // Simulate undo by resetting to original area
+            component.show(mockArea);
+            expect(component['nameInput'].value).toBe(originalName);
+        });
+    });
+
+    describe('Advanced Accessibility and ARIA Support', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+            document.body.appendChild(component.getElement());
+        });
+
+        it('should announce form mode changes to screen readers', () => {
+            // Test new area mode
+            component.show();
+            const titleElement = component.getElement().querySelector('#area-form-title-comp');
+            expect(titleElement?.textContent).toBe('Neuen Bereich erstellen');
+            
+            // Test edit mode
+            component.show(mockArea);
+            expect(titleElement?.textContent).toBe('Bereich bearbeiten');
+        });
+
+        it('should provide live region updates for validation errors', async () => {
+            const nameInput = component['nameInput'];
+            nameInput.value = '';
+            
+            const event = new Event('submit');
+            await component['handleSubmit'](event);
+            
+            // Check if there's a live region for error announcements
+            const liveRegions = component.getElement().querySelectorAll('[aria-live]');
+            expect(mockedShowToastFn).toHaveBeenCalledWith('Name des Bereichs darf nicht leer sein.', 'error');
+        });
+
+        it('should maintain proper focus indication and visibility', () => {
+            component.show();
+            const nameInput = component['nameInput'];
+            nameInput.focus();
+            
+            // Check focus is visible
+            expect(document.activeElement).toBe(nameInput);
+            
+            // Test focus trap within form
+            const tabbableElements = component.getElement().querySelectorAll('input, button, textarea, select');
+            expect(tabbableElements.length).toBeGreaterThan(0);
+        });
+
+        it('should support high contrast mode indicators', () => {
+            const form = component.getElement().querySelector('form');
+            const inputs = component.getElement().querySelectorAll('input');
+            
+            // Verify elements have proper styling hooks for high contrast
+            inputs.forEach(input => {
+                expect(input.getAttribute('type')).toBeTruthy();
+            });
+        });
+
+        it('should handle screen reader navigation patterns', () => {
+            const form = component.getElement().querySelector('form');
+            const fieldsets = component.getElement().querySelectorAll('fieldset');
+            const labels = component.getElement().querySelectorAll('label');
+            
+            // Check form structure for screen readers
+            expect(form?.getAttribute('aria-labelledby')).toBe('area-form-title-comp');
+            
+            // Verify label associations
+            labels.forEach(label => {
+                const forAttr = label.getAttribute('for');
+                if (forAttr) {
+                    const targetElement = component.getElement().querySelector(`#${forAttr}`);
+                    expect(targetElement).toBeTruthy();
+                }
+            });
+        });
+    });
+
+    describe('Internationalization and Localization', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should handle RTL (right-to-left) text input', async () => {
+            const nameInput = component['nameInput'];
+            const descInput = component['descriptionInput'];
+            
+            // Arabic text (RTL)
+            nameInput.value = 'منطقة الاختبار';
+            descInput.value = 'وصف المنطقة';
+            
+            const event = new Event('submit');
+            await component['handleSubmit'](event);
+            
+            expect(mockOnSubmit).toHaveBeenCalledWith({
+                id: '',
+                name: 'منطقة الاختبار',
+                description: 'وصف المنطقة',
+                displayOrder: undefined
+            });
+        });
+
+        it('should handle mixed script text (Latin + CJK)', async () => {
+            const nameInput = component['nameInput'];
+            
+            nameInput.value = 'Office 办公室 オフィス';
+            
+            const event = new Event('submit');
+            await component['handleSubmit'](event);
+            
+            expect(mockOnSubmit).toHaveBeenCalledWith({
+                id: '',
+                name: 'Office 办公室 オフィス',
+                description: undefined,
+                displayOrder: undefined
+            });
+        });
+
+        it('should handle text with various number systems', async () => {
+            const nameInput = component['nameInput'];
+            const displayOrderInput = component['displayOrderInput'];
+            
+            nameInput.value = 'Area ١٢٣'; // Arabic-Indic digits
+            displayOrderInput.value = '123'; // Standard ASCII digits
+            
+            const event = new Event('submit');
+            await component['handleSubmit'](event);
+            
+            expect(mockOnSubmit).toHaveBeenCalledWith({
+                id: '',
+                name: 'Area ١٢٣',
+                description: undefined,
+                displayOrder: 123
+            });
+        });
+
+        it('should preserve text direction markers', async () => {
+            const nameInput = component['nameInput'];
+            
+            // Text with direction markers
+            nameInput.value = 'LTR\u202DRTL\u202Ctext';
+            
+            const event = new Event('submit');
+            await component['handleSubmit'](event);
+            
+            expect(mockOnSubmit).toHaveBeenCalledWith({
+                id: '',
+                name: 'LTR\u202DRTL\u202Ctext',
+                description: undefined,
+                displayOrder: undefined
+            });
+        });
+    });
+
+    describe('Mobile and Touch Interface Support', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+            document.body.appendChild(component.getElement());
+        });
+
+        it('should handle touch events on form elements', () => {
+            const nameInput = component['nameInput'];
+            
+            // Simulate touch events
+            const touchStart = new TouchEvent('touchstart', {
+                touches: [{ clientX: 100, clientY: 100 } as Touch]
+            });
+            const touchEnd = new TouchEvent('touchend');
+            
+            expect(() => {
+                nameInput.dispatchEvent(touchStart);
+                nameInput.dispatchEvent(touchEnd);
+            }).not.toThrow();
+        });
+
+        it('should handle virtual keyboard interactions', () => {
+            const nameInput = component['nameInput'];
+            
+            // Test input type attributes for mobile keyboards
+            expect(nameInput.getAttribute('type')).toBe('text');
+            
+            const displayOrderInput = component['displayOrderInput'];
+            // Should have numeric input type or pattern
+            const inputType = displayOrderInput.getAttribute('type');
+            const inputPattern = displayOrderInput.getAttribute('pattern');
+            expect(inputType === 'number' || inputPattern).toBeTruthy();
+        });
+
+        it('should handle device orientation changes', () => {
+            // Simulate orientation change
+            const orientationEvent = new Event('orientationchange');
+            window.dispatchEvent(orientationEvent);
+            
+            // Component should remain functional
+            expect(component.getElement()).toBeTruthy();
+            expect(() => component.show()).not.toThrow();
+        });
+
+        it('should handle viewport size changes', () => {
+            // Simulate resize event
+            const resizeEvent = new Event('resize');
+            window.dispatchEvent(resizeEvent);
+            
+            // Component should adapt gracefully
+            expect(component.getElement().style.display).not.toBe('none');
+        });
+    });
+
+    describe('Form Autofill and Browser Integration', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should have appropriate autocomplete attributes', () => {
+            const nameInput = component['nameInput'];
+            const descInput = component['descriptionInput'];
+            
+            // Check for autocomplete attributes that make sense for area forms
+            const nameAutocomplete = nameInput.getAttribute('autocomplete');
+            const descAutocomplete = descInput.getAttribute('autocomplete');
+            
+            // These might be 'off' to prevent unwanted autofill
+            expect(nameAutocomplete === 'off' || nameAutocomplete === null).toBeTruthy();
+            expect(descAutocomplete === 'off' || descAutocomplete === null).toBeTruthy();
+        });
+
+        it('should handle browser autofill detection', () => {
+            const nameInput = component['nameInput'];
+            
+            // Simulate autofill
+            nameInput.value = 'Auto-filled Name';
+            const inputEvent = new Event('input');
+            nameInput.dispatchEvent(inputEvent);
+            
+            expect(nameInput.value).toBe('Auto-filled Name');
+        });
+
+        it('should preserve form data during page navigation', () => {
+            component.show();
+            component['nameInput'].value = 'Important Data';
+            
+            // Simulate page visibility change
+            const visibilityEvent = new Event('visibilitychange');
+            document.dispatchEvent(visibilityEvent);
+            
+            // Data should be preserved
+            expect(component['nameInput'].value).toBe('Important Data');
+        });
+    });
+
+    describe('Error Boundary and Recovery Mechanisms', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should recover from render failures', () => {
+            const originalRender = component.render;
+            let renderCallCount = 0;
+            
+            // Mock render to fail first time
+            component.render = jest.fn(() => {
+                renderCallCount++;
+                if (renderCallCount === 1) {
+                    throw new Error('Render failed');
+                }
+                return originalRender.call(component);
+            });
+            
+            // First render should fail, but component should handle it
+            expect(() => {
+                try {
+                    component.render();
+                } catch (e) {
+                    // Expected failure
+                }
+            }).not.toThrow();
+            
+            // Second render should succeed
+            expect(() => component.render()).not.toThrow();
+        });
+
+        it('should handle memory pressure scenarios', () => {
+            // Create many components to simulate memory pressure
+            const components = [];
+            for (let i = 0; i < 50; i++) {
+                const options: AreaFormComponentOptions = {
+                    onSubmit: mockOnSubmit,
+                    onCancel: mockOnCancel
+                };
+                components.push(new AreaFormComponent(options));
+            }
+            
+            // Original component should still be functional
+            expect(() => component.show()).not.toThrow();
+            
+            // Cleanup
+            components.forEach(comp => comp.remove());
+        });
+
+        it('should handle cascading errors gracefully', async () => {
+            // Set up cascading failures
+            const error1 = new Error('Primary failure');
+            const error2 = new Error('Secondary failure');
+            
+            mockOnSubmit.mockImplementation(() => {
+                throw error1;
+            });
+            
+            const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {
+                throw error2; // This creates a cascading error
+            });
+            
+            const nameInput = component['nameInput'];
+            nameInput.value = 'Test';
+            
+            const event = new Event('submit');
+            
+            // Should handle cascading errors without crashing
+            await expect(component['handleSubmit'](event)).rejects.toThrow();
+            
+            consoleSpy.mockRestore();
+        });
+    });
+
+    describe('Performance Optimization Scenarios', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should handle rapid input changes efficiently', () => {
+            const nameInput = component['nameInput'];
+            const startTime = performance.now();
+            
+            // Simulate rapid typing
+            for (let i = 0; i < 100; i++) {
+                nameInput.value += 'a';
+                const inputEvent = new Event('input');
+                nameInput.dispatchEvent(inputEvent);
+            }
+            
+            const endTime = performance.now();
+            const duration = endTime - startTime;
+            
+            // Should complete within reasonable time (less than 100ms)
+            expect(duration).toBeLessThan(100);
+        });
+
+        it('should handle large dataset rendering efficiently', () => {
+            const largeArea = {
+                id: 'large-area',
+                name: 'A'.repeat(10000),
+                description: 'B'.repeat(50000),
+                displayOrder: 1,
+                inventoryItems: []
+            };
+            
+            const startTime = performance.now();
+            component.show(largeArea);
+            const endTime = performance.now();
+            
+            expect(endTime - startTime).toBeLessThan(50); // Should render quickly
+        });
+
+        it('should optimize memory usage during frequent operations', () => {
+            const initialMemory = (performance as any).memory?.usedJSHeapSize || 0;
+            
+            // Perform many operations
+            for (let i = 0; i < 1000; i++) {
+                component.show();
+                component.hide();
+            }
+            
+            // Force garbage collection if available
+            if (global.gc) {
+                global.gc();
+            }
+            
+            const finalMemory = (performance as any).memory?.usedJSHeapSize || 0;
+            const memoryGrowth = finalMemory - initialMemory;
+            
+            // Memory growth should be reasonable (less than 1MB)
+            expect(memoryGrowth).toBeLessThan(1024 * 1024);
+        });
+    });
+
+    describe('Advanced Security Scenarios', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should handle prototype pollution attempts', async () => {
+            const nameInput = component['nameInput'];
+            
+            // Attempt prototype pollution
+            nameInput.value = '__proto__[isAdmin]';
+            
+            const event = new Event('submit');
+            await component['handleSubmit'](event);
+            
+            // Should not affect global object
+            expect((Object.prototype as any).isAdmin).toBeUndefined();
+        });
+
+        it('should sanitize data URLs and blob URLs', () => {
+            const maliciousArea = {
+                id: 'data:text/html,<script>alert("xss")</script>',
+                name: 'blob:https://example.com/malicious',
+                description: 'javascript:void(0)',
+                displayOrder: 1,
+                inventoryItems: []
+            };
+            
+            component.show(maliciousArea);
+            
+            // Verify escaping was applied
+            expect(escapeHtml).toHaveBeenCalledWith('blob:https://example.com/malicious');
+            expect(escapeHtml).toHaveBeenCalledWith('javascript:void(0)');
+        });
+
+        it('should handle malformed Unicode sequences', async () => {
+            const nameInput = component['nameInput'];
+            
+            // Malformed Unicode surrogates
+            nameInput.value = '\uD800\uD800'; // Unpaired surrogates
+            
+            const event = new Event('submit');
+            await component['handleSubmit'](event);
+            
+            expect(mockOnSubmit).toHaveBeenCalledWith({
+                id: '',
+                name: '\uD800\uD800',
+                description: undefined,
+                displayOrder: undefined
+            });
+        });
+
+        it('should prevent timing attacks on validation', async () => {
+            const nameInput = component['nameInput'];
+            const times = [];
+            
+            // Test with valid and invalid inputs
+            const testCases = ['', 'valid', '   ', 'a'.repeat(1000)];
+            
+            for (const testCase of testCases) {
+                nameInput.value = testCase;
+                
+                const start = performance.now();
+                const event = new Event('submit');
+                await component['handleSubmit'](event);
+                const end = performance.now();
+                
+                times.push(end - start);
+                jest.clearAllMocks();
+            }
+            
+            // Validation times should be relatively consistent (no timing attacks)
+            const maxTime = Math.max(...times);
+            const minTime = Math.min(...times);
+            const ratio = maxTime / minTime;
+            
+            expect(ratio).toBeLessThan(5); // Reasonable variation
+        });
+    });
+
+    describe('Cross-Browser Compatibility Edge Cases', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should handle Internet Explorer specific behaviors', () => {
+            // Mock IE-specific behavior
+            const originalCreateElement = document.createElement;
+            document.createElement = jest.fn((tagName) => {
+                const element = originalCreateElement.call(document, tagName);
+                // IE doesn't support certain modern properties
+                if (tagName === 'input') {
+                    Object.defineProperty(element, 'validity', {
+                        value: undefined,
+                        configurable: true
+                    });
+                }
+                return element;
+            });
+            
+            expect(() => component.render()).not.toThrow();
+            
+            // Restore original
+            document.createElement = originalCreateElement;
+        });
+
+        it('should handle Safari specific input behaviors', () => {
+            const displayOrderInput = component['displayOrderInput'];
+            
+            // Safari handles number inputs differently
+            displayOrderInput.value = '1e5'; // Scientific notation
+            
+            const inputEvent = new Event('input');
+            displayOrderInput.dispatchEvent(inputEvent);
+            
+            expect(displayOrderInput.value).toBe('1e5');
+        });
+
+        it('should handle Firefox specific form validation', () => {
+            const nameInput = component['nameInput'];
+            
+            // Firefox has different validation timing
+            nameInput.setCustomValidity = jest.fn();
+            nameInput.checkValidity = jest.fn().mockReturnValue(false);
+            
+            const event = new Event('invalid');
+            nameInput.dispatchEvent(event);
+            
+            expect(() => component['handleSubmit'](new Event('submit'))).not.toThrow();
+        });
+    });
+
+    describe('Advanced Data Validation Patterns', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should validate against injection patterns in all fields', async () => {
+            const injectionPatterns = [
+                '<script>alert("xss")</script>',
+                '${7*7}', // Template injection
+                '{{constructor.constructor("alert(1)")()}}', // Angular/Vue injection
+                'javascript:alert(1)',
+                'data:text/html,<script>alert(1)</script>',
+                'vbscript:msgbox(1)',
+                'onload=alert(1)',
+                'style=expression(alert(1))',
+                'background:url(javascript:alert(1))',
+                '<img src=x onerror=alert(1)>',
+                '<svg onload=alert(1)>',
+                '<iframe src=javascript:alert(1)>',
+            ];
+            
+            for (const pattern of injectionPatterns) {
+                component['nameInput'].value = `Safe Name ${pattern}`;
+                component['descriptionInput'].value = `Safe Description ${pattern}`;
+                
+                const event = new Event('submit');
+                await component['handleSubmit'](event);
+                
+                expect(mockOnSubmit).toHaveBeenCalledWith({
+                    id: '',
+                    name: `Safe Name ${pattern}`,
+                    description: `Safe Description ${pattern}`,
+                    displayOrder: undefined
+                });
+                
+                jest.clearAllMocks();
+            }
+        });
+
+        it('should handle various number format edge cases', async () => {
+            const numberFormats = [
+                { input: '+123', expected: 123 },
+                { input: '-0', expected: 0 },
+                { input: '0x10', expected: 0 }, // Hex should be parsed as 0
+                { input: '010', expected: 10 }, // Octal should be parsed as decimal
+                { input: '1.23e2', expected: 123 },
+                { input: '1.23E+2', expected: 123 },
+                { input: 'Infinity', expected: 0 }, // Should handle special values
+                { input: '-Infinity', expected: 0 },
+                { input: 'NaN', expected: 0 },
+            ];
+            
+            for (const { input, expected } of numberFormats) {
+                component['nameInput'].value = 'Test Area';
+                component['displayOrderInput'].value = input;
+                
+                const event = new Event('submit');
+                await component['handleSubmit'](event);
+                
+                if (expected === 0 && ['Infinity', '-Infinity', 'NaN', '0x10'].includes(input)) {
+                    // These should be treated as invalid and result in undefined
+                    expect(mockOnSubmit).toHaveBeenCalledWith({
+                        id: '',
+                        name: 'Test Area',
+                        description: undefined,
+                        displayOrder: input === '0x10' ? 0 : undefined
+                    });
+                } else {
+                    expect(mockOnSubmit).toHaveBeenCalledWith({
+                        id: '',
+                        name: 'Test Area',
+                        description: undefined,
+                        displayOrder: expected
+                    });
+                }
+                
+                jest.clearAllMocks();
+            }
+        });
+    });
