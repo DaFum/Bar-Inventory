@@ -567,7 +567,7 @@ function handleInventoryInputChange(event: Event): void {
         } else if (currentIndex === allInputs.length - 1) {
             document.getElementById('save-inventory-btn')?.focus();
         }
-    }, 500);
+    }, 10);
 }
 
 /**
