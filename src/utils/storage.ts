@@ -8,7 +8,7 @@ export class StorageManager {
   private static readonly STORAGE_KEY = 'bar-inventory';
   private static readonly VERSION = '2.0.0';
 
-  static async save<T>(key: string, data: T): Promise<void> {
+  static save<T>(key: string, data: T): void {
     try {
       const payload = {
         version: this.VERSION,
