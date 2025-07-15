@@ -4,9 +4,17 @@ import { AppState } from '../state/app-state';
 
 class StorageService {
   async loadState(appState: AppState): Promise<void> {
-    const { products, locations } = await dbService.loadAllApplicationData();
-    appState.products = products;
-    appState.locations = locations;
+    try {
+      const data = await dbService.loadAllApplicationData();
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid data structure received from database');
+      }
+      appState.products = data.products || [];
+      appState.locations = data.locations || [];
+    } catch (error) {
+      console.error('Failed to load application state:', error);
+      throw error;
+    }
   }
 
   async saveState(appState: AppState): Promise<void> {
