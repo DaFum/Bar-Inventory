@@ -32,6 +32,7 @@ export class LocationManagerComponent extends BaseComponent<HTMLDivElement> {
             </section>
             <div class="panel-footer mt-4 panel p-2">
                 <button id="export-all-locations-json-btn" class="btn btn-info">Alle Standorte (Struktur) als JSON exportieren</button>
+                <button id="import-locations-json-btn" class="btn btn-secondary ml-2">Standorte aus JSON importieren</button>
             </div>
         `;
 
@@ -96,6 +97,35 @@ export class LocationManagerComponent extends BaseComponent<HTMLDivElement> {
                 showToast("Fehler beim Exportieren der Standorte.", "error");
                 console.error("Error exporting locations to JSON:", error);
             }
+        });
+
+        this.element.querySelector<HTMLButtonElement>('#import-locations-json-btn')?.addEventListener('click', () => {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.json';
+            fileInput.addEventListener('change', async (event) => {
+                const target = event.target as HTMLInputElement;
+                const file = target.files?.[0];
+                if (file) {
+                    try {
+                        const content = await file.text();
+                        const locations = JSON.parse(content);
+                        if (Array.isArray(locations)) {
+                            // Add confirmation dialog
+                            if (confirm(`Möchten Sie ${locations.length} Standorte importieren? Bestehende Standorte mit gleichen Namen könnten dupliziert werden.`)) {
+                                await locationStore.importLocations(locations);
+                                showToast(`${locations.length} Standorte erfolgreich importiert.`, 'success');
+                            }
+                        } else {
+                            showToast('Ungültiges JSON-Format. Es muss ein Array von Standorten sein.', 'error');
+                        }
+                    } catch (error) {
+                        showToast('Fehler beim Importieren der Standorte. Details finden Sie in der Konsole.', 'error');
+                        console.error('Error importing locations from JSON:', error);
+                    }
+                }
+            });
+            fileInput.click();
         });
     }
 

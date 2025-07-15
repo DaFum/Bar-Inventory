@@ -1,3 +1,4 @@
+import dragula from 'dragula';
 import { dbService } from '../../services/indexeddb.service';
 import { Location, Product, InventoryEntry, Area, Counter } from '../../models';
 import { generateId, debounce } from '../../utils/helpers';
@@ -259,13 +260,14 @@ function prepareInventoryItemsForArea(): void {
         <table id="${tableId}" class="table-fixed w-full inventory-table" aria-labelledby="inventory-table-title">
             <thead>
                 <tr>
+                    <th scope="col" class="w-1/12"></th>
                     <th scope="col" class="w-2/5">Produkt</th>
                     <th scope="col" class="w-1/5 text-center">Kästen</th>
                     <th scope="col" class="w-1/5 text-center">Flaschen (einzeln)</th>
                     <th scope="col" class="w-1/5 text-center">Offen (ml)</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="inventory-list-body-${area.id.replace(/[^a-zA-Z0-9]/g, '')}">
     `;
 
     area.inventoryItems.forEach((item, index) => {
@@ -283,6 +285,7 @@ function prepareInventoryItemsForArea(): void {
 
         tableHTML += `
     <tr class="border-b inventory-item-row" data-product-id="${product.id}">
+        <td class="px-2 py-2 drag-handle cursor-move" role="button" aria-label="Reihenfolge von ${escapeHtml(product.name)} ändern"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-gray-400"><path fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v12.5a.75.75 0 01-1.5 0V3.75A.75.75 0 0110 3zM3.75 10a.75.75 0 010-1.5h12.5a.75.75 0 010 1.5H3.75z" clip-rule="evenodd" /></svg></td>
         <td class="px-4 py-2" role="rowheader">
             <span class="font-semibold">${escapeHtml(product.name)}</span><br>
             <small class="text-gray-600">${escapeHtml(product.category)} - ${product.volume}ml</small>
@@ -306,6 +309,28 @@ function prepareInventoryItemsForArea(): void {
     tableHTML += `</tbody></table>`;
     tableContainer.innerHTML = tableHTML;
     addInputEventListeners();
+    const drake = dragula([tableContainer.querySelector('tbody')!], {
+        moves: function (el, source, handle, sibling) {
+            return handle?.classList.contains('drag-handle') ?? false;
+        },
+    });
+
+    drake.on('drop', (el, target, source, sibling) => {
+        const productId = el.getAttribute('data-product-id');
+        if (!productId || !state.selectedArea) return;
+
+        const newIndex = Array.from(target.children).indexOf(el);
+        const item = state.selectedArea.inventoryItems.find(i => i.productId === productId);
+        if (!item) return;
+
+        const oldIndex = state.selectedArea.inventoryItems.indexOf(item);
+        if (oldIndex !== -1) {
+            state.selectedArea.inventoryItems.splice(oldIndex, 1);
+        }
+
+        state.selectedArea.inventoryItems.splice(newIndex, 0, item);
+        saveCurrentInventory();
+    });
 }
 
 function renderConsumptionView(tableContainer: HTMLElement, area: Area): void {
@@ -410,9 +435,11 @@ function renderInventoryActions(): void {
         actionsContainer.innerHTML = `
             <button id="save-inventory-btn" class="btn btn-success">Inventur Speichern</button>
             <button id="fill-defaults-btn" class="btn btn-info ml-2">Alles voll (Standardwerte)</button>
+            <button id="export-inventory-btn" class="btn btn-secondary ml-2">Inventur Exportieren (CSV)</button>
         `;
         document.getElementById('save-inventory-btn')?.addEventListener('click', saveCurrentInventory);
         document.getElementById('fill-defaults-btn')?.addEventListener('click', fillDefaultValues);
+        document.getElementById('export-inventory-btn')?.addEventListener('click', handleExportInventoryCsv);
     } else {
         // Consumption view might have different actions, like export
         actionsContainer.innerHTML = `<button id="export-consumption-btn" class="btn btn-secondary">Verbrauchsdaten Exportieren (CSV)</button>`;
@@ -441,6 +468,30 @@ function handleExportConsumptionCsv(): void {
     } catch (error) {
         console.error("Fehler beim Exportieren der Verbrauchsdaten:", error);
         showToast("Fehler beim CSV-Export der Verbrauchsdaten.", "error");
+    }
+}
+
+function handleExportInventoryCsv(): void {
+    if (!state.selectedArea || !state.selectedLocation || !state.selectedCounter) {
+        showToast("Kein Bereich ausgewählt für den Export.", "warning");
+        return;
+    }
+    if (state.selectedArea.inventoryItems.length === 0) {
+        showToast("Keine Inventurdaten in diesem Bereich zum Exportieren.", "info");
+        return;
+    }
+    try {
+        exportService.exportAreaInventoryToCsv(
+            state.selectedArea,
+            state.selectedLocation.name,
+            state.selectedCounter.name,
+            state.loadedProducts,
+            false // includeConsumption is false
+        );
+        showToast("Inventurdaten erfolgreich als CSV exportiert.", "success");
+    } catch (error) {
+        console.error("Fehler beim Exportieren der Inventurdaten:", error);
+        showToast("Fehler beim CSV-Export der Inventurdaten.", "error");
     }
 }
 
@@ -507,6 +558,16 @@ function handleInventoryInputChange(event: Event): void {
         // but seemed misplaced due to the syntax error.
         // Proper unsaved changes tracking should be implemented if needed.
     }
+
+    const focusNextInput = () => {
+        const allInputs = Array.from(document.querySelectorAll('.inventory-table .inventory-input:not([disabled])')) as HTMLInputElement[];
+        const currentIndex = allInputs.indexOf(inputElement);
+        if (currentIndex !== -1 && currentIndex < allInputs.length - 1) {
+            allInputs[currentIndex + 1]?.focus();
+        } else if (currentIndex === allInputs.length - 1) {
+            document.getElementById('save-inventory-btn')?.focus();
+        }
+    }, 10);
 }
 
 /**
