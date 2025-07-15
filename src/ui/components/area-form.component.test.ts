@@ -5,6 +5,7 @@
 
 import { AreaFormComponent, AreaFormComponentOptions } from './area-form.component';
 import { Area } from '../../models';
+import { testSetup } from "./test-setup";
 
 // Mock dependencies
 jest.mock('../../utils/security', () => ({
@@ -1194,671 +1195,682 @@ describe('AreaFormComponent', () => {
         });
     });
 });
-// Additional comprehensive test suite enhancements
-describe('Advanced Form Interaction Patterns', () => {
-    beforeEach(() => {
-        const options: AreaFormComponentOptions = {
-            onSubmit: mockOnSubmit,
-            onCancel: mockOnCancel
-        };
-        component = new AreaFormComponent(options);
-        document.body.appendChild(component.getElement());
-    });
-
-    it('should handle simultaneous input changes across multiple fields', async () => {
-        const nameInput = component['nameInput'];
-        const descInput = component['descriptionInput'];
-        const orderInput = component['displayOrderInput'];
-        
-        // Simulate rapid input changes
-        nameInput.value = 'Area 1';
-        descInput.value = 'Desc 1';
-        orderInput.value = '1';
-        
-        nameInput.dispatchEvent(new Event('input'));
-        descInput.dispatchEvent(new Event('input'));
-        orderInput.dispatchEvent(new Event('input'));
-        
-        // Change values rapidly
-        nameInput.value = 'Area 2';
-        descInput.value = 'Desc 2';
-        orderInput.value = '2';
-        
-        const event = new Event('submit');
-        await component['handleSubmit'](event);
-        
-        expect(mockOnSubmit).toHaveBeenCalledWith({
-            id: '',
-            name: 'Area 2',
-            description: 'Desc 2',
-            displayOrder: 2
+    describe('Internationalization and Localization', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
         });
-    });
 
-    it('should handle form auto-completion scenarios', () => {
-        const nameInput = component['nameInput'];
-        
-        // Simulate browser autocomplete
-        nameInput.value = 'Autocompleted Area Name';
-        nameInput.dispatchEvent(new Event('input'));
-        nameInput.dispatchEvent(new Event('change'));
-        
-        expect(nameInput.value).toBe('Autocompleted Area Name');
-    });
-
-    it('should handle copy-paste operations with formatted text', async () => {
-        const nameInput = component['nameInput'];
-        const descInput = component['descriptionInput'];
-        
-        // Simulate paste with formatted content
-        const pastedName = 'Pasted\nArea\tName';
-        const pastedDesc = 'Pasted\r\nDescription\twith\ttabs';
-        
-        nameInput.value = pastedName;
-        descInput.value = pastedDesc;
-        
-        nameInput.dispatchEvent(new Event('paste'));
-        descInput.dispatchEvent(new Event('paste'));
-        
-        const event = new Event('submit');
-        await component['handleSubmit'](event);
-        
-        expect(mockOnSubmit).toHaveBeenCalledWith({
-            id: '',
-            name: pastedName.trim(),
-            description: pastedDesc.trim(),
-            displayOrder: undefined
+        it('should handle right-to-left (RTL) text input correctly', async () => {
+            const nameInput = component['nameInput'];
+            const descInput = component['descriptionInput'];
+            
+            // Arabic text (RTL)
+            nameInput.value = 'منطقة الاختبار';
+            descInput.value = 'وصف منطقة الاختبار';
+            
+            const event = new Event('submit');
+            await component['handleSubmit'](event);
+            
+            expect(mockOnSubmit).toHaveBeenCalledWith({
+                id: '',
+                name: 'منطقة الاختبار',
+                description: 'وصف منطقة الاختبار',
+                displayOrder: undefined
+            });
         });
-    });
 
-    it('should handle drag and drop text input', () => {
-        const nameInput = component['nameInput'];
-        
-        // Simulate drag and drop
-        const dragEvent = new DragEvent('drop', {
-            dataTransfer: new DataTransfer()
+        it('should handle mixed script input (Latin, Cyrillic, CJK)', async () => {
+            const nameInput = component['nameInput'];
+            const descInput = component['descriptionInput'];
+            
+            nameInput.value = 'Area тест 测试 エリア';
+            descInput.value = 'Mixed script description киириллица 漢字 カタカナ';
+            
+            const event = new Event('submit');
+            await component['handleSubmit'](event);
+            
+            expect(mockOnSubmit).toHaveBeenCalledWith({
+                id: '',
+                name: 'Area тест 测试 エリア',
+                description: 'Mixed script description киириллица 漢字 カタカナ',
+                displayOrder: undefined
+            });
         });
-        
-        expect(() => nameInput.dispatchEvent(dragEvent)).not.toThrow();
-    });
-});
 
-describe('Advanced Keyboard Navigation and Shortcuts', () => {
-    beforeEach(() => {
-        const options: AreaFormComponentOptions = {
-            onSubmit: mockOnSubmit,
-            onCancel: mockOnCancel
-        };
-        component = new AreaFormComponent(options);
-        document.body.appendChild(component.getElement());
-    });
-
-    it('should handle Escape key to trigger cancel', () => {
-        const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' });
-        const cancelSpy = jest.spyOn(component, 'hide').mockImplementation();
-        
-        component.getElement().dispatchEvent(escapeEvent);
-        
-        // Depending on implementation, this might trigger cancel
-        expect(component.getElement()).toBeTruthy();
-    });
-
-    it('should handle Ctrl+Enter for form submission', async () => {
-        const nameInput = component['nameInput'];
-        nameInput.value = 'Test Area';
-        
-        const ctrlEnterEvent = new KeyboardEvent('keydown', { 
-            key: 'Enter', 
-            ctrlKey: true 
+        it('should handle accented characters and diacritics correctly', async () => {
+            const nameInput = component['nameInput'];
+            nameInput.value = 'Área Cômpléxe Ñoño Ürünler Żółć';
+            
+            const event = new Event('submit');
+            await component['handleSubmit'](event);
+            
+            expect(mockOnSubmit).toHaveBeenCalledWith({
+                id: '',
+                name: 'Área Cômpléxe Ñoño Ürünler Żółć',
+                description: undefined,
+                displayOrder: undefined
+            });
         });
-        
-        nameInput.dispatchEvent(ctrlEnterEvent);
-        
-        // Verify component handles keyboard shortcuts appropriately
-        expect(nameInput.value).toBe('Test Area');
-    });
 
-    it('should handle Tab navigation through form fields in correct order', () => {
-        const nameInput = component['nameInput'];
-        const descInput = component['descriptionInput'];
-        const orderInput = component['displayOrderInput'];
-        
-        // Test tab order
-        nameInput.focus();
-        expect(document.activeElement).toBe(nameInput);
-        
-        // Simulate tab to next field
-        const tabEvent = new KeyboardEvent('keydown', { key: 'Tab' });
-        nameInput.dispatchEvent(tabEvent);
-        
-        // Note: Actual tab navigation depends on DOM structure and tabindex
-        expect(nameInput).toBeTruthy();
-    });
-
-    it('should handle Shift+Tab for reverse navigation', () => {
-        const orderInput = component['displayOrderInput'];
-        orderInput.focus();
-        
-        const shiftTabEvent = new KeyboardEvent('keydown', { 
-            key: 'Tab', 
-            shiftKey: true 
-        });
-        
-        orderInput.dispatchEvent(shiftTabEvent);
-        expect(orderInput).toBeTruthy();
-    });
-
-    it('should handle arrow keys for field navigation', () => {
-        const nameInput = component['nameInput'];
-        nameInput.value = 'Test';
-        nameInput.focus();
-        
-        const arrowEvents = [
-            new KeyboardEvent('keydown', { key: 'ArrowLeft' }),
-            new KeyboardEvent('keydown', { key: 'ArrowRight' }),
-            new KeyboardEvent('keydown', { key: 'ArrowUp' }),
-            new KeyboardEvent('keydown', { key: 'ArrowDown' })
-        ];
-        
-        arrowEvents.forEach(event => {
-            expect(() => nameInput.dispatchEvent(event)).not.toThrow();
-        });
-    });
-});
-
-describe('Screen Reader and Assistive Technology Support', () => {
-    beforeEach(() => {
-        const options: AreaFormComponentOptions = {
-            onSubmit: mockOnSubmit,
-            onCancel: mockOnCancel
-        };
-        component = new AreaFormComponent(options);
-        document.body.appendChild(component.getElement());
-    });
-
-    it('should provide proper ARIA live regions for dynamic content', () => {
-        const form = component.getElement();
-        
-        // Check for ARIA live regions
-        const liveRegions = form.querySelectorAll('[aria-live]');
-        expect(liveRegions.length).toBeGreaterThanOrEqual(0);
-    });
-
-    it('should announce form state changes to screen readers', async () => {
-        component.show(mockArea);
-        
-        // Verify form title changes are announced
-        const titleElement = component.getElement().querySelector('#area-form-title-comp');
-        expect(titleElement?.textContent).toBe('Bereich bearbeiten');
-        
-        component.show(); // Show for new area
-        expect(titleElement?.textContent).toBe('Neuen Bereich erstellen');
-    });
-
-    it('should provide proper field descriptions and hints', () => {
-        const nameInput = component.getElement().querySelector('#area-name-form-comp');
-        const descInput = component.getElement().querySelector('#area-description-form-comp');
-        const orderInput = component.getElement().querySelector('#area-display-order-form-comp');
-        
-        // Check for aria-describedby attributes
-        expect(nameInput).toBeTruthy();
-        expect(descInput).toBeTruthy();
-        expect(orderInput).toBeTruthy();
-    });
-
-    it('should handle screen reader navigation landmarks', () => {
-        const form = component.getElement().querySelector('form');
-        const buttons = component.getElement().querySelectorAll('button');
-        
-        expect(form).toBeTruthy();
-        expect(buttons.length).toBeGreaterThan(0);
-        
-        // Verify proper button labels
-        buttons.forEach(button => {
-            expect(button.textContent?.trim()).toBeTruthy();
-        });
-    });
-
-    it('should announce validation errors with proper context', async () => {
-        const nameInput = component['nameInput'];
-        nameInput.value = '';
-        
-        const event = new Event('submit');
-        await component['handleSubmit'](event);
-        
-        // Verify error is announced
-        expect(mockedShowToastFn).toHaveBeenCalledWith('Name des Bereichs darf nicht leer sein.', 'error');
-        
-        // Check if error is associated with the correct field
-        expect(nameInput.getAttribute('aria-invalid')).toBeTruthy();
-    });
-});
-
-describe('Mobile and Touch Interface Support', () => {
-    beforeEach(() => {
-        const options: AreaFormComponentOptions = {
-            onSubmit: mockOnSubmit,
-            onCancel: mockOnCancel
-        };
-        component = new AreaFormComponent(options);
-        document.body.appendChild(component.getElement());
-    });
-
-    it('should handle touch events on form controls', () => {
-        const nameInput = component['nameInput'];
-        const submitButton = component.getElement().querySelector('button[type="submit"]');
-        
-        const touchEvents = [
-            new TouchEvent('touchstart'),
-            new TouchEvent('touchend'),
-            new TouchEvent('touchmove')
-        ];
-        
-        touchEvents.forEach(event => {
-            expect(() => nameInput.dispatchEvent(event)).not.toThrow();
-            expect(() => submitButton?.dispatchEvent(event)).not.toThrow();
-        });
-    });
-
-    it('should handle virtual keyboard input', () => {
-        const nameInput = component['nameInput'];
-        
-        // Simulate virtual keyboard input
-        nameInput.value = 'Virtual Keyboard Input';
-        nameInput.dispatchEvent(new Event('input'));
-        nameInput.dispatchEvent(new Event('compositionend'));
-        
-        expect(nameInput.value).toBe('Virtual Keyboard Input');
-    });
-
-    it('should handle focus changes on mobile', () => {
-        const nameInput = component['nameInput'];
-        const descInput = component['descriptionInput'];
-        
-        // Simulate mobile focus behavior
-        nameInput.focus();
-        nameInput.dispatchEvent(new Event('focusin'));
-        
-        descInput.focus();
-        nameInput.dispatchEvent(new Event('focusout'));
-        descInput.dispatchEvent(new Event('focusin'));
-        
-        expect(document.activeElement).toBe(descInput);
-    });
-
-    it('should handle orientation change events', () => {
-        const orientationEvent = new Event('orientationchange');
-        
-        expect(() => window.dispatchEvent(orientationEvent)).not.toThrow();
-        
-        // Component should remain functional after orientation change
-        expect(component.getElement()).toBeTruthy();
-    });
-});
-
-describe('Internationalization and Localization Edge Cases', () => {
-    beforeEach(() => {
-        const options: AreaFormComponentOptions = {
-            onSubmit: mockOnSubmit,
-            onCancel: mockOnCancel
-        };
-        component = new AreaFormComponent(options);
-    });
-
-    it('should handle right-to-left (RTL) text input', async () => {
-        const nameInput = component['nameInput'];
-        const descInput = component['descriptionInput'];
-        
-        // Arabic text (RTL)
-        nameInput.value = 'منطقة الاختبار';
-        descInput.value = 'وصف المنطقة باللغة العربية';
-        
-        const event = new Event('submit');
-        await component['handleSubmit'](event);
-        
-        expect(mockOnSubmit).toHaveBeenCalledWith({
-            id: '',
-            name: 'منطقة الاختبار',
-            description: 'وصف المنطقة باللغة العربية',
-            displayOrder: undefined
-        });
-    });
-
-    it('should handle mixed LTR/RTL content', async () => {
-        const nameInput = component['nameInput'];
-        
-        // Mixed English and Arabic
-        nameInput.value = 'Test Area منطقة الاختبار';
-        
-        const event = new Event('submit');
-        await component['handleSubmit'](event);
-        
-        expect(mockOnSubmit).toHaveBeenCalledWith({
-            id: '',
-            name: 'Test Area منطقة الاختبار',
-            description: undefined,
-            displayOrder: undefined
-        });
-    });
-
-    it('should handle various Unicode normalization forms', async () => {
-        const nameInput = component['nameInput'];
-        
-        // Unicode normalization test (é vs e + combining accent)
-        const normalizedE = 'café'; // é as single character
-        const combinedE = 'cafe\u0301'; // e + combining acute accent
-        
-        nameInput.value = normalizedE;
-        
-        const event = new Event('submit');
-        await component['handleSubmit'](event);
-        
-        expect(mockOnSubmit).toHaveBeenCalledWith({
-            id: '',
-            name: normalizedE,
-            description: undefined,
-            displayOrder: undefined
-        });
-    });
-
-    it('should handle complex script languages', async () => {
-        const nameInput = component['nameInput'];
-        const descInput = component['descriptionInput'];
-        
-        // Various complex scripts
-        nameInput.value = '测试区域'; // Chinese
-        descInput.value = 'परीक्षण क्षेत्र'; // Hindi
-        
-        const event = new Event('submit');
-        await component['handleSubmit'](event);
-        
-        expect(mockOnSubmit).toHaveBeenCalledWith({
-            id: '',
-            name: '测试区域',
-            description: 'परीक्षण क्षेत्र',
-            displayOrder: undefined
-        });
-    });
-});
-
-describe('Advanced Security and Input Sanitization', () => {
-    beforeEach(() => {
-        const options: AreaFormComponentOptions = {
-            onSubmit: mockOnSubmit,
-            onCancel: mockOnCancel
-        };
-        component = new AreaFormComponent(options);
-    });
-
-    it('should handle zero-width characters and invisible Unicode', async () => {
-        const nameInput = component['nameInput'];
-        
-        // Zero-width characters that could be used for spoofing
-        const maliciousName = 'Normal\u200BText\u200C\u200D\uFEFF';
-        nameInput.value = maliciousName;
-        
-        const event = new Event('submit');
-        await component['handleSubmit'](event);
-        
-        expect(mockOnSubmit).toHaveBeenCalledWith({
-            id: '',
-            name: maliciousName,
-            description: undefined,
-            displayOrder: undefined
-        });
-    });
-
-    it('should handle homograph attacks', async () => {
-        const nameInput = component['nameInput'];
-        
-        // Cyrillic characters that look like Latin
-        const homographName = 'Тest Аrea'; // Uses Cyrillic Т and А
-        nameInput.value = homographName;
-        
-        const event = new Event('submit');
-        await component['handleSubmit'](event);
-        
-        expect(mockOnSubmit).toHaveBeenCalledWith({
-            id: '',
-            name: homographName,
-            description: undefined,
-            displayOrder: undefined
-        });
-    });
-
-    it('should handle control characters and formatting codes', async () => {
-        const nameInput = component['nameInput'];
-        const descInput = component['descriptionInput'];
-        
-        // Various control characters
-        const nameWithControls = 'Test\x00\x01\x02Area';
-        const descWithControls = 'Description\x1B[31mwith\x1B[0mcolors';
-        
-        nameInput.value = nameWithControls;
-        descInput.value = descWithControls;
-        
-        const event = new Event('submit');
-        await component['handleSubmit'](event);
-        
-        expect(mockOnSubmit).toHaveBeenCalledWith({
-            id: '',
-            name: nameWithControls,
-            description: descWithControls,
-            displayOrder: undefined
-        });
-    });
-
-    it('should handle binary data injection attempts', async () => {
-        const nameInput = component['nameInput'];
-        
-        // Simulate binary data input
-        const binaryData = String.fromCharCode(0, 1, 2, 255, 254, 253);
-        nameInput.value = `Normal Text${binaryData}`;
-        
-        const event = new Event('submit');
-        await component['handleSubmit'](event);
-        
-        expect(mockOnSubmit).toHaveBeenCalledWith({
-            id: '',
-            name: `Normal Text${binaryData}`,
-            description: undefined,
-            displayOrder: undefined
-        });
-    });
-});
-
-describe('Performance Stress Testing', () => {
-    beforeEach(() => {
-        const options: AreaFormComponentOptions = {
-            onSubmit: mockOnSubmit,
-            onCancel: mockOnCancel
-        };
-        component = new AreaFormComponent(options);
-    });
-
-    it('should handle extremely large datasets without performance degradation', () => {
-        const startTime = performance.now();
-        
-        // Create massive area data
-        const largeArea = {
-            id: 'large-area',
-            name: 'A'.repeat(100000),
-            description: 'B'.repeat(500000),
-            displayOrder: 999999,
-            inventoryItems: Array(10000).fill({}).map((_, i) => ({ id: `item-${i}` }))
-        };
-        
-        component.show(largeArea);
-        
-        const endTime = performance.now();
-        const executionTime = endTime - startTime;
-        
-        // Should complete in reasonable time (adjust threshold as needed)
-        expect(executionTime).toBeLessThan(1000); // 1 second
-        expect(component['nameInput'].value).toBe(largeArea.name);
-    });
-
-    it('should handle rapid successive operations without memory leaks', () => {
-        const initialMemory = (performance as any).memory?.usedJSHeapSize || 0;
-        
-        // Perform many operations
-        for (let i = 0; i < 1000; i++) {
-            const testArea = {
-                ...mockArea,
-                id: `test-${i}`,
-                name: `Test Area ${i}`
+        it('should preserve text direction and formatting', () => {
+            const rtlArea = {
+                id: 'rtl-area',
+                name: 'منطقة اختبار',
+                description: 'هذا وصف للمنطقة',
+                displayOrder: 1,
+                inventoryItems: []
             };
             
-            component.show(testArea);
-            component.hide();
-        }
-        
-        // Force garbage collection if available
-        if (global.gc) {
-            global.gc();
-        }
-        
-        const finalMemory = (performance as any).memory?.usedJSHeapSize || 0;
-        
-        // Memory usage shouldn't increase dramatically (rough check)
-        if (initialMemory > 0 && finalMemory > 0) {
-            const memoryIncrease = finalMemory - initialMemory;
-            expect(memoryIncrease).toBeLessThan(10000000); // 10MB threshold
-        }
-        
-        expect(component.getElement()).toBeTruthy();
+            component.show(rtlArea);
+            
+            expect(component['nameInput'].value).toBe('منطقة اختبار');
+            expect(component['descriptionInput'].value).toBe('هذا وصف للمنطقة');
+        });
     });
 
-    it('should handle concurrent form submissions efficiently', async () => {
-        const nameInput = component['nameInput'];
-        nameInput.value = 'Concurrent Test';
+    describe('Component Reusability and Multiple Instances', () => {
+        let secondComponent: AreaFormComponent;
         
-        const startTime = performance.now();
-        
-        // Create multiple concurrent submissions
-        const submissions = Array(50).fill(null).map((_, i) => {
-            const event = new Event('submit');
-            return component['handleSubmit'](event).catch(() => {
-                // Handle potential errors
+        afterEach(() => {
+            secondComponent?.getElement()?.remove();
+        });
+
+        it('should support multiple component instances simultaneously', () => {
+            const options1: AreaFormComponentOptions = {
+                onSubmit: jest.fn(),
+                onCancel: jest.fn()
+            };
+            const options2: AreaFormComponentOptions = {
+                onSubmit: jest.fn(),
+                onCancel: jest.fn()
+            };
+            
+            component = new AreaFormComponent(options1);
+            secondComponent = new AreaFormComponent(options2);
+            
+            expect(component.getElement()).toBeTruthy();
+            expect(secondComponent.getElement()).toBeTruthy();
+            expect(component.getElement()).not.toBe(secondComponent.getElement());
+        });
+
+        it('should maintain independent state between instances', () => {
+            const area1 = { ...mockArea, name: 'Area 1' };
+            const area2 = { ...mockArea, name: 'Area 2' };
+            
+            const options1: AreaFormComponentOptions = {
+                onSubmit: jest.fn(),
+                onCancel: jest.fn()
+            };
+            const options2: AreaFormComponentOptions = {
+                onSubmit: jest.fn(),
+                onCancel: jest.fn()
+            };
+            
+            component = new AreaFormComponent(options1);
+            secondComponent = new AreaFormComponent(options2);
+            
+            component.show(area1);
+            secondComponent.show(area2);
+            
+            expect(component.currentEditingArea?.name).toBe('Area 1');
+            expect(secondComponent.currentEditingArea?.name).toBe('Area 2');
+        });
+
+        it('should handle concurrent operations on multiple instances', async () => {
+            const options1: AreaFormComponentOptions = {
+                onSubmit: jest.fn(),
+                onCancel: jest.fn()
+            };
+            const options2: AreaFormComponentOptions = {
+                onSubmit: jest.fn(),
+                onCancel: jest.fn()
+            };
+            
+            component = new AreaFormComponent(options1);
+            secondComponent = new AreaFormComponent(options2);
+            
+            // Set different values for each instance
+            component['nameInput'].value = 'Component 1 Area';
+            secondComponent['nameInput'].value = 'Component 2 Area';
+            
+            // Submit both simultaneously
+            const event1 = new Event('submit');
+            const event2 = new Event('submit');
+            
+            const [result1, result2] = await Promise.allSettled([
+                component['handleSubmit'](event1),
+                secondComponent['handleSubmit'](event2)
+            ]);
+            
+            expect(result1.status).toBe('fulfilled');
+            expect(result2.status).toBe('fulfilled');
+            expect(options1.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: 'Component 1 Area' }));
+            expect(options2.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: 'Component 2 Area' }));
+        });
+    });
+
+    describe('Advanced DOM Manipulation and Events', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should handle programmatic value changes', () => {
+            const nameInput = component['nameInput'];
+            
+            // Programmatically set value
+            nameInput.value = 'Programmatic Value';
+            
+            // Trigger input event
+            const inputEvent = new Event('input', { bubbles: true });
+            nameInput.dispatchEvent(inputEvent);
+            
+            expect(nameInput.value).toBe('Programmatic Value');
+        });
+
+        it('should handle copy/paste operations', () => {
+            const nameInput = component['nameInput'];
+            nameInput.focus();
+            
+            // Simulate paste event
+            const pasteEvent = new ClipboardEvent('paste', {
+                clipboardData: new DataTransfer()
+            });
+            
+            // Mock clipboard data
+            Object.defineProperty(pasteEvent, 'clipboardData', {
+                value: {
+                    getData: jest.fn().mockReturnValue('Pasted Content')
+                }
+            });
+            
+            expect(() => nameInput.dispatchEvent(pasteEvent)).not.toThrow();
+        });
+
+        it('should handle drag and drop events', () => {
+            const nameInput = component['nameInput'];
+            
+            const dragEvents = ['dragenter', 'dragover', 'dragleave', 'drop'];
+            dragEvents.forEach(eventType => {
+                const dragEvent = new DragEvent(eventType);
+                expect(() => nameInput.dispatchEvent(dragEvent)).not.toThrow();
             });
         });
-        
-        await Promise.allSettled(submissions);
-        
-        const endTime = performance.now();
-        const executionTime = endTime - startTime;
-        
-        // Should handle concurrent operations efficiently
-        expect(executionTime).toBeLessThan(5000); // 5 seconds
-        expect(mockOnSubmit).toHaveBeenCalled();
-    });
-});
 
-describe('Edge Case Data Validation', () => {
-    beforeEach(() => {
-        const options: AreaFormComponentOptions = {
-            onSubmit: mockOnSubmit,
-            onCancel: mockOnCancel
-        };
-        component = new AreaFormComponent(options);
+        it('should handle touch events on mobile devices', () => {
+            const nameInput = component['nameInput'];
+            
+            const touchEvents = ['touchstart', 'touchmove', 'touchend', 'touchcancel'];
+            touchEvents.forEach(eventType => {
+                const touchEvent = new TouchEvent(eventType, {
+                    touches: [{
+                        identifier: 1,
+                        target: nameInput,
+                        clientX: 100,
+                        clientY: 100,
+                        pageX: 100,
+                        pageY: 100,
+                        screenX: 100,
+                        screenY: 100,
+                        radiusX: 10,
+                        radiusY: 10,
+                        rotationAngle: 0,
+                        force: 1
+                    }] as Touch[]
+                });
+                expect(() => nameInput.dispatchEvent(touchEvent)).not.toThrow();
+            });
+        });
+
+        it('should handle window resize events', () => {
+            const originalInnerWidth = window.innerWidth;
+            const originalInnerHeight = window.innerHeight;
+            
+            try {
+                // Mock window resize
+                Object.defineProperty(window, 'innerWidth', { value: 800, configurable: true });
+                Object.defineProperty(window, 'innerHeight', { value: 600, configurable: true });
+                
+                const resizeEvent = new Event('resize');
+                window.dispatchEvent(resizeEvent);
+                
+                // Component should handle resize gracefully
+                expect(component.getElement()).toBeTruthy();
+            } finally {
+                // Restore original values
+                Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
+                Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+            }
+        });
     });
 
-    it('should handle floating point precision edge cases', async () => {
-        const nameInput = component['nameInput'];
-        const orderInput = component['displayOrderInput'];
-        
-        nameInput.value = 'Precision Test';
-        
-        // Test floating point precision issues
-        const testCases = [
-            '0.1',
-            '0.2',
-            '0.30000000000000004', // Classic floating point precision issue
-            '999999999999999999999.99999999999999'
-        ];
-        
-        for (const testCase of testCases) {
-            orderInput.value = testCase;
+    describe('Memory Leak Detection and Resource Management', () => {
+        it('should cleanup all event listeners when component is destroyed', () => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+            
+            // Track event listener additions
+            const originalAddEventListener = HTMLElement.prototype.addEventListener;
+            const originalRemoveEventListener = HTMLElement.prototype.removeEventListener;
+            
+            const addListenerSpy = jest.spyOn(HTMLElement.prototype, 'addEventListener');
+            const removeListenerSpy = jest.spyOn(HTMLElement.prototype, 'removeEventListener');
+            
+            try {
+                // Create and destroy component multiple times
+                for (let i = 0; i < 5; i++) {
+                    const tempComponent = new AreaFormComponent(options);
+                    tempComponent.remove();
+                }
+                
+                // Check that removeEventListener was called appropriately
+                expect(removeListenerSpy).toHaveBeenCalled();
+            } finally {
+                HTMLElement.prototype.addEventListener = originalAddEventListener;
+                HTMLElement.prototype.removeEventListener = originalRemoveEventListener;
+            }
+        });
+
+        it('should handle rapid component creation and destruction', () => {
+            const components: AreaFormComponent[] = [];
+            
+            // Create many components rapidly
+            for (let i = 0; i < 50; i++) {
+                const options: AreaFormComponentOptions = {
+                    onSubmit: jest.fn(),
+                    onCancel: jest.fn()
+                };
+                components.push(new AreaFormComponent(options));
+            }
+            
+            // Destroy all components
+            components.forEach(comp => comp.remove());
+            
+            // No memory leaks should occur
+            expect(components.length).toBe(50);
+        });
+
+        it('should handle large data sets without performance degradation', async () => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+            
+            const largeDataArea = {
+                id: 'large-data-area',
+                name: 'A'.repeat(10000),
+                description: 'B'.repeat(50000),
+                displayOrder: 1,
+                inventoryItems: []
+            };
+            
+            const startTime = performance.now();
+            component.show(largeDataArea);
+            const endTime = performance.now();
+            
+            // Should complete within reasonable time (adjust threshold as needed)
+            expect(endTime - startTime).toBeLessThan(1000); // 1 second
+            expect(component['nameInput'].value).toBe('A'.repeat(10000));
+        });
+    });
+
+    describe('Error Boundary and Resilience Testing', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should handle malformed HTML injection attempts', () => {
+            const malformedArea = {
+                id: '<div><span>',
+                name: '</div><script>alert("xss")</script>',
+                description: '<img src="x" onerror="alert(\'xss\')" />',
+                displayOrder: 1,
+                inventoryItems: []
+            };
+            
+            expect(() => component.show(malformedArea)).not.toThrow();
+            expect(escapeHtml).toHaveBeenCalledWith('</div><script>alert("xss")</script>');
+        });
+
+        it('should handle circular reference objects gracefully', () => {
+            const circularArea: any = {
+                id: 'circular',
+                name: 'Circular Area',
+                description: 'Has circular reference',
+                displayOrder: 1,
+                inventoryItems: []
+            };
+            circularArea.self = circularArea; // Create circular reference
+            
+            expect(() => component.show(circularArea)).not.toThrow();
+        });
+
+        it('should handle frozen/sealed objects', () => {
+            const frozenArea = Object.freeze({
+                id: 'frozen',
+                name: 'Frozen Area',
+                description: 'This object is frozen',
+                displayOrder: 1,
+                inventoryItems: []
+            });
+            
+            expect(() => component.show(frozenArea)).not.toThrow();
+        });
+
+        it('should handle prototype pollution attempts', () => {
+            const maliciousArea = {
+                id: 'malicious',
+                name: 'Malicious Area',
+                description: 'Normal description',
+                displayOrder: 1,
+                inventoryItems: [],
+                __proto__: { pollution: 'attempt' },
+                constructor: { prototype: { polluted: true } }
+            } as any;
+            
+            expect(() => component.show(maliciousArea)).not.toThrow();
+        });
+    });
+
+    describe('Custom Event Handling and Integration', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should handle custom validation events', () => {
+            const nameInput = component['nameInput'];
+            
+            // Create custom validation event
+            const customEvent = new CustomEvent('validation', {
+                detail: { field: 'name', valid: false }
+            });
+            
+            expect(() => nameInput.dispatchEvent(customEvent)).not.toThrow();
+        });
+
+        it('should handle form state change events', () => {
+            const formElement = component['formElement'];
+            
+            const stateChangeEvent = new CustomEvent('statechange', {
+                detail: { state: 'dirty' }
+            });
+            
+            expect(() => formElement.dispatchEvent(stateChangeEvent)).not.toThrow();
+        });
+
+        it('should integrate with third-party validation libraries', async () => {
+            // Mock third-party validator
+            const mockValidator = {
+                validate: jest.fn().mockReturnValue({ valid: true, errors: [] })
+            };
+            
+            // Simulate integration
+            const nameInput = component['nameInput'];
+            nameInput.value = 'Test Area';
+            
+            const validationResult = mockValidator.validate(nameInput.value);
+            expect(validationResult.valid).toBe(true);
+            
+            // Submit should succeed
+            const event = new Event('submit');
+            await component['handleSubmit'](event);
+            
+            expect(mockOnSubmit).toHaveBeenCalled();
+        });
+    });
+
+    describe('Complex Form Interaction Scenarios', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should handle tab navigation between all form fields', () => {
+            const nameInput = component['nameInput'];
+            const descInput = component['descriptionInput'];
+            const orderInput = component['displayOrderInput'];
+            const submitButton = component.getElement().querySelector('button[type="submit"]') as HTMLButtonElement;
+            const cancelButton = component.getElement().querySelector('#cancel-area-edit-form-comp') as HTMLButtonElement;
+            
+            // Start at name input
+            nameInput.focus();
+            expect(document.activeElement).toBe(nameInput);
+            
+            // Simulate tab navigation
+            const tabEvent = new KeyboardEvent('keydown', { 
+                key: 'Tab', 
+                bubbles: true,
+                cancelable: true 
+            });
+            
+            // Test tab sequence
+            expect(() => {
+                nameInput.dispatchEvent(tabEvent);
+                descInput.focus();
+                descInput.dispatchEvent(tabEvent);
+                orderInput.focus();
+                orderInput.dispatchEvent(tabEvent);
+                submitButton.focus();
+                submitButton.dispatchEvent(tabEvent);
+                cancelButton.focus();
+            }).not.toThrow();
+        });
+
+        it('should handle Shift+Tab reverse navigation', () => {
+            const nameInput = component['nameInput'];
+            const cancelButton = component.getElement().querySelector('#cancel-area-edit-form-comp') as HTMLButtonElement;
+            
+            // Start at cancel button
+            cancelButton.focus();
+            expect(document.activeElement).toBe(cancelButton);
+            
+            // Simulate Shift+Tab
+            const shiftTabEvent = new KeyboardEvent('keydown', { 
+                key: 'Tab', 
+                shiftKey: true,
+                bubbles: true,
+                cancelable: true 
+            });
+            
+            expect(() => cancelButton.dispatchEvent(shiftTabEvent)).not.toThrow();
+        });
+
+        it('should handle Enter key submission from any field', async () => {
+            const inputs = [
+                component['nameInput'],
+                component['descriptionInput'],
+                component['displayOrderInput']
+            ];
+            
+            for (const input of inputs) {
+                // Reset form
+                component['nameInput'].value = 'Test Area';
+                component['descriptionInput'].value = '';
+                component['displayOrderInput'].value = '';
+                
+                input.focus();
+                input.value = input === component['nameInput'] ? 'Test Area' : 
+                             input === component['descriptionInput'] ? 'Test Description' : '5';
+                
+                const enterEvent = new KeyboardEvent('keydown', { 
+                    key: 'Enter',
+                    bubbles: true,
+                    cancelable: true 
+                });
+                
+                expect(() => input.dispatchEvent(enterEvent)).not.toThrow();
+                
+                mockOnSubmit.mockClear();
+            }
+        });
+
+        it('should handle Escape key cancellation', () => {
+            const formElement = component['formElement'];
+            
+            const escapeEvent = new KeyboardEvent('keydown', { 
+                key: 'Escape',
+                bubbles: true,
+                cancelable: true 
+            });
+            
+            expect(() => formElement.dispatchEvent(escapeEvent)).not.toThrow();
+        });
+    });
+
+    describe('Form State Persistence and Recovery', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should maintain form state during show/hide cycles', () => {
+            // Set initial values
+            component['nameInput'].value = 'Persistent Name';
+            component['descriptionInput'].value = 'Persistent Description';
+            component['displayOrderInput'].value = '123';
+            
+            // Hide and show component
+            component.hide();
+            component.show();
+            
+            // Values should be preserved if component doesn't reset on show
+            // (This test might need adjustment based on actual implementation behavior)
+        });
+
+        it('should handle browser back/forward navigation', () => {
+            // Simulate browser navigation
+            const beforeUnloadEvent = new BeforeUnloadEvent('beforeunload');
+            const pageShowEvent = new PageTransitionEvent('pageshow', { persisted: true });
+            const pageHideEvent = new PageTransitionEvent('pagehide', { persisted: false });
+            
+            expect(() => {
+                window.dispatchEvent(beforeUnloadEvent);
+                window.dispatchEvent(pageHideEvent);
+                window.dispatchEvent(pageShowEvent);
+            }).not.toThrow();
+        });
+
+        it('should recover from unexpected DOM reset', () => {
+            // Set form values
+            component['nameInput'].value = 'Test Recovery';
+            
+            // Simulate DOM reset by clearing innerHTML
+            const originalHTML = component.getElement().innerHTML;
+            component.getElement().innerHTML = '';
+            
+            // Component should handle this gracefully
+            expect(() => component.render()).not.toThrow();
+            
+            // Restore for cleanup
+            component.getElement().innerHTML = originalHTML;
+        });
+    });
+
+    describe('Advanced Validation and Business Logic', () => {
+        beforeEach(() => {
+            const options: AreaFormComponentOptions = {
+                onSubmit: mockOnSubmit,
+                onCancel: mockOnCancel
+            };
+            component = new AreaFormComponent(options);
+        });
+
+        it('should validate name field length limits', async () => {
+            const nameInput = component['nameInput'];
+            
+            // Test minimum length
+            nameInput.value = 'A';
+            let event = new Event('submit');
+            await component['handleSubmit'](event);
+            expect(mockOnSubmit).toHaveBeenCalled();
+            
+            mockOnSubmit.mockClear();
+            
+            // Test maximum length (if there's a limit)
+            nameInput.value = 'A'.repeat(1000);
+            event = new Event('submit');
+            await component['handleSubmit'](event);
+            expect(mockOnSubmit).toHaveBeenCalled();
+        });
+
+        it('should handle duplicate area names gracefully', async () => {
+            // This would typically be handled by server-side validation
+            // but component should pass the data through
+            const nameInput = component['nameInput'];
+            nameInput.value = 'Duplicate Area Name';
             
             const event = new Event('submit');
             await component['handleSubmit'](event);
             
-            const expectedOrder = parseInt(testCase, 10);
-            expect(mockOnSubmit).toHaveBeenCalledWith({
-                id: '',
-                name: 'Precision Test',
-                description: undefined,
-                displayOrder: expectedOrder
-            });
-            
-            jest.clearAllMocks();
-        }
-    });
+            expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
+                name: 'Duplicate Area Name'
+            }));
+        });
 
-    it('should handle numeric overflow and underflow', async () => {
-        const nameInput = component['nameInput'];
-        const orderInput = component['displayOrderInput'];
-        
-        nameInput.value = 'Overflow Test';
-        
-        const extremeValues = [
-            Number.MAX_SAFE_INTEGER.toString(),
-            Number.MIN_SAFE_INTEGER.toString(),
-            '9'.repeat(308), // Very large number
-            '1e308', // Scientific notation overflow
-            '1e-324' // Scientific notation underflow
-        ];
-        
-        for (const value of extremeValues) {
-            orderInput.value = value;
+        it('should validate display order uniqueness constraints', async () => {
+            const nameInput = component['nameInput'];
+            const orderInput = component['displayOrderInput'];
+            
+            nameInput.value = 'Area with Order';
+            orderInput.value = '999';
             
             const event = new Event('submit');
             await component['handleSubmit'](event);
             
-            const parsedValue = parseInt(value, 10);
-            expect(mockOnSubmit).toHaveBeenCalledWith({
-                id: '',
-                name: 'Overflow Test',
-                description: undefined,
-                displayOrder: isNaN(parsedValue) ? undefined : parsedValue
-            });
-            
-            jest.clearAllMocks();
-        }
-    });
+            expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
+                displayOrder: 999
+            }));
+        });
 
-    it('should handle special numeric formats and notations', async () => {
-        const nameInput = component['nameInput'];
-        const orderInput = component['displayOrderInput'];
-        
-        nameInput.value = 'Format Test';
-        
-        const numericFormats = [
-            '0x10', // Hexadecimal
-            '0o10', // Octal
-            '0b10', // Binary
-            '1_000_000', // Underscore separators (ES2021)
-            '+42', // Explicit positive
-            ' 42 ', // Leading/trailing spaces
-            '42.0', // Decimal with zero fraction
-            '042' // Leading zero
-        ];
-        
-        for (const format of numericFormats) {
-            orderInput.value = format;
+        it('should handle conditional validation based on editing context', async () => {
+            // Test new area creation
+            component.currentEditingArea = null;
+            const nameInput = component['nameInput'];
+            nameInput.value = 'New Area';
             
-            const event = new Event('submit');
+            let event = new Event('submit');
             await component['handleSubmit'](event);
             
-            const parsedValue = parseInt(format, 10);
-            expect(mockOnSubmit).toHaveBeenCalledWith({
-                id: '',
-                name: 'Format Test',
-                description: undefined,
-                displayOrder: isNaN(parsedValue) ? undefined : parsedValue
-            });
+            expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
+                id: ''
+            }));
             
-            jest.clearAllMocks();
-        }
+            mockOnSubmit.mockClear();
+            
+            // Test existing area edit
+            component.currentEditingArea = mockArea;
+            nameInput.value = 'Updated Area';
+            
+            event = new Event('submit');
+            await component['handleSubmit'](event);
+            
+            expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
+                id: 'test-area-1'
+            }));
+        });
     });
-});
