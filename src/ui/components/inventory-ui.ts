@@ -5,13 +5,15 @@
  */
 
 import { InventoryService } from '../../services/inventory-service.js';
-import { InventoryItem, InventoryFilter } from '../../types/inventory.js';
+import { InventoryItem, InventoryFilter, UserRole } from '../../types/inventory.js';
 import { ChartComponent } from './chart-component.js';
+import Sortable from 'sortablejs';
 
 export class InventoryUI {
   private inventoryService: InventoryService;
   private chartComponent: ChartComponent;
   private currentFilter: InventoryFilter = {};
+  private sortable: Sortable | null = null;
 
   constructor(inventoryService: InventoryService) {
     this.inventoryService = inventoryService;
@@ -21,13 +23,17 @@ export class InventoryUI {
   }
 
   private setupEventListeners(): void {
-    // Add item form
     const addForm = document.getElementById('add-item-form') as HTMLFormElement;
     addForm?.addEventListener('submit', this.handleAddItem.bind(this));
 
-    // Search input
     const searchInput = document.getElementById('search-input') as HTMLInputElement;
     searchInput?.addEventListener('input', this.handleSearch.bind(this));
+
+    const roleSelect = document.getElementById('role-select') as HTMLSelectElement;
+    roleSelect?.addEventListener('change', (e) => {
+      const role = (e.target as HTMLSelectElement).value as UserRole;
+      this.inventoryService.setUserRole(role);
+    });
 
     // Filter buttons
     document.addEventListener('click', (e) => {
@@ -39,6 +45,25 @@ export class InventoryUI {
         this.handleDeleteItem(target.dataset.itemId!);
       }
     });
+
+    this.initSortable();
+  }
+
+  private initSortable(): void {
+    const container = document.getElementById('inventory-list');
+    if (container) {
+      this.sortable = Sortable.create(container, {
+        animation: 150,
+        handle: '.item-info',
+        onEnd: this.handleDrop.bind(this),
+      });
+    }
+  }
+
+  private handleDrop(evt: Sortable.SortableEvent): void {
+    if (evt.oldIndex !== undefined && evt.newIndex !== undefined) {
+      this.inventoryService.reorderItems(evt.oldIndex, evt.newIndex);
+    }
   }
 
   private async handleAddItem(e: Event): Promise<void> {
@@ -112,6 +137,24 @@ export class InventoryUI {
     this.renderInventoryList();
     this.renderStats();
     this.renderCharts();
+    this.updateUIAccessibility();
+  }
+
+  private updateUIAccessibility(): void {
+    const role = this.inventoryService.getCurrentUserRole();
+    const isManager = role === UserRole.Manager;
+
+    const addForm = document.getElementById('add-item-form') as HTMLFormElement;
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+
+    if (addForm) {
+      const inputs = addForm.querySelectorAll('input, select, button');
+      inputs.forEach(input => (input as HTMLInputElement).disabled = !isManager);
+    }
+
+    deleteButtons.forEach(button => {
+      (button as HTMLButtonElement).style.display = isManager ? '' : 'none';
+    });
   }
 
   private renderInventoryList(): void {
@@ -119,9 +162,11 @@ export class InventoryUI {
     if (!container) return;
 
     const items = this.inventoryService.getItems(this.currentFilter);
+    const role = this.inventoryService.getCurrentUserRole();
+    const isManager = role === UserRole.Manager;
 
     container.innerHTML = items.map(item => `
-      <div class="inventory-item ${item.quantity <= item.minThreshold ? 'low-stock' : ''}">
+      <div class="inventory-item ${item.quantity <= item.minThreshold ? 'low-stock' : ''}" data-id="${item.id}">
         <div class="item-info">
           <h3>${item.name}</h3>
           <p class="item-meta">${item.category} • ${item.area}</p>
@@ -131,7 +176,7 @@ export class InventoryUI {
           </p>
         </div>
         <div class="item-actions">
-          <button class="delete-btn" data-item-id="${item.id}">Delete</button>
+          ${isManager ? `<button class="delete-btn" data-item-id="${item.id}">Delete</button>` : ''}
         </div>
       </div>
     `).join('');
