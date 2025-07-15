@@ -329,7 +329,13 @@ function prepareInventoryItemsForArea(): void {
         }
 
         state.selectedArea.inventoryItems.splice(newIndex, 0, item);
-        saveCurrentInventory();
+-       saveCurrentInventory();
++       saveCurrentInventory().catch(error => {
++           console.error('Fehler beim Speichern der Reihenfolge:', error);
++           showToast('Fehler beim Speichern der neuen Reihenfolge.', 'error');
++           // Optional: Reihenfolge zurücksetzen
++           renderInventoryTable();
++       });
     });
 }
 
