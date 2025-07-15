@@ -111,8 +111,11 @@ export class LocationManagerComponent extends BaseComponent<HTMLDivElement> {
                         const content = await file.text();
                         const locations = JSON.parse(content);
                         if (Array.isArray(locations)) {
-                            await locationStore.importLocations(locations);
-                            showToast(`${locations.length} Standorte erfolgreich importiert.`, 'success');
+                            // Add confirmation dialog
+                            if (confirm(`Möchten Sie ${locations.length} Standorte importieren? Bestehende Standorte mit gleichen Namen könnten dupliziert werden.`)) {
+                                await locationStore.importLocations(locations);
+                                showToast(`${locations.length} Standorte erfolgreich importiert.`, 'success');
+                            }
                         } else {
                             showToast('Ungültiges JSON-Format. Es muss ein Array von Standorten sein.', 'error');
                         }
