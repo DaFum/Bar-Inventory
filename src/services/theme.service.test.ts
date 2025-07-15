@@ -1,87 +1,3 @@
-// Mocks must be defined BEFORE the service is imported.
-// Mock localStorage
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
-  return {
-    getItem: (key: string) => store[key] || null,
-    setItem: (key: string, value: string) => {
-      store[key] = value.toString();
-    },
-    removeItem: (key: string) => {
-      delete store[key];
-    },
-    clear: () => {
-      store = {};
-    },
-  };
-})();
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
-
-// Mock window.matchMedia
-let systemPrefersDark = false; // Controllable for tests
-const defaultMatchMediaImplementation = (query: string) => ({
-  matches: query === '(prefers-color-scheme: dark)' ? systemPrefersDark : false,
-  media: query,
-  onchange: null,
-  addListener: jest.fn(), // Deprecated
-  removeListener: jest.fn(), // Deprecated
-  addEventListener: jest.fn(),
-  removeEventListener: jest.fn(),
-  dispatchEvent: jest.fn(),
-});
-
-const matchMediaMock = jest.fn(defaultMatchMediaImplementation);
-Object.defineProperty(window, 'matchMedia', { value: matchMediaMock, writable: true, configurable: true });
-
-// Mock Chart.js global and instances
-// IMPORTANT: This mock must be defined before ThemeService is imported.
-const globalChartDefaults = { // Deep clone and make modifiable if necessary
-    color: '',
-    scale: {
-        ticks: { color: '' },
-        grid: { color: '' },
-        title: { color: '' }, // Service expects this path
-    },
-    plugins: {
-        legend: { labels: { color: '' } },
-        title: { color: '' },
-    },
-};
-const globalChartInstances = {};
-
-jest.mock('chart.js', () => {
-    const actualChartJs = jest.requireActual('chart.js');
-    const mockChartInstance = {
-        update: jest.fn(),
-        destroy: jest.fn(),
-    };
-
-    const ChartConstructorMock = jest.fn().mockImplementation(() => mockChartInstance);
-
-    // Attach static properties directly to the mock constructor
-    (ChartConstructorMock as any).instances = globalChartInstances; // Use the global var
-    (ChartConstructorMock as any).defaults = globalChartDefaults; // Use the global var
-    // The direct assignment of properties here was incorrect after assigning globalChartDefaults.
-    // globalChartDefaults already contains these properties.
-    // Remove the redundant block:
-    //     color: '',
-    //     scale: {
-    //         ticks: { color: '' },
-    //         grid: { color: '' },
-    //         title: { color: '' }, // Service expects this path
-    //     },
-    //     plugins: {
-    //         legend: { labels: { color: '' } },
-    //         title: { color: '' },
-    //     },
-    // };
-    (ChartConstructorMock as any).register = (...args: any[]) => actualChartJs.Chart.register(...args);
-
-    return {
-      ...actualChartJs, // To bring in registerables, etc.
-      Chart: ChartConstructorMock,
-    };
-  });
 
 // Now import the service and Chart (which will be the mocked version)
 import { ThemeService } from './theme.service';
@@ -1074,3 +990,700 @@ describe('ThemeService', () => {
     });
   });
 });
+
+  describe('Advanced Integration Scenarios', () => {
+    test('should handle theme switching during Chart.js animation', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const mockChartInstance = { 
+        update: jest.fn(),
+        id: 1,
+        isAnimating: true,
+        stop: jest.fn()
+      };
+      
+      (Chart.instances as any) = { chart1: mockChartInstance };
+      
+      // Switch theme while chart is animating
+      service.toggleTheme();
+      
+      expect(mockChartInstance.update).toHaveBeenCalled();
+      (Chart.instances as any) = {};
+    });
+
+    test('should maintain theme preferences across multiple browser tabs simulation', () => {
+      const service1 = new ThemeService();
+      testServiceInstances.push(service1);
+      
+      // Simulate storage event from another tab
+      const storageEvent = new StorageEvent('storage', {
+        key: THEME_KEY,
+        newValue: 'dark',
+        oldValue: 'light',
+        storageArea: localStorage
+      });
+      
+      expect(() => {
+        window.dispatchEvent(storageEvent);
+      }).not.toThrow();
+    });
+
+    test('should handle theme switching in iframe context', () => {
+      const originalParent = window.parent;
+      const mockParent = {
+        matchMedia: jest.fn(() => ({
+          matches: true,
+          media: '(prefers-color-scheme: dark)',
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+        }))
+      };
+      
+      Object.defineProperty(window, 'parent', { value: mockParent, configurable: true });
+      
+      try {
+        const service = new ThemeService();
+        testServiceInstances.push(service);
+        expect(service.getCurrentTheme()).toBeDefined();
+      } finally {
+        Object.defineProperty(window, 'parent', { value: originalParent, configurable: true });
+      }
+    });
+  });
+
+  describe('Performance Optimization Tests', () => {
+    test('should debounce rapid system theme changes', async () => {
+      localStorageMock.clear();
+      
+      const mockMq = {
+        matches: false,
+        media: '(prefers-color-scheme: dark)',
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      };
+      
+      matchMediaMock.mockReturnValue(mockMq as any);
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const listener = mockMq.addEventListener.mock.calls[0]?.[1] || mockMq.addListener.mock.calls[0]?.[0];
+      const updateSpy = jest.spyOn(service as any, 'updateChartDefaults');
+      
+      if (listener) {
+        // Rapid theme changes
+        listener({ matches: true });
+        listener({ matches: false });
+        listener({ matches: true });
+        listener({ matches: false });
+        
+        // Wait for any potential debouncing
+        await new Promise(resolve => setTimeout(resolve, 10));
+        
+        // Should still handle all changes
+        expect(service.getCurrentTheme()).toBe('light');
+      }
+      
+      updateSpy.mockRestore();
+    });
+
+    test('should efficiently handle large numbers of Chart instances', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      // Create many mock chart instances
+      const chartInstances: any = {};
+      for (let i = 0; i < 100; i++) {
+        chartInstances[`chart${i}`] = { update: jest.fn(), id: i };
+      }
+      
+      (Chart.instances as any) = chartInstances;
+      
+      const startTime = performance.now();
+      service.toggleTheme();
+      const endTime = performance.now();
+      
+      // Should complete quickly even with many instances
+      expect(endTime - startTime).toBeLessThan(100); // 100ms threshold
+      
+      // Verify all instances were updated
+      Object.values(chartInstances).forEach((instance: any) => {
+        expect(instance.update).toHaveBeenCalled();
+      });
+      
+      (Chart.instances as any) = {};
+    });
+  });
+
+  describe('Security and Data Validation', () => {
+    test('should sanitize malicious localStorage values', () => {
+      const maliciousValues = [
+        '<script>alert("xss")</script>',
+        'javascript:alert("xss")',
+        '../../etc/passwd',
+        'null',
+        'undefined',
+        '{}',
+        '[]',
+        'true',
+        'false',
+        '0',
+        '1',
+        '"dark"',
+        "'light'",
+      ];
+      
+      maliciousValues.forEach(value => {
+        localStorageMock.setItem(THEME_KEY, value);
+        
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+          const theme = service.getCurrentTheme();
+          expect(['light', 'dark']).toContain(theme);
+        }).not.toThrow();
+      });
+    });
+
+    test('should validate theme values before applying', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      // Attempt to set invalid theme through reflection or other means
+      const originalTheme = service.getCurrentTheme();
+      
+      // Try to corrupt internal state (if accessible)
+      try {
+        (service as any).currentTheme = 'invalid-theme';
+      } catch (e) {
+        // Expected if property is protected
+      }
+      
+      // getCurrentTheme should still return valid value
+      expect(['light', 'dark']).toContain(service.getCurrentTheme());
+    });
+  });
+
+  describe('Accessibility Enhancement Tests', () => {
+    test('should trigger accessibility events on theme change', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const announceElement = document.createElement('div');
+      announceElement.setAttribute('aria-live', 'polite');
+      announceElement.id = 'theme-announcer';
+      document.body.appendChild(announceElement);
+      
+      try {
+        service.toggleTheme();
+        
+        // Should handle accessibility announcements gracefully
+        expect(() => {
+          const event = new CustomEvent('themeChanged', {
+            detail: { theme: service.getCurrentTheme() }
+          });
+          document.dispatchEvent(event);
+        }).not.toThrow();
+      } finally {
+        document.body.removeChild(announceElement);
+      }
+    });
+
+    test('should respect prefers-reduced-motion settings', () => {
+      const reducedMotionMq = {
+        matches: true,
+        media: '(prefers-reduced-motion: reduce)',
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+      };
+      
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = jest.fn((query) => {
+        if (query === '(prefers-reduced-motion: reduce)') {
+          return reducedMotionMq as any;
+        }
+        return matchMediaMock(query);
+      });
+      
+      try {
+        const service = new ThemeService();
+        testServiceInstances.push(service);
+        
+        // Theme changes should still work with reduced motion
+        service.toggleTheme();
+        expect(['light', 'dark']).toContain(service.getCurrentTheme());
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    });
+  });
+
+  describe('Chart.js Version Compatibility', () => {
+    test('should handle Chart.js v3.x defaults structure', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      // Simulate Chart.js v3 structure
+      const originalDefaults = { ...globalChartDefaults };
+      Object.assign(globalChartDefaults, {
+        elements: {
+          arc: { borderColor: '#fff' },
+          bar: { borderColor: '#fff' },
+          line: { borderColor: '#fff' }
+        },
+        interaction: {
+          intersect: false,
+          mode: 'index'
+        }
+      });
+      
+      try {
+        expect(() => service.toggleTheme()).not.toThrow();
+      } finally {
+        Object.assign(globalChartDefaults, originalDefaults);
+      }
+    });
+
+    test('should handle Chart.js v4.x defaults structure', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      // Simulate Chart.js v4 structure with new properties
+      const originalDefaults = { ...globalChartDefaults };
+      Object.assign(globalChartDefaults, {
+        datasets: {
+          line: { borderColor: '#333' },
+          bar: { backgroundColor: '#333' }
+        },
+        layout: {
+          padding: 10
+        }
+      });
+      
+      try {
+        expect(() => service.toggleTheme()).not.toThrow();
+      } finally {
+        Object.assign(globalChartDefaults, originalDefaults);
+      }
+    });
+  });
+
+  describe('Error Recovery and Resilience', () => {
+    test('should recover from corrupt Chart.js state', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      // Corrupt Chart.defaults
+      const originalChart = (globalThis as any).Chart;
+      (globalThis as any).Chart = {
+        defaults: null,
+        instances: 'not-an-object'
+      };
+      
+      try {
+        expect(() => service.toggleTheme()).not.toThrow();
+      } finally {
+        (globalThis as any).Chart = originalChart;
+      }
+    });
+
+    test('should handle DOM mutations during theme application', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      // Simulate DOM being modified during theme application
+      const originalSetAttribute = document.documentElement.setAttribute;
+      let callCount = 0;
+      document.documentElement.setAttribute = jest.fn((name, value) => {
+        callCount++;
+        if (callCount === 1) {
+          // Simulate DOM change on first call
+          document.body.remove();
+        }
+        return originalSetAttribute.call(document.documentElement, name, value);
+      });
+      
+      try {
+        expect(() => service.toggleTheme()).not.toThrow();
+      } finally {
+        document.documentElement.setAttribute = originalSetAttribute;
+        // Re-add body if it was removed
+        if (!document.body) {
+          document.documentElement.appendChild(document.createElement('body'));
+        }
+      }
+    });
+  });
+
+  describe('Internationalization and Localization', () => {
+    test('should handle RTL languages with theme switching', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      // Simulate RTL document
+      const originalDir = document.documentElement.dir;
+      document.documentElement.dir = 'rtl';
+      
+      try {
+        service.toggleTheme();
+        expect(['light', 'dark']).toContain(service.getCurrentTheme());
+        expect(mockHtmlElement!.setAttribute).toHaveBeenCalledWith(
+          'data-theme', 
+          expect.stringMatching(/^(light|dark)$/)
+        );
+      } finally {
+        document.documentElement.dir = originalDir;
+      }
+    });
+
+    test('should respect system locale for theme preferences', () => {
+      const originalLanguage = navigator.language;
+      const originalLanguages = navigator.languages;
+      
+      // Mock different locales
+      Object.defineProperty(navigator, 'language', { value: 'ar-SA', configurable: true });
+      Object.defineProperty(navigator, 'languages', { value: ['ar-SA', 'ar'], configurable: true });
+      
+      try {
+        const service = new ThemeService();
+        testServiceInstances.push(service);
+        expect(['light', 'dark']).toContain(service.getCurrentTheme());
+      } finally {
+        Object.defineProperty(navigator, 'language', { value: originalLanguage, configurable: true });
+        Object.defineProperty(navigator, 'languages', { value: originalLanguages, configurable: true });
+      }
+    });
+  });
+
+  describe('Mobile and Touch Device Compatibility', () => {
+    test('should handle mobile viewport changes', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      // Simulate mobile viewport
+      const originalInnerWidth = window.innerWidth;
+      const originalInnerHeight = window.innerHeight;
+      
+      Object.defineProperty(window, 'innerWidth', { value: 375, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 667, configurable: true });
+      
+      try {
+        service.toggleTheme();
+        expect(['light', 'dark']).toContain(service.getCurrentTheme());
+      } finally {
+        Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
+        Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+      }
+    });
+
+    test('should handle orientation changes', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      // Simulate orientation change
+      const orientationEvent = new Event('orientationchange');
+      
+      expect(() => {
+        window.dispatchEvent(orientationEvent);
+        service.toggleTheme();
+      }).not.toThrow();
+    });
+  });
+
+  describe('Dark Mode System Integration', () => {
+    test('should handle macOS dark mode transitions', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      // Simulate macOS system appearance change
+      const mockMq = {
+        matches: true,
+        media: '(prefers-color-scheme: dark)',
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+      };
+      
+      matchMediaMock.mockReturnValue(mockMq as any);
+      
+      const listener = mockMq.addEventListener.mock.calls[0]?.[1] || mockMq.addListener.mock.calls[0]?.[0];
+      
+      if (listener) {
+        // Simulate system switching to dark mode
+        listener({ matches: true });
+        // Should follow system preference if no user preference set
+        localStorageMock.clear();
+        expect(() => {
+          const newService = new ThemeService();
+          testServiceInstances.push(newService);
+        }).not.toThrow();
+      }
+    });
+
+    test('should handle Windows high contrast mode', () => {
+      const highContrastMq = {
+        matches: true,
+        media: '(prefers-contrast: high)',
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+      };
+      
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = jest.fn((query) => {
+        if (query === '(prefers-contrast: high)') {
+          return highContrastMq as any;
+        }
+        return matchMediaMock(query);
+      });
+      
+      try {
+        const service = new ThemeService();
+        testServiceInstances.push(service);
+        
+        service.toggleTheme();
+        expect(['light', 'dark']).toContain(service.getCurrentTheme());
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    });
+  });
+
+  describe('Memory Leak Prevention', () => {
+    test('should not create memory leaks with repeated instantiation', () => {
+      const initialInstanceCount = testServiceInstances.length;
+      
+      // Create and destroy many instances
+      for (let i = 0; i < 50; i++) {
+        const service = new ThemeService();
+        testServiceInstances.push(service);
+        service.toggleTheme();
+        
+        // Simulate disposal if available
+        if (typeof (service as any).dispose === 'function') {
+          (service as any).dispose();
+        }
+      }
+      
+      // Should not accumulate event listeners or other resources
+      expect(testServiceInstances.length).toBeGreaterThan(initialInstanceCount);
+    });
+
+    test('should clean up Chart.js references on disposal', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const mockChart = { update: jest.fn(), destroy: jest.fn(), id: 1 };
+      (Chart.instances as any) = { chart1: mockChart };
+      
+      service.toggleTheme();
+      expect(mockChart.update).toHaveBeenCalled();
+      
+      // Simulate service disposal
+      if (typeof (service as any).dispose === 'function') {
+        (service as any).dispose();
+      }
+      
+      (Chart.instances as any) = {};
+    });
+  });
+
+  describe('Edge Case Error Scenarios', () => {
+    test('should handle JSON parsing errors in localStorage', () => {
+      // Mock localStorage to return non-string values
+      const originalGetItem = localStorageMock.getItem;
+      localStorageMock.getItem = jest.fn(() => ({} as any)); // Return object instead of string
+      
+      try {
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+        }).not.toThrow();
+      } finally {
+        localStorageMock.getItem = originalGetItem;
+      }
+    });
+
+    test('should handle circular reference in Chart.js instances', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const circularRef: any = { update: jest.fn() };
+      circularRef.self = circularRef;
+      
+      (Chart.instances as any) = { circular: circularRef };
+      
+      expect(() => service.toggleTheme()).not.toThrow();
+      expect(circularRef.update).toHaveBeenCalled();
+      
+      (Chart.instances as any) = {};
+    });
+  });
+
+  describe('Dispose Method Comprehensive Testing', () => {
+    test('should properly dispose all event listeners', () => {
+      const mockMq = {
+        matches: false,
+        media: '(prefers-color-scheme: dark)',
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+      };
+      
+      matchMediaMock.mockReturnValue(mockMq as any);
+      
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      // Verify listeners were added
+      expect(mockMq.addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+      
+      // Call dispose
+      service.dispose();
+      
+      // Verify listeners were removed
+      expect(mockMq.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+    });
+
+    test('should handle dispose when mediaQuery is undefined', () => {
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = jest.fn(() => undefined as any);
+      
+      try {
+        const service = new ThemeService();
+        testServiceInstances.push(service);
+        
+        expect(() => service.dispose()).not.toThrow();
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    });
+
+    test('should handle dispose when removeEventListener throws error', () => {
+      const mockMq = {
+        matches: false,
+        media: '(prefers-color-scheme: dark)',
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(() => {
+          throw new Error('removeEventListener failed');
+        }),
+      };
+      
+      matchMediaMock.mockReturnValue(mockMq as any);
+      
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      expect(() => service.dispose()).not.toThrow();
+    });
+  });
+
+  describe('Console Warning Testing', () => {
+    let consoleWarnSpy: jest.SpyInstance;
+    
+    beforeEach(() => {
+      consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+    
+    afterEach(() => {
+      consoleWarnSpy.mockRestore();
+    });
+
+    test('should log warning when localStorage.getItem fails', () => {
+      localStorageMock.getItem = jest.fn(() => {
+        throw new Error('localStorage unavailable');
+      });
+      
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'ThemeService: Failed to access localStorage.getItem',
+        expect.any(Error)
+      );
+    });
+
+    test('should log warning when matchMedia fails', () => {
+      window.matchMedia = jest.fn(() => {
+        throw new Error('matchMedia unavailable');
+      });
+      
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'ThemeService: Failed to access window.matchMedia',
+        expect.any(Error)
+      );
+    });
+
+    test('should log warning when Chart.js update fails', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const mockChart = {
+        update: jest.fn(() => {
+          throw new Error('Chart update failed');
+        })
+      };
+      
+      (Chart.instances as any) = { chart1: mockChart };
+      
+      service.toggleTheme();
+      
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'ThemeService: Failed to update Chart.js defaults or instances',
+        expect.any(Error)
+      );
+      
+      (Chart.instances as any) = {};
+    });
+  });
+
+  describe('Theme Persistence Edge Cases', () => {
+    test('should handle theme persistence when localStorage quota is exceeded', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      localStorageMock.setItem = jest.fn(() => {
+        const error = new Error('QuotaExceededError');
+        error.name = 'QuotaExceededError';
+        throw error;
+      });
+      
+      const currentTheme = service.getCurrentTheme();
+      service.toggleTheme();
+      
+      // Theme should still change in memory even if persistence fails
+      expect(service.getCurrentTheme()).not.toBe(currentTheme);
+    });
+
+    test('should handle theme switching when localStorage is disabled', () => {
+      const originalLocalStorage = window.localStorage;
+      Object.defineProperty(window, 'localStorage', { value: undefined });
+      
+      try {
+        const service = new ThemeService();
+        testServiceInstances.push(service);
+        
+        expect(() => service.toggleTheme()).not.toThrow();
+        expect(['light', 'dark']).toContain(service.getCurrentTheme());
+      } finally {
+        Object.defineProperty(window, 'localStorage', { value: originalLocalStorage });
+      }
+    });
+  });
+

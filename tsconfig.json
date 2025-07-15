@@ -17,7 +17,11 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true
+    "exactOptionalPropertyTypes": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./tests"
+    ]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests"]
