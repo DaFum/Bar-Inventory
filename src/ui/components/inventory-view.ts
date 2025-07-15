@@ -559,7 +559,7 @@ function handleInventoryInputChange(event: Event): void {
         // Proper unsaved changes tracking should be implemented if needed.
     }
 
-    setTimeout(() => {
+    const focusNextInput = () => {
         const allInputs = Array.from(document.querySelectorAll('.inventory-table .inventory-input:not([disabled])')) as HTMLInputElement[];
         const currentIndex = allInputs.indexOf(inputElement);
         if (currentIndex !== -1 && currentIndex < allInputs.length - 1) {
