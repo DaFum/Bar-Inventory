@@ -29,13 +29,16 @@ export class AreaListComponent extends BaseComponent<HTMLDivElement> {
             return [];
         }
         return [...areas].sort((a, b) => {
-            if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
-                if (a.displayOrder !== b.displayOrder) {
-                    return a.displayOrder - b.displayOrder;
+            const aHasOrder = a.displayOrder !== undefined && a.displayOrder !== null;
+            const bHasOrder = b.displayOrder !== undefined && b.displayOrder !== null;
+
+            if (aHasOrder && bHasOrder) {
+                if (a.displayOrder! !== b.displayOrder!) {
+                    return a.displayOrder! - b.displayOrder!;
                 }
-            } else if (a.displayOrder !== undefined) {
+            } else if (aHasOrder) {
                 return -1; // a comes first
-            } else if (b.displayOrder !== undefined) {
+            } else if (bHasOrder) {
                 return 1;  // b comes first
             }
             // Fallback to name sorting if displayOrder is the same or not defined
@@ -184,6 +187,10 @@ export class AreaListComponent extends BaseComponent<HTMLDivElement> {
         if (this.areas.length === 0) {
             this.renderFullList();
         }
+    }
+
+    destroy(): void {
+        this.remove();
     }
 }
 console.log("AreaListComponent loaded.");

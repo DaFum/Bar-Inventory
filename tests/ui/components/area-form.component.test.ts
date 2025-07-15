@@ -42,7 +42,7 @@ import { escapeHtml } from '../../../src/utils/security';
 import { showToast } from '../../../src/ui/components/toast-notifications';
 
 describe('AreaFormComponent', () => {
-    let component: AreaFormComponent | undefined;
+    let component: AreaFormComponent | null = null;
     let mockOnSubmit: jest.MockedFunction<(areaData: any) => Promise<void>>;
     let mockOnCancel: jest.MockedFunction<() => void>;
     let mockArea: Area;
@@ -66,12 +66,18 @@ describe('AreaFormComponent', () => {
             displayOrder: 10,
             inventoryItems: [], // Added missing property
         };
+
+        const options: AreaFormComponentOptions = {
+            onSubmit: mockOnSubmit,
+            onCancel: mockOnCancel
+        };
+        component = new AreaFormComponent(options);
+        document.body.appendChild(component.getElement());
     });
 
     afterEach(() => {
-        component?.getElement()?.remove(); // Use getElement()
+        component.getElement().remove();
         jest.clearAllMocks();
-        component = undefined; // Ensure component is reset
     });
 
     describe('Constructor and Initialization', () => {
@@ -96,9 +102,9 @@ describe('AreaFormComponent', () => {
                 onCancel: mockOnCancel
             };
             
-            component = new AreaFormComponent(options);
+            const editComponent = new AreaFormComponent(options);
             
-            expect(component.currentEditingArea).toEqual(mockArea);
+            expect(editComponent.currentEditingArea).toEqual(mockArea);
         });
 
         it('should call render during construction', () => {
@@ -109,7 +115,7 @@ describe('AreaFormComponent', () => {
                 onCancel: mockOnCancel
             };
             
-            component = new AreaFormComponent(options);
+            new AreaFormComponent(options);
             
             expect(renderSpy).toHaveBeenCalled();
             renderSpy.mockRestore(); // Restore original method
@@ -117,18 +123,7 @@ describe('AreaFormComponent', () => {
     });
 
     describe('Render Method', () => {
-        beforeEach(() => {
-            const options: AreaFormComponentOptions = {
-                onSubmit: mockOnSubmit,
-                onCancel: mockOnCancel
-            };
-            component = new AreaFormComponent(options);
-            if (!component) throw new Error("Component not initialized in Render Method test");
-            document.body.appendChild(component.getElement());
-        });
-
         it('should render form for new area creation', () => {
-            if (!component) throw new Error("Component not initialized in Render Method test");
             expect(component.getElement().innerHTML).toContain('Neuen Bereich erstellen');
             expect(component.getElement().innerHTML).toContain('Bereich erstellen');
             expect(component.getElement().querySelector('#area-name-form-comp')).toBeTruthy();
@@ -137,7 +132,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should render form for area editing', () => {
-            if (!component) throw new Error("Component not initialized in Render Method test");
             component.currentEditingArea = mockArea;
             component.render(); // render will re-attach event listeners if it rebuilds DOM
             
@@ -146,7 +140,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should escape HTML in area values', () => {
-            if (!component) throw new Error("Component not initialized in Render Method test");
             const areaWithHtml = {
                 ...mockArea,
                 name: '<script>alert("xss")</script>',
@@ -161,7 +154,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should handle null/undefined area values', () => {
-            if (!component) throw new Error("Component not initialized in Render Method test");
             const incompleteArea = {
                 id: 'test',
                 name: undefined,
@@ -178,7 +170,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should create form with proper accessibility attributes', () => {
-            if (!component) throw new Error("Component not initialized in Render Method test");
             const form = component.getElement().querySelector('form');
             const title = component.getElement().querySelector('#area-form-title-comp');
             const nameInput = component.getElement().querySelector('#area-name-form-comp');
@@ -190,17 +181,7 @@ describe('AreaFormComponent', () => {
     });
 
     describe('Element Binding', () => {
-        beforeEach(() => {
-            const options: AreaFormComponentOptions = {
-                onSubmit: mockOnSubmit,
-                onCancel: mockOnCancel
-            };
-            component = new AreaFormComponent(options);
-            if (!component) throw new Error("Component not initialized in Element Binding test");
-        });
-
         it('should bind all required form elements', () => {
-            if (!component) throw new Error("Component not initialized in Element Binding test");
             expect(component['formElement']).toBeTruthy();
             expect(component['nameInput']).toBeTruthy();
             expect(component['descriptionInput']).toBeTruthy();
@@ -208,7 +189,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should throw error if form element not found', () => {
-            if (!component) throw new Error("Component not initialized in Element Binding test");
             // Remove form element
             const form = component.getElement().querySelector('#area-form-actual');
             form?.remove();
@@ -217,7 +197,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should throw error if name input not found', () => {
-            if (!component) throw new Error("Component not initialized in Element Binding test");
             const nameInput = component.getElement().querySelector('#area-name-form-comp');
             nameInput?.remove();
             
@@ -225,7 +204,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should throw error if description input not found', () => {
-            if (!component) throw new Error("Component not initialized in Element Binding test");
             const descInput = component.getElement().querySelector('#area-description-form-comp');
             descInput?.remove();
             
@@ -233,7 +211,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should throw error if display order input not found', () => {
-            if (!component) throw new Error("Component not initialized in Element Binding test");
             const orderInput = component.getElement().querySelector('#area-display-order-form-comp');
             orderInput?.remove();
             
@@ -242,17 +219,7 @@ describe('AreaFormComponent', () => {
     });
 
     describe('Form Validation and Submission', () => {
-        beforeEach(() => {
-            const options: AreaFormComponentOptions = {
-                onSubmit: mockOnSubmit,
-                onCancel: mockOnCancel
-            };
-            component = new AreaFormComponent(options);
-            if (!component) throw new Error("Component not initialized in Form Validation test");
-        });
-
         it('should validate required name field', async () => {
-            if (!component) throw new Error("Component not initialized in Form Validation test");
             const nameInput = component['nameInput'];
             nameInput.value = '';
             
@@ -264,7 +231,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should validate name field with only whitespace', async () => {
-            if (!component) throw new Error("Component not initialized in Form Validation test");
             const nameInput = component['nameInput'];
             nameInput.value = '   ';
             
@@ -276,7 +242,6 @@ describe('AreaFormComponent', () => {
         });
 
         it.skip('should validate display order as valid number', async () => {
-            if (!component) throw new Error("Component not initialized in Form Validation test");
             // TODO: This test is failing because mockedShowToastFn is not registering the call from the component.
             // Similar to the issue in product-form.component.test.ts.
             // Skipping for now.
@@ -294,7 +259,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should submit valid form data for new area', async () => {
-            if (!component) throw new Error("Component not initialized in Form Validation test");
             const nameInput = component['nameInput'];
             const descInput = component['descriptionInput'];
             const displayOrderInput = component['displayOrderInput'];
@@ -315,7 +279,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should submit valid form data for existing area', async () => {
-            if (!component) throw new Error("Component not initialized in Form Validation test");
             component.currentEditingArea = mockArea;
             
             const nameInput = component['nameInput'];
@@ -338,7 +301,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should handle empty description as undefined', async () => {
-            if (!component) throw new Error("Component not initialized in Form Validation test");
             const nameInput = component['nameInput'];
             const descInput = component['descriptionInput'];
             
@@ -357,7 +319,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should handle empty display order as undefined', async () => {
-            if (!component) throw new Error("Component not initialized in Form Validation test");
             const nameInput = component['nameInput'];
             const displayOrderInput = component['displayOrderInput'];
             
@@ -376,7 +337,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should prevent default form submission', async () => {
-            if (!component) throw new Error("Component not initialized in Form Validation test");
             const nameInput = component['nameInput'];
             nameInput.value = 'Valid Name';
             
@@ -389,7 +349,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should handle submission callback errors gracefully', async () => {
-            if (!component) throw new Error("Component not initialized in Form Validation test");
             const error = new Error('Submission failed');
             mockOnSubmit.mockRejectedValue(error);
             
@@ -409,7 +368,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should focus name input on validation error', async () => {
-            if (!component) throw new Error("Component not initialized in Form Validation test");
             const nameInput = component['nameInput'];
             const focusSpy = jest.spyOn(nameInput, 'focus').mockImplementation();
             
@@ -422,7 +380,6 @@ describe('AreaFormComponent', () => {
         });
 
         it.skip('should focus display order input on validation error', async () => {
-            if (!component) throw new Error("Component not initialized in Form Validation test");
             // Skipped because it's related to the skipped 'should validate display order as valid number'
             const nameInput = component['nameInput'];
             const displayOrderInput = component['displayOrderInput'];
@@ -439,23 +396,12 @@ describe('AreaFormComponent', () => {
     });
 
     describe('Cancel Handling', () => {
-        beforeEach(() => {
-            const options: AreaFormComponentOptions = {
-                onSubmit: mockOnSubmit,
-                onCancel: mockOnCancel
-            };
-            component = new AreaFormComponent(options);
-            if (!component) throw new Error("Component not initialized in Cancel Handling test");
-        });
-
         it('should call cancel callback', () => {
-            if (!component) throw new Error("Component not initialized in Cancel Handling test");
             component['handleCancel']();
             expect(mockOnCancel).toHaveBeenCalled();
         });
 
         it('should handle missing cancel button gracefully', () => {
-            if (!component) throw new Error("Component not initialized in Cancel Handling test");
             const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
             
             // Remove cancel button
@@ -472,17 +418,7 @@ describe('AreaFormComponent', () => {
     });
 
     describe('Show/Hide Methods', () => {
-        beforeEach(() => {
-            const options: AreaFormComponentOptions = {
-                onSubmit: mockOnSubmit,
-                onCancel: mockOnCancel
-            };
-            component = new AreaFormComponent(options);
-            if (!component) throw new Error("Component not initialized in Show/Hide Methods test");
-        });
-
         it('should show form for new area', () => {
-            if (!component) throw new Error("Component not initialized in Show/Hide Methods test");
             const focusSpy = jest.spyOn(component['nameInput'], 'focus').mockImplementation();
             
             component.show();
@@ -496,7 +432,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should show form for existing area', () => {
-            if (!component) throw new Error("Component not initialized in Show/Hide Methods test");
             const focusSpy = jest.spyOn(component['nameInput'], 'focus').mockImplementation();
             
             component.show(mockArea);
@@ -510,7 +445,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should update form title when showing for edit', () => {
-            if (!component) throw new Error("Component not initialized in Show/Hide Methods test");
             component.show(mockArea);
             
             const titleElement = component.getElement().querySelector('#area-form-title-comp');
@@ -518,7 +452,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should update submit button text when showing for edit', () => {
-            if (!component) throw new Error("Component not initialized in Show/Hide Methods test");
             component.show(mockArea);
             
             const submitButton = component.getElement().querySelector('button[type="submit"]');
@@ -526,7 +459,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should handle area with undefined displayOrder', () => {
-            if (!component) throw new Error("Component not initialized in Show/Hide Methods test");
             const areaWithoutOrder: Area = {
                 id: 'area-no-order',
                 name: 'No Order Area',
@@ -541,7 +473,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should hide form and reset editing state', () => {
-            if (!component) throw new Error("Component not initialized in Show/Hide Methods test");
             component.currentEditingArea = mockArea;
             component.getElement().style.display = 'block'; // Use getElement()
             
@@ -553,17 +484,7 @@ describe('AreaFormComponent', () => {
     });
 
     describe('Edge Cases and Error Handling', () => {
-        beforeEach(() => {
-            const options: AreaFormComponentOptions = {
-                onSubmit: mockOnSubmit,
-                onCancel: mockOnCancel
-            };
-            component = new AreaFormComponent(options);
-            if (!component) throw new Error("Component not initialized in Edge Cases test");
-        });
-
         it('should handle very large display order numbers', async () => {
-            if (!component) throw new Error("Component not initialized in Edge Cases test");
             const nameInput = component['nameInput'];
             const displayOrderInput = component['displayOrderInput'];
             
@@ -582,7 +503,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should handle negative display order numbers', async () => {
-            if (!component) throw new Error("Component not initialized in Edge Cases test");
             const nameInput = component['nameInput'];
             const displayOrderInput = component['displayOrderInput'];
             
@@ -601,7 +521,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should handle decimal display order numbers', async () => {
-            if (!component) throw new Error("Component not initialized in Edge Cases test");
             const nameInput = component['nameInput'];
             const displayOrderInput = component['displayOrderInput'];
             
@@ -620,7 +539,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should handle form submission with trimmed whitespace', async () => {
-            if (!component) throw new Error("Component not initialized in Edge Cases test");
             const nameInput = component['nameInput'];
             const descInput = component['descriptionInput'];
             
@@ -639,7 +557,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should handle special characters in input values', async () => {
-            if (!component) throw new Error("Component not initialized in Edge Cases test");
             const nameInput = component['nameInput'];
             const descInput = component['descriptionInput'];
             
@@ -659,17 +576,7 @@ describe('AreaFormComponent', () => {
     });
 
     describe('Integration with Dependencies', () => {
-        beforeEach(() => {
-            const options: AreaFormComponentOptions = {
-                onSubmit: mockOnSubmit,
-                onCancel: mockOnCancel
-            };
-            component = new AreaFormComponent(options);
-            if (!component) throw new Error("Component not initialized in Integration test");
-        });
-
         it('should use escapeHtml for all displayed values', () => {
-            if (!component) throw new Error("Component not initialized in Integration test");
             component.currentEditingArea = mockArea;
             component.render();
             
@@ -678,7 +585,6 @@ describe('AreaFormComponent', () => {
         });
 
         it('should show toast notifications for validation errors', async () => {
-            if (!component) throw new Error("Component not initialized in Integration test");
             const nameInput = component['nameInput'];
             nameInput.value = '';
             

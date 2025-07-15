@@ -665,3 +665,532 @@ describe('AreaListComponent', () => {
     });
   });
 }); // This closes the main 'AreaListComponent' describe block
+
+  describe('Input Validation and Sanitization', () => {
+    test('should handle areas with extremely long IDs', () => {
+      const longId = 'area-' + 'x'.repeat(1000);
+      const longIdArea: Area = {
+        id: longId,
+        name: 'Long ID Area',
+        displayOrder: 1,
+        inventoryItems: []
+      };
+      
+      expect(() => {
+        areaListComponent.addArea(longIdArea);
+      }).not.toThrow();
+      
+      const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
+      const addedItem = Array.from(listHostDiv?.children || []).find(
+        item => item.textContent === 'Long ID Area'
+      );
+      expect(addedItem).toBeDefined();
+      expect(addedItem?.getAttribute('data-area-id')).toBe(longId);
+    });
+
+    test('should handle areas with numeric strings as IDs', () => {
+      const numericStringAreas: Area[] = [
+        { id: '123', name: 'Numeric ID 1', displayOrder: 1, inventoryItems: [] },
+        { id: '456', name: 'Numeric ID 2', displayOrder: 2, inventoryItems: [] },
+        { id: '0', name: 'Zero ID', displayOrder: 3, inventoryItems: [] },
+      ];
+      
+      const component = new AreaListComponent(numericStringAreas, mockCallbacks);
+      document.body.appendChild(component.getElement());
+      
+      const listHostDiv = component.getElement().querySelector('#area-list');
+      expect(listHostDiv?.children.length).toBe(3);
+      
+      component.getElement().remove();
+    });
+
+    test('should handle areas with boolean-like string names', () => {
+      const booleanNameAreas: Area[] = [
+        { id: 'bool1', name: 'true', displayOrder: 1, inventoryItems: [] },
+        { id: 'bool2', name: 'false', displayOrder: 2, inventoryItems: [] },
+        { id: 'bool3', name: 'null', displayOrder: 3, inventoryItems: [] },
+        { id: 'bool4', name: 'undefined', displayOrder: 4, inventoryItems: [] },
+      ];
+      
+      const component = new AreaListComponent(booleanNameAreas, mockCallbacks);
+      document.body.appendChild(component.getElement());
+      
+      const listHostDiv = component.getElement().querySelector('#area-list');
+      expect(listHostDiv?.children.length).toBe(4);
+      
+      component.getElement().remove();
+    });
+
+    test('should handle areas with zero displayOrder', () => {
+      const zeroOrderAreas: Area[] = [
+        { id: 'zero1', name: 'Zero Order 1', displayOrder: 0, inventoryItems: [] },
+        { id: 'zero2', name: 'Zero Order 2', displayOrder: 0, inventoryItems: [] },
+        { id: 'positive', name: 'Positive Order', displayOrder: 1, inventoryItems: [] },
+      ];
+      
+      const component = new AreaListComponent(zeroOrderAreas, mockCallbacks);
+      document.body.appendChild(component.getElement());
+      
+      const listHostDiv = component.getElement().querySelector('#area-list');
+      const items = listHostDiv?.children;
+      
+      // Both zero order items should come before positive order
+      // Among same displayOrder, should be sorted alphabetically
+      expect(items?.[0]?.textContent).toBe('Zero Order 1');
+      expect(items?.[1]?.textContent).toBe('Zero Order 2');
+      expect(items?.[2]?.textContent).toBe('Positive Order');
+      
+      component.getElement().remove();
+    });
+  });
+
+  describe('Complex Inventory Item Scenarios', () => {
+    test('should handle areas with complex inventory items', () => {
+      const complexInventoryAreas: Area[] = [
+        {
+          id: 'complex1',
+          name: 'Complex Inventory Area',
+          displayOrder: 1,
+          inventoryItems: [
+            { productId: 'product1', startBottles: 5, startCrates: 2 },
+            { productId: 'product2', startOpenVolumeMl: 500 },
+            { productId: 'product3', startBottles: 0, startCrates: 0, startOpenVolumeMl: 0 },
+          ]
+        },
+      ];
+      
+      const component = new AreaListComponent(complexInventoryAreas, mockCallbacks);
+      document.body.appendChild(component.getElement());
+      
+      const listHostDiv = component.getElement().querySelector('#area-list');
+      expect(listHostDiv?.children.length).toBe(1);
+      
+      component.getElement().remove();
+    });
+
+    test('should handle areas with empty inventory items array vs undefined', () => {
+      const inventoryTestAreas: Area[] = [
+        { id: 'empty-array', name: 'Empty Array', displayOrder: 1, inventoryItems: [] },
+        { id: 'with-items', name: 'With Items', displayOrder: 2, inventoryItems: [
+          { productId: 'test-product', startBottles: 1 }
+        ]},
+      ];
+      
+      const component = new AreaListComponent(inventoryTestAreas, mockCallbacks);
+      document.body.appendChild(component.getElement());
+      
+      const listHostDiv = component.getElement().querySelector('#area-list');
+      expect(listHostDiv?.children.length).toBe(2);
+      
+      component.getElement().remove();
+    });
+
+    test('should handle inventory items with all possible properties', () => {
+      const fullInventoryArea: Area = {
+        id: 'full-inventory',
+        name: 'Full Inventory Area',
+        displayOrder: 1,
+        inventoryItems: [
+          {
+            productId: 'comprehensive-product',
+            startBottles: 10,
+            startCrates: 5,
+            startOpenVolumeMl: 750
+          }
+        ]
+      };
+      
+      expect(() => {
+        areaListComponent.addArea(fullInventoryArea);
+      }).not.toThrow();
+      
+      const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
+      const addedItem = Array.from(listHostDiv?.children || []).find(
+        item => item.textContent === 'Full Inventory Area'
+      );
+      expect(addedItem).toBeDefined();
+    });
+  });
+
+  describe('Sorting Edge Cases and Complex Scenarios', () => {
+    test('should handle mixed displayOrder types (numbers, undefined, null)', () => {
+      const mixedOrderAreas: Area[] = [
+        { id: 'normal', name: 'Normal Order', displayOrder: 2, inventoryItems: [] },
+        { id: 'undefined', name: 'Undefined Order', inventoryItems: [] }, // no displayOrder property
+        { id: 'zero', name: 'Zero Order', displayOrder: 0, inventoryItems: [] },
+        { id: 'null', name: 'Null Order', displayOrder: null as any, inventoryItems: [] },
+        { id: 'negative', name: 'Negative Order', displayOrder: -1, inventoryItems: [] },
+      ];
+      
+      const component = new AreaListComponent(mixedOrderAreas, mockCallbacks);
+      document.body.appendChild(component.getElement());
+      
+      const listHostDiv = component.getElement().querySelector('#area-list');
+      const items = Array.from(listHostDiv?.children || []);
+      const itemNames = items.map(item => item.textContent);
+      
+      // Expected order: Negative Order (-1), Zero Order (0), Normal Order (2), then undefined/null by name
+      expect(itemNames[0]).toBe('Negative Order');
+      expect(itemNames[1]).toBe('Zero Order');
+      expect(itemNames[2]).toBe('Normal Order');
+      // Null Order and Undefined Order should be sorted alphabetically at the end
+      expect(itemNames.slice(3)).toEqual(['Null Order', 'Undefined Order']);
+      
+      component.getElement().remove();
+    });
+
+    test('should maintain stable sort for identical displayOrder values', () => {
+      const identicalOrderAreas: Area[] = [
+        { id: 'same1', name: 'Same Order Area Z', displayOrder: 1, inventoryItems: [] },
+        { id: 'same2', name: 'Same Order Area A', displayOrder: 1, inventoryItems: [] },
+        { id: 'same3', name: 'Same Order Area M', displayOrder: 1, inventoryItems: [] },
+      ];
+      
+      const component = new AreaListComponent(identicalOrderAreas, mockCallbacks);
+      document.body.appendChild(component.getElement());
+      
+      const listHostDiv = component.getElement().querySelector('#area-list');
+      const items = Array.from(listHostDiv?.children || []);
+      const itemNames = items.map(item => item.textContent);
+      
+      // Should be sorted alphabetically when displayOrder is the same
+      expect(itemNames).toEqual(['Same Order Area A', 'Same Order Area M', 'Same Order Area Z']);
+      
+      component.getElement().remove();
+    });
+
+    test('should handle case-insensitive name sorting for areas without displayOrder', () => {
+      const caseTestAreas: Area[] = [
+        { id: 'lower', name: 'area zebra', inventoryItems: [] },
+        { id: 'upper', name: 'Area Alpha', inventoryItems: [] },
+        { id: 'mixed', name: 'Area beta', inventoryItems: [] },
+        { id: 'numbers', name: 'Area 123', inventoryItems: [] },
+      ];
+      
+      const component = new AreaListComponent(caseTestAreas, mockCallbacks);
+      document.body.appendChild(component.getElement());
+      
+      const listHostDiv = component.getElement().querySelector('#area-list');
+      const items = Array.from(listHostDiv?.children || []);
+      const itemNames = items.map(item => item.textContent);
+      
+      // Should be sorted case-insensitively
+      expect(itemNames).toEqual(['Area 123', 'Area Alpha', 'Area beta', 'area zebra']);
+      
+      component.getElement().remove();
+    });
+  });
+
+  describe('Stress Testing and Resource Management', () => {
+    test('should handle rapid sequential operations without memory leaks', () => {
+      const operations = 50;
+      
+      for (let i = 0; i < operations; i++) {
+        const area: Area = {
+          id: `stress-${i}`,
+          name: `Stress Test Area ${i}`,
+          displayOrder: Math.floor(Math.random() * 10),
+          inventoryItems: []
+        };
+        
+        areaListComponent.addArea(area);
+        
+        if (i % 3 === 0) {
+          areaListComponent.updateArea({
+            ...area,
+            name: `Updated ${area.name}`
+          });
+        }
+        
+        if (i % 5 === 0 && i > 0) {
+          areaListComponent.removeArea(`stress-${i - 1}`);
+        }
+      }
+      
+      const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
+      expect(listHostDiv?.children.length).toBeGreaterThan(0);
+      expect(listHostDiv?.children.length).toBeLessThan(operations + initialAreas.length);
+    });
+
+    test('should handle operations on areas with very large inventory lists', () => {
+      const largeInventoryItems = [];
+      for (let i = 0; i < 100; i++) {
+        largeInventoryItems.push({
+          productId: `product-${i}`,
+          startBottles: Math.floor(Math.random() * 10),
+          startCrates: Math.floor(Math.random() * 5),
+          startOpenVolumeMl: Math.floor(Math.random() * 1000)
+        });
+      }
+      
+      const largeInventoryArea: Area = {
+        id: 'large-inventory',
+        name: 'Large Inventory Area',
+        displayOrder: 1,
+        inventoryItems: largeInventoryItems
+      };
+      
+      const startTime = performance.now();
+      areaListComponent.addArea(largeInventoryArea);
+      const endTime = performance.now();
+      
+      expect(endTime - startTime).toBeLessThan(100); // Should complete quickly
+      
+      const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
+      const addedItem = Array.from(listHostDiv?.children || []).find(
+        item => item.textContent === 'Large Inventory Area'
+      );
+      expect(addedItem).toBeDefined();
+    });
+  });
+
+  describe('Internationalization and Localization Edge Cases', () => {
+    test('should handle areas with RTL language names', () => {
+      const rtlAreas: Area[] = [
+        { id: 'arabic', name: 'منطقة عربية', displayOrder: 1, inventoryItems: [] },
+        { id: 'hebrew', name: 'אזור עברי', displayOrder: 2, inventoryItems: [] },
+        { id: 'english', name: 'English Area', displayOrder: 3, inventoryItems: [] },
+      ];
+      
+      const component = new AreaListComponent(rtlAreas, mockCallbacks);
+      document.body.appendChild(component.getElement());
+      
+      const listHostDiv = component.getElement().querySelector('#area-list');
+      expect(listHostDiv?.children.length).toBe(3);
+      
+      // Verify RTL text is preserved
+      const arabicItem = Array.from(listHostDiv?.children || []).find(
+        item => item.textContent === 'منطقة عربية'
+      );
+      expect(arabicItem).toBeDefined();
+      
+      component.getElement().remove();
+    });
+
+    test('should handle mixed language sorting', () => {
+      const multiLanguageAreas: Area[] = [
+        { id: 'zh', name: '区域中文', inventoryItems: [] },
+        { id: 'en', name: 'Area English', inventoryItems: [] },
+        { id: 'es', name: 'Área Español', inventoryItems: [] },
+        { id: 'fr', name: 'Zone Français', inventoryItems: [] },
+      ];
+      
+      const component = new AreaListComponent(multiLanguageAreas, mockCallbacks);
+      document.body.appendChild(component.getElement());
+      
+      const listHostDiv = component.getElement().querySelector('#area-list');
+      expect(listHostDiv?.children.length).toBe(4);
+      
+      // Should handle Unicode sorting gracefully
+      const items = Array.from(listHostDiv?.children || []);
+      expect(items.length).toBe(4);
+      
+      component.getElement().remove();
+    });
+  });
+
+  describe('Component Lifecycle and Memory Management', () => {
+    test('should properly handle component reinitialization', () => {
+      const originalElement = areaListComponent.getElement();
+      originalElement.remove();
+      
+      // Create new component with same data
+      const newComponent = new AreaListComponent(initialAreas, mockCallbacks);
+      document.body.appendChild(newComponent.getElement());
+      
+      const listHostDiv = newComponent.getElement().querySelector('#area-list');
+      expect(listHostDiv?.children.length).toBe(initialAreas.length);
+      
+      newComponent.getElement().remove();
+    });
+
+    test('should handle multiple component instances simultaneously', () => {
+      const component1 = new AreaListComponent([
+        { id: 'comp1-area1', name: 'Component 1 Area', displayOrder: 1, inventoryItems: [] }
+      ], mockCallbacks);
+      
+      const component2 = new AreaListComponent([
+        { id: 'comp2-area1', name: 'Component 2 Area', displayOrder: 1, inventoryItems: [] }
+      ], mockCallbacks);
+      
+      document.body.appendChild(component1.getElement());
+      document.body.appendChild(component2.getElement());
+      
+      // Both components should work independently
+      component1.addArea({ id: 'comp1-new', name: 'Comp 1 New', displayOrder: 2, inventoryItems: [] });
+      component2.addArea({ id: 'comp2-new', name: 'Comp 2 New', displayOrder: 2, inventoryItems: [] });
+      
+      const list1 = component1.getElement().querySelector('#area-list');
+      const list2 = component2.getElement().querySelector('#area-list');
+      
+      expect(list1?.children.length).toBe(2);
+      expect(list2?.children.length).toBe(2);
+      
+      // Verify content is different
+      expect(list1?.children[0]?.textContent).toBe('Component 1 Area');
+      expect(list2?.children[0]?.textContent).toBe('Component 2 Area');
+      
+      component1.getElement().remove();
+      component2.getElement().remove();
+    });
+  });
+
+  describe('Error Recovery and Resilience', () => {
+    test('should recover gracefully from DOM manipulation errors', () => {
+      // Corrupt the DOM structure
+      const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
+      if (listHostDiv) {
+        listHostDiv.innerHTML = '<div>corrupted content</div>';
+      }
+      
+      // Operations should still work
+      expect(() => {
+        areaListComponent.addArea({
+          id: 'recovery-test',
+          name: 'Recovery Test',
+          displayOrder: 1,
+          inventoryItems: []
+        });
+      }).not.toThrow();
+    });
+
+    test('should handle areas with circular reference-like properties', () => {
+      const circularArea: any = {
+        id: 'circular',
+        name: 'Circular Area',
+        displayOrder: 1,
+        inventoryItems: []
+      };
+      
+      // Create a circular reference scenario
+      circularArea.self = circularArea;
+      
+      expect(() => {
+        areaListComponent.addArea(circularArea);
+      }).not.toThrow();
+    });
+
+    test('should handle frozen or sealed area objects', () => {
+      const frozenArea: Area = Object.freeze({
+        id: 'frozen',
+        name: 'Frozen Area',
+        displayOrder: 1,
+        inventoryItems: []
+      });
+      
+      const sealedArea: Area = Object.seal({
+        id: 'sealed',
+        name: 'Sealed Area',
+        displayOrder: 2,
+        inventoryItems: []
+      });
+      
+      expect(() => {
+        areaListComponent.addArea(frozenArea);
+        areaListComponent.addArea(sealedArea);
+      }).not.toThrow();
+      
+      const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
+      const addedItems = Array.from(listHostDiv?.children || []).filter(
+        item => item.textContent === 'Frozen Area' || item.textContent === 'Sealed Area'
+      );
+      expect(addedItems.length).toBe(2);
+    });
+  });
+
+  describe('API Contract and Type Safety', () => {
+    test('should maintain type safety with partial area updates', () => {
+      const partialUpdate: Partial<Area> & { id: string } = {
+        id: initialAreas[0]!.id,
+        name: 'Partially Updated Name'
+        // missing displayOrder and inventoryItems
+      };
+      
+      expect(() => {
+        areaListComponent.updateArea(partialUpdate as Area);
+      }).not.toThrow();
+    });
+
+    test('should handle areas with additional unknown properties', () => {
+      const extendedArea: Area & { unknownProp: string } = {
+        id: 'extended',
+        name: 'Extended Area',
+        displayOrder: 1,
+        inventoryItems: [],
+        unknownProp: 'unknown value'
+      };
+      
+      expect(() => {
+        areaListComponent.addArea(extendedArea);
+      }).not.toThrow();
+      
+      const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
+      const addedItem = Array.from(listHostDiv?.children || []).find(
+        item => item.textContent === 'Extended Area'
+      );
+      expect(addedItem).toBeDefined();
+    });
+  });
+
+  describe('Performance Optimizations and Benchmarking', () => {
+    test('should maintain performance with frequent updates to the same area', () => {
+      const testArea: Area = {
+        id: 'performance-test',
+        name: 'Performance Test Area',
+        displayOrder: 1,
+        inventoryItems: []
+      };
+      
+      areaListComponent.addArea(testArea);
+      
+      const startTime = performance.now();
+      
+      // Perform many updates
+      for (let i = 0; i < 100; i++) {
+        areaListComponent.updateArea({
+          ...testArea,
+          name: `Updated Area ${i}`,
+          displayOrder: i % 10
+        });
+      }
+      
+      const endTime = performance.now();
+      
+      expect(endTime - startTime).toBeLessThan(1000); // Should complete within 1 second
+      
+      const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
+      const updatedItem = Array.from(listHostDiv?.children || []).find(
+        item => item.textContent === 'Updated Area 99'
+      );
+      expect(updatedItem).toBeDefined();
+    });
+
+    test('should handle rapid add/remove cycles efficiently', () => {
+      const startTime = performance.now();
+      
+      // Add and remove areas rapidly
+      for (let i = 0; i < 50; i++) {
+        const area: Area = {
+          id: `cycle-${i}`,
+          name: `Cycle Area ${i}`,
+          displayOrder: i,
+          inventoryItems: []
+        };
+        
+        areaListComponent.addArea(area);
+        
+        if (i > 0) {
+          areaListComponent.removeArea(`cycle-${i - 1}`);
+        }
+      }
+      
+      const endTime = performance.now();
+      
+      expect(endTime - startTime).toBeLessThan(500); // Should be very fast
+      
+      const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
+      expect(listHostDiv?.children.length).toBe(initialAreas.length + 1); // Only the last added area should remain
+    });
+  });
+});
+

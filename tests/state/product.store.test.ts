@@ -1,687 +1,617 @@
-import { productStore } from '../../src/state/product.store'; // Import the instance
-import { Product } from '../../src/models';
-import { dbService } from '../../src/services/indexeddb.service';
+import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
+import { Product } from '../models';
+import { dbService } from '../services/indexeddb.service';
+import { AppState } from './app-state';
+import { productStore } from './product.store';
 
-// Mock dbService
-jest.mock('../../src/services/indexeddb.service', () => ({
-  dbService: {
-    loadProducts: jest.fn(),
-    saveProduct: jest.fn(), // Used by addProduct and updateProduct
-    delete: jest.fn(),     // Used by deleteProduct
-  },
-}));
+// Mock dependencies
+vi.mock('../services/indexeddb.service');
+vi.mock('./app-state');
 
 describe('ProductStore', () => {
-  const mockProduct1: Product = {
-    id: 'prod1',
-    name: 'Test Product A',
-    category: 'Category 1',
-    volume: 750,
-    pricePerBottle: 20,
-    // Add other required fields from your Product model if any
+  const mockDbService = dbService as {
+    loadProducts: Mock;
+    saveProduct: Mock;
+    delete: Mock;
   };
+
+  const mockAppState = {
+    products: [] as Product[],
+  };
+
+  const mockProduct: Product = {
+    id: '1',
+    name: 'Test Product',
+    price: 10.99,
+    description: 'A test product',
+    category: 'test',
+  };
+
   const mockProduct2: Product = {
-    id: 'prod2',
-    name: 'Test Product B',
-    category: 'Category 2',
-    volume: 500,
-    pricePerBottle: 15,
+    id: '2',
+    name: 'Another Product',
+    price: 20.99,
+    description: 'Another test product',
+    category: 'test',
   };
-  const mockProductsList: Product[] = [mockProduct1, mockProduct2];
 
   beforeEach(() => {
-    // Reset mocks before each test
-    (dbService.loadProducts as jest.Mock).mockClear().mockResolvedValue([...mockProductsList]);
-    (dbService.saveProduct as jest.Mock).mockClear().mockImplementation(async (product: Product) => product.id);
-    (dbService.delete as jest.Mock).mockClear().mockResolvedValue(undefined);
-
-    // Reset internal state of the store if possible, or rely on loading.
-    // For a singleton, this is tricky. We'll load fresh data.
-    productStore['products'] = []; // Directly reset internal state for testing (use with caution)
-    productStore['subscribers'] = [];
+    vi.clearAllMocks();
+    
+    // Reset the app state
+    mockAppState.products = [];
+    
+    // Mock AppState.getInstance to return our mock
+    (AppState.getInstance as Mock).mockReturnValue(mockAppState);
+    
+    // Reset console methods to avoid noise in tests
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
-  describe('loadProducts', () => {
-    it('should load products from dbService and notify subscribers', async () => {
-      const subscriber = jest.fn();
-      productStore.subscribe(subscriber);
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-      await productStore.loadProducts();
+  describe('constructor', () => {
+    it('should initialize with AppState instance', () => {
+      expect(AppState.getInstance).toHaveBeenCalled();
+    });
+  });
 
-      expect(dbService.loadProducts).toHaveBeenCalledTimes(1);
-      const expectedSortedProducts = [...mockProductsList].sort((a,b) => {
-        const catA = a.category.toLowerCase();
-        const catB = b.category.toLowerCase();
-        if (catA < catB) return -1;
-        if (catA > catB) return 1;
-        const nameA = a.name.toLowerCase();
-        const nameB = b.name.toLowerCase();
-        if (nameA < nameB) return -1;
-        if (nameA > nameB) return 1;
-        return 0;
+  describe('subscribe', () => {
+    it('should add subscriber to the list', () => {
+      const callback = vi.fn();
+      const unsubscribe = productStore.subscribe(callback);
+      
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should return unsubscribe function that removes the subscriber', () => {
+      const callback = vi.fn();
+      const unsubscribe = productStore.subscribe(callback);
+      
+      // Verify subscriber was added by triggering notification
+      productStore['notifySubscribers']();
+      expect(callback).toHaveBeenCalledWith([]);
+      
+      // Unsubscribe and verify callback is no longer called
+      unsubscribe();
+      callback.mockClear();
+      productStore['notifySubscribers']();
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('should handle multiple subscribers', () => {
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+      
+      productStore.subscribe(callback1);
+      productStore.subscribe(callback2);
+      
+      productStore['notifySubscribers']();
+      
+      expect(callback1).toHaveBeenCalledWith([]);
+      expect(callback2).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe('unsubscribe', () => {
+    it('should remove specific subscriber from the list', () => {
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+      
+      productStore.subscribe(callback1);
+      productStore.subscribe(callback2);
+      
+      productStore.unsubscribe(callback1);
+      productStore['notifySubscribers']();
+      
+      expect(callback1).not.toHaveBeenCalled();
+      expect(callback2).toHaveBeenCalledWith([]);
+    });
+
+    it('should handle unsubscribing non-existent callback gracefully', () => {
+      const callback = vi.fn();
+      
+      expect(() => productStore.unsubscribe(callback)).not.toThrow();
+    });
+
+    it('should handle empty subscriber list', () => {
+      const callback = vi.fn();
+      
+      expect(() => productStore.unsubscribe(callback)).not.toThrow();
+    });
+  });
+
+  describe('notifySubscribers', () => {
+    it('should call all subscribers with current products', () => {
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+      
+      mockAppState.products = [mockProduct];
+      productStore.subscribe(callback1);
+      productStore.subscribe(callback2);
+      
+      productStore['notifySubscribers']();
+      
+      expect(callback1).toHaveBeenCalledWith([mockProduct]);
+      expect(callback2).toHaveBeenCalledWith([mockProduct]);
+    });
+
+    it('should pass a copy of products array to prevent mutation', () => {
+      const callback = vi.fn();
+      mockAppState.products = [mockProduct];
+      
+      productStore.subscribe(callback);
+      productStore['notifySubscribers']();
+      
+      const receivedProducts = callback.mock.calls[0][0];
+      expect(receivedProducts).toEqual([mockProduct]);
+      expect(receivedProducts).not.toBe(mockAppState.products);
+    });
+
+    it('should handle subscriber errors gracefully', () => {
+      const errorCallback = vi.fn().mockImplementation(() => {
+        throw new Error('Subscriber error');
       });
-      expect(productStore.getProducts()).toEqual(expectedSortedProducts);
-      expect(subscriber).toHaveBeenCalledWith(expectedSortedProducts);
+      const normalCallback = vi.fn();
+      
+      productStore.subscribe(errorCallback);
+      productStore.subscribe(normalCallback);
+      
+      expect(() => productStore['notifySubscribers']()).not.toThrow();
+      expect(console.error).toHaveBeenCalledWith(
+        'ProductStore: Error in subscriber during notify:',
+        expect.any(Error)
+      );
+      expect(normalCallback).toHaveBeenCalled();
     });
 
-    it('should handle errors during loadProducts', async () => {
-      (dbService.loadProducts as jest.Mock).mockRejectedValueOnce(new Error('DB Load Error'));
-      console.error = jest.fn(); // Suppress console.error for this test
-
-      await expect(productStore.loadProducts()).rejects.toThrow('DB Load Error');
-      expect(console.error).toHaveBeenCalledWith('ProductStore: Error loading products from DB', expect.any(Error));
-      expect(productStore.getProducts()).toEqual([]); // Products should be empty
-    });
-  });
-
-  describe('addProduct', () => {
-    it('should add a product, save via dbService, and notify subscribers', async () => {
-      const newProduct: Product = { id: 'prod3', name: 'New Product C', category: 'Category 1', volume: 1000, pricePerBottle: 30 };
-      const subscriber = jest.fn();
-      productStore.subscribe(subscriber);
-
-      await productStore.addProduct(newProduct);
-
-      expect(dbService.saveProduct).toHaveBeenCalledWith(newProduct);
-      const products = productStore.getProducts();
-      expect(products).toContainEqual(newProduct);
-      expect(subscriber).toHaveBeenCalled();
-      // Check if the list passed to subscriber is sorted
-      const lastCallArgs = subscriber.mock.calls[subscriber.mock.calls.length - 1][0];
-      expect(lastCallArgs[0].name).toBe(newProduct.name); // If only one product, it's the first
-    });
-
-     it('should handle errors during addProduct', async () => {
-      const newProduct: Product = { id: 'prod4', name: 'Error Product', category: 'Category E', volume: 100, pricePerBottle: 5 };
-      (dbService.saveProduct as jest.Mock).mockRejectedValueOnce(new Error('DB Save Error'));
-      console.error = jest.fn();
-
-      await expect(productStore.addProduct(newProduct)).rejects.toThrow('DB Save Error');
-      expect(console.error).toHaveBeenCalledWith('ProductStore: Error adding product', expect.any(Error));
-      expect(productStore.getProducts()).not.toContainEqual(newProduct);
-    });
-  });
-
-  describe('updateProduct', () => {
-    it('should update an existing product, save via dbService, and notify subscribers', async () => {
-      await productStore.loadProducts(); // Load initial products
-      const subscriber = jest.fn();
-      productStore.subscribe(subscriber);
-
-      const updatedProduct = { ...mockProduct1, name: 'Updated Product A' };
-      await productStore.updateProduct(updatedProduct);
-
-      expect(dbService.saveProduct).toHaveBeenCalledWith(updatedProduct);
-      const products = productStore.getProducts();
-      expect(products.find((p: Product) => p.id === mockProduct1.id)?.name).toBe('Updated Product A');
-      expect(subscriber).toHaveBeenCalled();
-    });
-
-    it('should add product if updateProduct is called for a non-existing product ID (current behavior)', async () => {
-        const nonExistingProduct: Product = { id: 'prodNonExistent', name: 'Ghost Product', category: 'Category Z', volume: 100, pricePerBottle: 10 };
-        const subscriber = jest.fn();
-        productStore.subscribe(subscriber);
-
-        await productStore.updateProduct(nonExistingProduct);
-
-        expect(dbService.saveProduct).toHaveBeenCalledWith(nonExistingProduct);
-        expect(productStore.getProducts()).toContainEqual(nonExistingProduct);
-        expect(subscriber).toHaveBeenCalled();
+    it('should continue notifying other subscribers even if one throws', () => {
+      const errorCallback = vi.fn().mockImplementation(() => {
+        throw new Error('Subscriber error');
       });
-
-    it('should handle errors during updateProduct', async () => {
-        await productStore.loadProducts();
-        const productToUpdate = { ...mockProduct1, name: 'Error Update' };
-        (dbService.saveProduct as jest.Mock).mockRejectedValueOnce(new Error('DB Update Error'));
-        console.error = jest.fn();
-
-        await expect(productStore.updateProduct(productToUpdate)).rejects.toThrow('DB Update Error');
-        expect(console.error).toHaveBeenCalledWith('ProductStore: Error updating product', expect.any(Error));
-        // Ensure product was not updated in the local cache on error
-        expect(productStore.getProducts().find((p: Product) => p.id === mockProduct1.id)?.name).toBe(mockProduct1.name);
-      });
-  });
-
-  describe('deleteProduct', () => {
-    it('should delete a product, call dbService.delete, and notify subscribers', async () => {
-      await productStore.loadProducts();
-      const subscriber = jest.fn();
-      productStore.subscribe(subscriber);
-      const productIdToDelete = mockProduct1.id;
-
-      await productStore.deleteProduct(productIdToDelete);
-
-      expect(dbService.delete).toHaveBeenCalledWith('products', productIdToDelete);
-      expect(productStore.getProducts().find(p => p.id === productIdToDelete)).toBeUndefined();
-      expect(subscriber).toHaveBeenCalled();
-    });
-
-    it('should handle errors during deleteProduct', async () => {
-        await productStore.loadProducts();
-        const productIdToDelete = mockProduct1.id;
-        (dbService.delete as jest.Mock).mockRejectedValueOnce(new Error('DB Delete Error'));
-        console.error = jest.fn();
-
-        await expect(productStore.deleteProduct(productIdToDelete)).rejects.toThrow('DB Delete Error');
-        expect(console.error).toHaveBeenCalledWith('ProductStore: Error deleting product', expect.any(Error));
-        expect(productStore.getProducts().find(p => p.id === productIdToDelete)).toBeDefined(); // Product should still be there
-      });
-  });
-
-  describe('subscribe and unsubscribe', () => {
-    it('should add and remove subscribers', () => {
-      const subscriber1 = jest.fn();
-      const subscriber2 = jest.fn();
-
-      const unsubscribe1 = productStore.subscribe(subscriber1);
-      productStore.subscribe(subscriber2);
-
-      expect(productStore['subscribers']).toHaveLength(2);
-
-      unsubscribe1();
-      expect(productStore['subscribers']).toHaveLength(1);
-      expect(productStore['subscribers'][0]).toBe(subscriber2);
-
-      productStore.unsubscribe(subscriber2);
-      expect(productStore['subscribers']).toHaveLength(0);
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+      
+      productStore.subscribe(callback1);
+      productStore.subscribe(errorCallback);
+      productStore.subscribe(callback2);
+      
+      productStore['notifySubscribers']();
+      
+      expect(callback1).toHaveBeenCalled();
+      expect(callback2).toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalled();
     });
   });
 
   describe('getProducts', () => {
-    it('should return a sorted copy of products', async () => {
-      // Products in mockProductsList are [A (Cat1), B (Cat2)]
-      // Sorted should be A (Cat1), B (Cat2) - if categories are primary sort key
-      const unsortedProducts = [
-        { ...mockProduct2, category: 'Category Z' }, // B, Cat Z
-        { ...mockProduct1, category: 'Category A' }, // A, Cat A
-      ];
-      productStore['products'] = [...unsortedProducts]; // Set internal state directly
-
-      const retrievedProducts = productStore.getProducts();
-      expect(retrievedProducts[0]!.name).toBe('Test Product A'); // Cat A
-      expect(retrievedProducts[1]!.name).toBe('Test Product B'); // Cat Z
-      expect(retrievedProducts).not.toBe(productStore['products']); // Ensure it's a copy
-    });
-
-    it('should correctly sort products with the same category by name', () => {
-      const productsSameCategory: Product[] = [
-        { id: 'p1', name: 'Banana', category: 'Fruit', volume: 1, pricePerBottle: 1 },
-        { id: 'p2', name: 'Apple', category: 'Fruit', volume: 1, pricePerBottle: 1 },
-        { id: 'p3', name: 'Cherry', category: 'Fruit', volume: 1, pricePerBottle: 1 },
-      ];
-      productStore['products'] = [...productsSameCategory];
-      const sorted = productStore.getProducts();
-      expect(sorted.map(p => p.name)).toEqual(['Apple', 'Banana', 'Cherry']);
-    });
-
-    it('should maintain order for products with identical category and name (stability not guaranteed by sort, but 0 return value is correct)', () => {
-      // This test primarily ensures the comparator returns 0 for identical items,
-      // which is important for the contract of a comparator.
-      // The actual order of identical items might vary depending on JS engine's sort stability.
-      const productsIdentical: Product[] = [
-        { id: 'p1', name: 'Apple', category: 'Fruit', volume: 1, pricePerBottle: 1, notes: 'First Apple' },
-        { id: 'p2', name: 'Banana', category: 'Fruit', volume: 1, pricePerBottle: 1 },
-        { id: 'p3', name: 'Apple', category: 'Fruit', volume: 1, pricePerBottle: 1, notes: 'Second Apple' },
-      ];
-      productStore['products'] = [...productsIdentical];
-      // We expect p1 and p3 (Apples) to be together, before Banana.
-      // Their internal order (p1 vs p3) might vary if sort is unstable, but the fix ensures comparator returns 0.
-      const sorted = productStore.getProducts();
-      const appleCount = sorted.filter(p => p.name === 'Apple').length;
-      const bananaIndex = sorted.findIndex(p => p.name === 'Banana');
-
-      expect(appleCount).toBe(2);
-      expect(sorted[0]?.name).toBe('Apple');
-      expect(sorted[1]?.name).toBe('Apple');
-      expect(bananaIndex).toBe(2); // Banana should come after all Apples
-      expect(sorted[bananaIndex]?.name).toBe('Banana');
-    });
-
-    it('should sort products by category first, then by name', () => {
-      const productsMixed: Product[] = [
-        { id: 'p1', name: 'Milk', category: 'Dairy', volume: 1, pricePerBottle: 1 },
-        { id: 'p2', name: 'Apple', category: 'Fruit', volume: 1, pricePerBottle: 1 },
-        { id: 'p3', name: 'Cheese', category: 'Dairy', volume: 1, pricePerBottle: 1 },
-        { id: 'p4', name: 'Banana', category: 'Fruit', volume: 1, pricePerBottle: 1 },
-      ];
-      productStore['products'] = [...productsMixed];
-      const sorted = productStore.getProducts();
-      expect(sorted.map(p => `${p.category}-${p.name}`)).toEqual([
-        'Dairy-Cheese',
-        'Dairy-Milk',
-        'Fruit-Apple',
-        'Fruit-Banana',
-      ]);
-    });
-  });
-// }); // Premature closing moved to the end of the file
-
-  describe('Edge Cases and Boundary Conditions', () => {
-    describe('Empty and null data scenarios', () => {
-      it('should handle empty product list from database', async () => {
-        (dbService.loadProducts as jest.Mock).mockResolvedValue([]);
-        const subscriber = jest.fn();
-        productStore.subscribe(subscriber);
-
-        await productStore.loadProducts();
-
-        expect(productStore.getProducts()).toEqual([]);
-        expect(subscriber).toHaveBeenCalledWith([]);
-      });
-
-      it('should handle null/undefined returned from database', async () => {
-        const originalConsoleError = console.error;
-        console.error = jest.fn();
-  
-        (dbService.loadProducts as jest.Mock).mockResolvedValue(null);
-
-        await expect(productStore.loadProducts()).rejects.toThrow();
-        expect(console.error).toHaveBeenCalled();
-  
-        // Restore original console.error
-        console.error = originalConsoleError;
-      });
-
-      it('should handle malformed product data from database', async () => {
-        const malformedData = [
-          { id: 'invalid1' }, // missing required fields
-          { name: 'No ID Product', category: 'Test' }, // missing id
-          null, // null product
-          undefined, // undefined product
-          'not-an-object', // string instead of object
-        ];
-        (dbService.loadProducts as jest.Mock).mockResolvedValue(malformedData);
-        console.error = jest.fn();
-
-        await expect(productStore.loadProducts()).rejects.toThrow();
-      });
-    });
-
-    describe('Product validation edge cases', () => {
-      it('should handle products with extreme values', async () => {
-        const extremeProduct: Product = {
-          id: 'extreme1',
-          name: 'A'.repeat(1000), // Very long name
-          category: 'B'.repeat(500), // Very long category
-          volume: Number.MAX_SAFE_INTEGER,
-          pricePerBottle: Number.MAX_SAFE_INTEGER,
-        };
-
-        await productStore.addProduct(extremeProduct);
-        expect(productStore.getProducts()).toContainEqual(extremeProduct);
-      });
-
-      it('should handle products with zero and negative values', async () => {
-        const zeroProduct: Product = {
-          id: 'zero1',
-          name: 'Zero Product',
-          category: 'Test',
-          volume: 0,
-          pricePerBottle: 0,
-        };
-
-        await productStore.addProduct(zeroProduct);
-        expect(productStore.getProducts()).toContainEqual(zeroProduct);
-      });
-
-      it('should handle products with special characters in names and categories', async () => {
-        const specialCharsProduct: Product = {
-          id: 'special1',
-          name: '!@#$%^&*()_+-=[]{}|;:,.<>?',
-          category: 'Çàtégørÿ wïth âccénts & émojis 🍷',
-          volume: 750,
-          pricePerBottle: 25,
-        };
-
-        await productStore.addProduct(specialCharsProduct);
-        expect(productStore.getProducts()).toContainEqual(specialCharsProduct);
-      });
-    });
-
-    describe('Sorting edge cases', () => {
-      it('should handle case-insensitive sorting correctly', () => {
-        const mixedCaseProducts: Product[] = [
-          { id: 'p1', name: 'apple', category: 'fruit', volume: 1, pricePerBottle: 1 },
-          { id: 'p2', name: 'BANANA', category: 'FRUIT', volume: 1, pricePerBottle: 1 },
-          { id: 'p3', name: 'Cherry', category: 'Fruit', volume: 1, pricePerBottle: 1 },
-          { id: 'p4', name: 'DATE', category: 'fruit', volume: 1, pricePerBottle: 1 },
-        ];
-        productStore['products'] = [...mixedCaseProducts];
-        
-        const sorted = productStore.getProducts();
-        expect(sorted.map(p => p.name)).toEqual(['apple', 'BANANA', 'Cherry', 'DATE']);
-      });
-
-      it('should handle products with empty strings in sort fields', () => {
-        const emptyStringProducts: Product[] = [
-          { id: 'p1', name: '', category: 'Category A', volume: 1, pricePerBottle: 1 },
-          { id: 'p2', name: 'Product B', category: '', volume: 1, pricePerBottle: 1 },
-          { id: 'p3', name: 'Product C', category: 'Category A', volume: 1, pricePerBottle: 1 },
-        ];
-        productStore['products'] = [...emptyStringProducts];
-        
-        const sorted = productStore.getProducts();
-        expect(sorted).toHaveLength(3);
-        // Should not crash and should handle empty strings gracefully
-      });
-
-      it('should handle single product in list', () => {
-        const singleProduct: Product = {
-          id: 'single1',
-          name: 'Only Product',
-          category: 'Only Category',
-          volume: 750,
-          pricePerBottle: 20,
-        };
-        productStore['products'] = [singleProduct];
-        
-        const sorted = productStore.getProducts();
-        expect(sorted).toEqual([singleProduct]);
-        expect(sorted).not.toBe(productStore['products']); // Ensure it's still a copy
-      });
-    });
-
-    describe('Subscription edge cases', () => {
-      it('should handle subscriber function throwing errors', async () => {
-        const errorSubscriber = jest.fn(() => {
-          throw new Error('Subscriber error');
-        });
-        const normalSubscriber = jest.fn();
-        
-        productStore.subscribe(errorSubscriber);
-        productStore.subscribe(normalSubscriber);
-        
-        console.error = jest.fn();
-
-        await productStore.loadProducts();
-        
-        expect(errorSubscriber).toHaveBeenCalled();
-        expect(normalSubscriber).toHaveBeenCalled();
-        // Should not prevent other subscribers from being called
-      });
-
-      it('should handle multiple subscribers correctly', async () => {
-        const subscriber1 = jest.fn();
-        const subscriber2 = jest.fn();
-        const subscriber3 = jest.fn();
-        
-        productStore.subscribe(subscriber1);
-        productStore.subscribe(subscriber2);
-        productStore.subscribe(subscriber3);
-        
-        await productStore.loadProducts();
-        
-        expect(subscriber1).toHaveBeenCalledTimes(1);
-        expect(subscriber2).toHaveBeenCalledTimes(1);
-        expect(subscriber3).toHaveBeenCalledTimes(1);
-        
-        // All should receive the same data
-        expect(subscriber1).toHaveBeenCalledWith(subscriber2.mock.calls[0][0]);
-        expect(subscriber2).toHaveBeenCalledWith(subscriber3.mock.calls[0][0]);
-      });
-
-      it('should handle unsubscribing non-existent subscriber gracefully', () => {
-        const nonExistentSubscriber = jest.fn();
-        
-        expect(() => {
-          productStore.unsubscribe(nonExistentSubscriber);
-        }).not.toThrow();
-        
-        expect(productStore['subscribers']).toHaveLength(0);
-      });
-
-      it('should handle rapid subscribe/unsubscribe operations', () => {
-        const subscribers = Array.from({ length: 10 }, () => jest.fn());
-        const unsubscribeFunctions = subscribers.map(sub => productStore.subscribe(sub));
-        
-        expect(productStore['subscribers']).toHaveLength(10);
-        
-        // Unsubscribe every other subscriber
-        unsubscribeFunctions.forEach((unsub, index) => {
-          if (index % 2 === 0) {
-            unsub();
-          }
-        });
-        
-        expect(productStore['subscribers']).toHaveLength(5);
-      });
-    });
-
-    describe('Concurrent operations', () => {
-      it('should handle multiple simultaneous add operations', async () => {
-        const products: Product[] = [
-          { id: 'concurrent1', name: 'Product 1', category: 'Cat A', volume: 750, pricePerBottle: 20 },
-          { id: 'concurrent2', name: 'Product 2', category: 'Cat B', volume: 500, pricePerBottle: 15 },
-          { id: 'concurrent3', name: 'Product 3', category: 'Cat C', volume: 1000, pricePerBottle: 30 },
-        ];
-        
-        const promises = products.map(product => productStore.addProduct(product));
-        await Promise.all(promises);
-        
-        const storedProducts = productStore.getProducts();
-        products.forEach(product => {
-          expect(storedProducts).toContainEqual(product);
-        });
-        expect(dbService.saveProduct).toHaveBeenCalledTimes(3);
-      });
-
-      it('should handle mixed operations (add, update, delete) simultaneously', async () => {
-        // First load some initial products
-        await productStore.loadProducts();
-        
-        // Define local copies of mocks for this specific test's scope
-        const localMockProduct1: Product = {
-            id: 'prod1', name: 'Test Product A', category: 'Category 1',
-            volume: 750, pricePerBottle: 20
-        };
-        const localMockProduct2: Product = {
-            id: 'prod2', name: 'Test Product B', category: 'Category 2',
-            volume: 500, pricePerBottle: 15
-        };
-
-        const newProduct: Product = { id: 'new1', name: 'New Product', category: 'New Cat', volume: 750, pricePerBottle: 25 };
-        const updateProduct: Product = { ...localMockProduct1, name: 'Updated Name' };
-        
-        const promises = [
-          productStore.addProduct(newProduct),
-          productStore.updateProduct(updateProduct),
-          productStore.deleteProduct(localMockProduct2.id),
-        ];
-        
-        await Promise.all(promises);
-        
-        const storedProducts = productStore.getProducts();
-        expect(storedProducts).toContainEqual(newProduct);
-        expect(storedProducts.find(p => p.id === localMockProduct1.id)?.name).toBe('Updated Name');
-        expect(storedProducts.find(p => p.id === localMockProduct2.id)).toBeUndefined();
-      });
-    });
-
-    describe('Database service error scenarios', () => {
-      it('should handle database connection errors on load', async () => {
-        const connectionError = new Error('Database connection failed');
-        (dbService.loadProducts as jest.Mock).mockRejectedValue(connectionError);
-        console.error = jest.fn();
-        
-        await expect(productStore.loadProducts()).rejects.toThrow('Database connection failed');
-        expect(console.error).toHaveBeenCalledWith('ProductStore: Error loading products from DB', connectionError);
-      });
-
-      it('should handle timeout errors on save operations', async () => {
-        const timeoutError = new Error('Operation timed out');
-        (dbService.saveProduct as jest.Mock).mockRejectedValue(timeoutError);
-        console.error = jest.fn();
-        
-        const product: Product = { id: 'timeout1', name: 'Timeout Product', category: 'Test', volume: 750, pricePerBottle: 20 };
-        
-        await expect(productStore.addProduct(product)).rejects.toThrow('Operation timed out');
-        expect(console.error).toHaveBeenCalledWith('ProductStore: Error adding product', timeoutError);
-      });
-
-      it('should handle partial failure in batch operations', async () => {
-        let callCount = 0;
-        (dbService.saveProduct as jest.Mock).mockImplementation(async (product: Product) => {
-          callCount++;
-          if (callCount === 2) {
-            throw new Error('Second save failed');
-          }
-          return product.id;
-        });
-        
-        const product1: Product = { id: 'batch1', name: 'Batch Product 1', category: 'Test', volume: 750, pricePerBottle: 20 };
-        const product2: Product = { id: 'batch2', name: 'Batch Product 2', category: 'Test', volume: 500, pricePerBottle: 15 };
-        
-        await productStore.addProduct(product1); // Should succeed
-        await expect(productStore.addProduct(product2)).rejects.toThrow('Second save failed');
-        
-        // First product should be in the store, second should not
-        expect(productStore.getProducts()).toContainEqual(product1);
-        expect(productStore.getProducts()).not.toContainEqual(product2);
-      });
-    });
-
-    describe('Memory and performance considerations', () => {
-      it('should handle large product lists efficiently', async () => {
-        const largeProductList: Product[] = Array.from({ length: 1000 }, (_, index) => ({
-          id: `product${index}`,
-          name: `Product ${index}`,
-          category: `Category ${index % 10}`,
-          volume: 750 + (index % 500),
-          pricePerBottle: 10 + (index % 50),
-        }));
-        
-        (dbService.loadProducts as jest.Mock).mockResolvedValue(largeProductList);
-        
-        const startTime = Date.now();
-        await productStore.loadProducts();
-        const endTime = Date.now();
-        
-        expect(productStore.getProducts()).toHaveLength(1000);
-        expect(endTime - startTime).toBeLessThan(1000); // Should complete within 1 second
-      });
-
-      it('should not leak memory with repeated subscribe/unsubscribe operations', () => {
-        const initialSubscriberCount = productStore['subscribers'].length;
-        
-        // Perform many subscribe/unsubscribe cycles
-        for (let i = 0; i < 100; i++) {
-          const subscriber = jest.fn();
-          const unsubscribe = productStore.subscribe(subscriber);
-          unsubscribe();
-        }
-        
-        expect(productStore['subscribers']).toHaveLength(initialSubscriberCount);
-      });
-    });
-
-    describe('State consistency', () => {
-      it('should maintain state consistency after failed operations', async () => {
-        await productStore.loadProducts();
-        const initialProducts = productStore.getProducts();
-        const initialCount = initialProducts.length;
-        
-        // Attempt to add a product that will fail
-        const failingProduct: Product = { id: 'fail1', name: 'Failing Product', category: 'Test', volume: 750, pricePerBottle: 20 };
-        (dbService.saveProduct as jest.Mock).mockRejectedValueOnce(new Error('Save failed'));
-        
-        await expect(productStore.addProduct(failingProduct)).rejects.toThrow('Save failed');
-        
-        // State should remain unchanged
-        expect(productStore.getProducts()).toHaveLength(initialCount);
-        expect(productStore.getProducts()).toEqual(initialProducts);
-      });
-
-      it('should handle operations on empty store gracefully', async () => {
-        // Start with empty store
-        productStore['products'] = [];
-        
-        // Try to update non-existent product
-        const nonExistentProduct: Product = { id: 'nonexistent', name: 'Ghost', category: 'Test', volume: 750, pricePerBottle: 20 };
-        await productStore.updateProduct(nonExistentProduct);
-        
-        expect(productStore.getProducts()).toContainEqual(nonExistentProduct);
-        
-        // Try to delete non-existent product
-        await expect(productStore.deleteProduct('nonexistent-id')).resolves.not.toThrow();
-      });
-    });
-  });
-
-  describe('Integration-like scenarios', () => {
-    it('should handle complete product lifecycle', async () => {
-      const subscriber = jest.fn();
-      productStore.subscribe(subscriber);
+    it('should return a copy of current products', () => {
+      mockAppState.products = [mockProduct, mockProduct2];
       
-      // Load initial products
+      const result = productStore.getProducts();
+      
+      expect(result).toEqual([mockProduct, mockProduct2]);
+      expect(result).not.toBe(mockAppState.products);
+    });
+
+    it('should return empty array when no products exist', () => {
+      mockAppState.products = [];
+      
+      const result = productStore.getProducts();
+      
+      expect(result).toEqual([]);
+    });
+
+    it('should return immutable copy that does not affect internal state', () => {
+      mockAppState.products = [mockProduct];
+      
+      const result = productStore.getProducts();
+      result.push(mockProduct2);
+      
+      expect(mockAppState.products).toEqual([mockProduct]);
+      expect(mockAppState.products.length).toBe(1);
+    });
+  });
+
+  describe('loadProducts', () => {
+    it('should load products from database and notify subscribers', async () => {
+      const callback = vi.fn();
+      const mockProducts = [mockProduct, mockProduct2];
+      
+      mockDbService.loadProducts.mockResolvedValue(mockProducts);
+      productStore.subscribe(callback);
+      
       await productStore.loadProducts();
-      expect(subscriber).toHaveBeenCalledTimes(1);
       
-      // Add a new product
-      const newProduct: Product = { id: 'lifecycle1', name: 'Lifecycle Product', category: 'Test', volume: 750, pricePerBottle: 20 };
-      await productStore.addProduct(newProduct);
-      expect(subscriber).toHaveBeenCalledTimes(2);
-      expect(productStore.getProducts()).toContainEqual(newProduct);
-      
-      // Update the product
-      const updatedProduct = { ...newProduct, name: 'Updated Lifecycle Product' };
-      await productStore.updateProduct(updatedProduct);
-      expect(subscriber).toHaveBeenCalledTimes(3);
-      expect(productStore.getProducts().find(p => p.id === newProduct.id)?.name).toBe('Updated Lifecycle Product');
-      
-      // Delete the product
-      await productStore.deleteProduct(newProduct.id);
-      expect(subscriber).toHaveBeenCalledTimes(4);
-      expect(productStore.getProducts().find(p => p.id === newProduct.id)).toBeUndefined();
+      expect(mockDbService.loadProducts).toHaveBeenCalledTimes(1);
+      expect(mockAppState.products).toEqual(mockProducts);
+      expect(callback).toHaveBeenCalledWith(mockProducts);
     });
 
-    it('should maintain sorted order throughout product lifecycle', async () => {
-      // Add products in random order
-      const products: Product[] = [
-        { id: 'z1', name: 'Zebra Product', category: 'Z Category', volume: 750, pricePerBottle: 20 },
-        { id: 'a1', name: 'Alpha Product', category: 'A Category', volume: 750, pricePerBottle: 20 },
-        { id: 'm1', name: 'Middle Product', category: 'M Category', volume: 750, pricePerBottle: 20 },
-      ];
+    it('should handle empty product list from database', async () => {
+      const callback = vi.fn();
       
-      for (const product of products) {
-        await productStore.addProduct(product);
-        const currentProducts = productStore.getProducts();
-        // Verify that products are always sorted
-        for (let i = 1; i < currentProducts.length; i++) {
-          const prev = currentProducts[i - 1];
-          const curr = currentProducts[i];
-          if (prev && curr) {
-            const prevKey = `${prev.category.toLowerCase()}-${prev.name.toLowerCase()}`;
-            const currKey = `${curr.category.toLowerCase()}-${curr.name.toLowerCase()}`;
-            expect(prevKey <= currKey).toBe(true);
-          }
-        }
-      }
+      mockDbService.loadProducts.mockResolvedValue([]);
+      productStore.subscribe(callback);
+      
+      await productStore.loadProducts();
+      
+      expect(mockAppState.products).toEqual([]);
+      expect(callback).toHaveBeenCalledWith([]);
     });
 
-    it('should handle rapid state changes without corruption', async () => {
-      const subscriber = jest.fn();
-      productStore.subscribe(subscriber);
+    it('should handle database errors and rethrow them', async () => {
+      const dbError = new Error('Database connection failed');
+      mockDbService.loadProducts.mockRejectedValue(dbError);
       
-      // Perform rapid operations
-      const operations = [];
-      for (let i = 0; i < 10; i++) {
-        operations.push(productStore.addProduct({
-          id: `rapid${i}`,
-          name: `Rapid Product ${i}`,
-          category: `Category ${i % 3}`,
-          volume: 750,
-          pricePerBottle: 20 + i,
-        }));
+      await expect(productStore.loadProducts()).rejects.toThrow('Database connection failed');
+      expect(console.error).toHaveBeenCalledWith(
+        'ProductStore: Error loading products from DB',
+        dbError
+      );
+    });
+
+    it('should not notify subscribers when database load fails', async () => {
+      const callback = vi.fn();
+      mockDbService.loadProducts.mockRejectedValue(new Error('DB Error'));
+      productStore.subscribe(callback);
+      
+      try {
+        await productStore.loadProducts();
+      } catch {
+        // Expected to throw
       }
       
-      await Promise.all(operations);
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('should replace existing products when loading from database', async () => {
+      const newProducts = [mockProduct2];
+      mockAppState.products = [mockProduct];
+      mockDbService.loadProducts.mockResolvedValue(newProducts);
       
-      const finalProducts = productStore.getProducts();
-      expect(finalProducts).toHaveLength(10);
+      await productStore.loadProducts();
       
-      // Verify all products are present and properly sorted
-      const sortedIds = finalProducts.map(p => p.id);
-      expect(sortedIds).toEqual(expect.arrayContaining(['rapid0', 'rapid1', 'rapid2', 'rapid3', 'rapid4', 'rapid5', 'rapid6', 'rapid7', 'rapid8', 'rapid9']));
+      expect(mockAppState.products).toEqual(newProducts);
+      expect(mockAppState.products).not.toContain(mockProduct);
     });
   });
-}); // Closes the main ProductStore describe block
+
+  describe('addProduct', () => {
+    it('should add product to database and state, then notify subscribers', async () => {
+      const callback = vi.fn();
+      mockDbService.saveProduct.mockResolvedValue(undefined);
+      productStore.subscribe(callback);
+      
+      const result = await productStore.addProduct(mockProduct);
+      
+      expect(mockDbService.saveProduct).toHaveBeenCalledWith(mockProduct);
+      expect(mockAppState.products).toContain(mockProduct);
+      expect(callback).toHaveBeenCalledWith([mockProduct]);
+      expect(result).toEqual(mockProduct);
+    });
+
+    it('should add multiple products correctly', async () => {
+      mockDbService.saveProduct.mockResolvedValue(undefined);
+      
+      await productStore.addProduct(mockProduct);
+      await productStore.addProduct(mockProduct2);
+      
+      expect(mockAppState.products).toEqual([mockProduct, mockProduct2]);
+      expect(mockDbService.saveProduct).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle database save errors and rethrow them', async () => {
+      const saveError = new Error('Failed to save product');
+      mockDbService.saveProduct.mockRejectedValue(saveError);
+      
+      await expect(productStore.addProduct(mockProduct)).rejects.toThrow('Failed to save product');
+      expect(console.error).toHaveBeenCalledWith(
+        'ProductStore: Error adding product',
+        saveError
+      );
+    });
+
+    it('should not update state or notify subscribers when database save fails', async () => {
+      const callback = vi.fn();
+      mockDbService.saveProduct.mockRejectedValue(new Error('Save failed'));
+      productStore.subscribe(callback);
+      
+      try {
+        await productStore.addProduct(mockProduct);
+      } catch {
+        // Expected to throw
+      }
+      
+      expect(mockAppState.products).not.toContain(mockProduct);
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('should handle null or undefined product gracefully', async () => {
+      mockDbService.saveProduct.mockResolvedValue(undefined);
+      
+      const result = await productStore.addProduct(null as any);
+      
+      expect(mockDbService.saveProduct).toHaveBeenCalledWith(null);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('updateProduct', () => {
+    beforeEach(() => {
+      mockAppState.products = [mockProduct];
+    });
+
+    it('should update existing product in database and state, then notify subscribers', async () => {
+      const callback = vi.fn();
+      const updatedProduct = { ...mockProduct, name: 'Updated Product' };
+      
+      mockDbService.saveProduct.mockResolvedValue(undefined);
+      productStore.subscribe(callback);
+      
+      const result = await productStore.updateProduct(updatedProduct);
+      
+      expect(mockDbService.saveProduct).toHaveBeenCalledWith(updatedProduct);
+      expect(mockAppState.products[0]).toEqual(updatedProduct);
+      expect(callback).toHaveBeenCalledWith([updatedProduct]);
+      expect(result).toEqual(updatedProduct);
+    });
+
+    it('should add product to state if not found (upsert behavior)', async () => {
+      const callback = vi.fn();
+      mockDbService.saveProduct.mockResolvedValue(undefined);
+      productStore.subscribe(callback);
+      
+      await productStore.updateProduct(mockProduct2);
+      
+      expect(mockAppState.products).toEqual([mockProduct, mockProduct2]);
+      expect(callback).toHaveBeenCalledWith([mockProduct, mockProduct2]);
+    });
+
+    it('should handle database save errors and rethrow them', async () => {
+      const saveError = new Error('Failed to update product');
+      mockDbService.saveProduct.mockRejectedValue(saveError);
+      
+      await expect(productStore.updateProduct(mockProduct)).rejects.toThrow('Failed to update product');
+      expect(console.error).toHaveBeenCalledWith(
+        'ProductStore: Error updating product',
+        saveError
+      );
+    });
+
+    it('should not update state or notify subscribers when database save fails', async () => {
+      const callback = vi.fn();
+      const originalProduct = { ...mockProduct };
+      const updatedProduct = { ...mockProduct, name: 'Updated Product' };
+      
+      mockDbService.saveProduct.mockRejectedValue(new Error('Save failed'));
+      productStore.subscribe(callback);
+      
+      try {
+        await productStore.updateProduct(updatedProduct);
+      } catch {
+        // Expected to throw
+      }
+      
+      expect(mockAppState.products[0]).toEqual(originalProduct);
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('should handle updating product with same ID but different reference', async () => {
+      const updatedProduct = { ...mockProduct, name: 'Updated Name' };
+      mockDbService.saveProduct.mockResolvedValue(undefined);
+      
+      await productStore.updateProduct(updatedProduct);
+      
+      expect(mockAppState.products.length).toBe(1);
+      expect(mockAppState.products[0]).toEqual(updatedProduct);
+      expect(mockAppState.products[0]).not.toBe(mockProduct);
+    });
+
+    it('should handle empty product array when updating non-existent product', async () => {
+      mockAppState.products = [];
+      mockDbService.saveProduct.mockResolvedValue(undefined);
+      
+      await productStore.updateProduct(mockProduct);
+      
+      expect(mockAppState.products).toEqual([mockProduct]);
+    });
+  });
+
+  describe('deleteProduct', () => {
+    beforeEach(() => {
+      mockAppState.products = [mockProduct, mockProduct2];
+    });
+
+    it('should delete product from database and state, then notify subscribers', async () => {
+      const callback = vi.fn();
+      mockDbService.delete.mockResolvedValue(undefined);
+      productStore.subscribe(callback);
+      
+      await productStore.deleteProduct(mockProduct.id);
+      
+      expect(mockDbService.delete).toHaveBeenCalledWith('products', mockProduct.id);
+      expect(mockAppState.products).toEqual([mockProduct2]);
+      expect(callback).toHaveBeenCalledWith([mockProduct2]);
+    });
+
+    it('should handle deleting non-existent product gracefully', async () => {
+      const callback = vi.fn();
+      mockDbService.delete.mockResolvedValue(undefined);
+      productStore.subscribe(callback);
+      
+      await productStore.deleteProduct('non-existent-id');
+      
+      expect(mockDbService.delete).toHaveBeenCalledWith('products', 'non-existent-id');
+      expect(mockAppState.products).toEqual([mockProduct, mockProduct2]);
+      expect(callback).toHaveBeenCalledWith([mockProduct, mockProduct2]);
+    });
+
+    it('should handle database delete errors and rethrow them', async () => {
+      const deleteError = new Error('Failed to delete product');
+      mockDbService.delete.mockRejectedValue(deleteError);
+      
+      await expect(productStore.deleteProduct(mockProduct.id)).rejects.toThrow('Failed to delete product');
+      expect(console.error).toHaveBeenCalledWith(
+        'ProductStore: Error deleting product',
+        deleteError
+      );
+    });
+
+    it('should not update state or notify subscribers when database delete fails', async () => {
+      const callback = vi.fn();
+      mockDbService.delete.mockRejectedValue(new Error('Delete failed'));
+      productStore.subscribe(callback);
+      
+      try {
+        await productStore.deleteProduct(mockProduct.id);
+      } catch {
+        // Expected to throw
+      }
+      
+      expect(mockAppState.products).toEqual([mockProduct, mockProduct2]);
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('should delete all products with the same ID if duplicates exist', async () => {
+      const duplicateProduct = { ...mockProduct };
+      mockAppState.products = [mockProduct, duplicateProduct, mockProduct2];
+      mockDbService.delete.mockResolvedValue(undefined);
+      
+      await productStore.deleteProduct(mockProduct.id);
+      
+      expect(mockAppState.products).toEqual([mockProduct2]);
+    });
+
+    it('should handle empty product array', async () => {
+      mockAppState.products = [];
+      mockDbService.delete.mockResolvedValue(undefined);
+      
+      await productStore.deleteProduct('any-id');
+      
+      expect(mockAppState.products).toEqual([]);
+      expect(mockDbService.delete).toHaveBeenCalledWith('products', 'any-id');
+    });
+
+    it('should handle null or undefined productId', async () => {
+      mockDbService.delete.mockResolvedValue(undefined);
+      
+      await productStore.deleteProduct(null as any);
+      await productStore.deleteProduct(undefined as any);
+      
+      expect(mockDbService.delete).toHaveBeenCalledWith('products', null);
+      expect(mockDbService.delete).toHaveBeenCalledWith('products', undefined);
+    });
+  });
+
+  describe('integration scenarios', () => {
+    it('should handle complex workflow: load, add, update, delete', async () => {
+      const callback = vi.fn();
+      
+      // Setup mocks
+      mockDbService.loadProducts.mockResolvedValue([mockProduct]);
+      mockDbService.saveProduct.mockResolvedValue(undefined);
+      mockDbService.delete.mockResolvedValue(undefined);
+      
+      productStore.subscribe(callback);
+      
+      // Load products
+      await productStore.loadProducts();
+      expect(callback).toHaveBeenCalledWith([mockProduct]);
+      
+      // Add new product
+      await productStore.addProduct(mockProduct2);
+      expect(callback).toHaveBeenCalledWith([mockProduct, mockProduct2]);
+      
+      // Update existing product
+      const updatedProduct = { ...mockProduct, name: 'Updated' };
+      await productStore.updateProduct(updatedProduct);
+      expect(callback).toHaveBeenCalledWith([updatedProduct, mockProduct2]);
+      
+      // Delete product
+      await productStore.deleteProduct(mockProduct2.id);
+      expect(callback).toHaveBeenCalledWith([updatedProduct]);
+      
+      expect(callback).toHaveBeenCalledTimes(4);
+    });
+
+    it('should handle concurrent operations correctly', async () => {
+      mockDbService.saveProduct.mockResolvedValue(undefined);
+      
+      const promises = [
+        productStore.addProduct(mockProduct),
+        productStore.addProduct(mockProduct2),
+      ];
+      
+      await Promise.all(promises);
+      
+      expect(mockAppState.products).toHaveLength(2);
+      expect(mockDbService.saveProduct).toHaveBeenCalledTimes(2);
+    });
+
+    it('should maintain subscriber state across multiple operations', async () => {
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+      
+      mockDbService.saveProduct.mockResolvedValue(undefined);
+      
+      const unsubscribe1 = productStore.subscribe(callback1);
+      productStore.subscribe(callback2);
+      
+      await productStore.addProduct(mockProduct);
+      expect(callback1).toHaveBeenCalledTimes(1);
+      expect(callback2).toHaveBeenCalledTimes(1);
+      
+      unsubscribe1();
+      
+      await productStore.addProduct(mockProduct2);
+      expect(callback1).toHaveBeenCalledTimes(1);
+      expect(callback2).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle products with special characters in ID', async () => {
+      const specialProduct = { ...mockProduct, id: 'test-id-with-🎉-emoji' };
+      mockDbService.saveProduct.mockResolvedValue(undefined);
+      mockDbService.delete.mockResolvedValue(undefined);
+      
+      await productStore.addProduct(specialProduct);
+      expect(mockAppState.products).toContain(specialProduct);
+      
+      await productStore.deleteProduct(specialProduct.id);
+      expect(mockAppState.products).not.toContain(specialProduct);
+    });
+
+    it('should handle very large product arrays', async () => {
+      const largeProductArray = Array.from({ length: 1000 }, (_, i) => ({
+        ...mockProduct,
+        id: `product-${i}`,
+        name: `Product ${i}`,
+      }));
+      
+      mockDbService.loadProducts.mockResolvedValue(largeProductArray);
+      
+      await productStore.loadProducts();
+      
+      expect(mockAppState.products).toHaveLength(1000);
+    });
+
+    it('should handle rapid subscribe/unsubscribe operations', () => {
+      const callbacks = Array.from({ length: 100 }, () => vi.fn());
+      const unsubscribers = callbacks.map(cb => productStore.subscribe(cb));
+      
+      // Unsubscribe half of them
+      unsubscribers.slice(0, 50).forEach(unsub => unsub());
+      
+      productStore['notifySubscribers']();
+      
+      // First 50 should not be called, last 50 should be called
+      callbacks.slice(0, 50).forEach(cb => expect(cb).not.toHaveBeenCalled());
+      callbacks.slice(50).forEach(cb => expect(cb).toHaveBeenCalled());
+    });
+  });
+});

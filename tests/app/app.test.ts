@@ -26,14 +26,14 @@ describe('App Module (app.ts) - Consolidated', () => {
   });
 
   test('should log initialization messages when loaded', () => {
-    // Importing/requiring app.ts will execute its top-level code, including `new Application()`.
-    require('../../src/app');
+    // Importing/requiring main.ts will execute its top-level code, including `new Application()`.
+    require('../../src/main');
 
-    // Check for the messages logged by the Application constructor and the final log from app.ts
+    // Check for the messages logged by the Application constructor and the final log from main.ts
     expect(consoleLogSpy).toHaveBeenCalledWith('Application initializing...');
     // The DOM related logs ("DOM content loaded...") are conditional and harder to test here
     // without full DOM setup, which is covered by app-initialization.test.ts.
-    // So we focus on the direct logs from app.ts execution.
-    expect(consoleLogSpy).toHaveBeenCalledWith("App module (app.ts) loaded and application instantiated.");
+    // So we focus on the direct logs from main.ts execution.
+    expect(consoleLogSpy).toHaveBeenCalledWith("App module (main.ts) loaded and application instantiated.");
   });
 });

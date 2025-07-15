@@ -18,8 +18,7 @@ export function generateId(prefix: string = 'id'): string {
  * @param delay - Die Zeit in Millisekunden, die nach dem letzten Aufruf abgewartet wird, bevor die Funktion ausgeführt wird
  * @returns Eine Funktion, die das Entprellen übernimmt und die Ausführung von `func` verzögert
  */
--export function debounce<T extends (...args: Parameters<T>) => ReturnType<T>>(
-+export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   delay: number
 ): (...args: Parameters<T>) => void {

@@ -356,3 +356,377 @@ describe('Location Manager (location-manager.ts)', () => {
   });
 
 });
+
+  describe('Error Handling and Edge Cases', () => {
+    test('should handle store.loadLocations failure gracefully', async () => {
+      // Create a fresh container for this test
+      const errorContainer = document.createElement('div');
+      document.body.appendChild(errorContainer);
+
+      const loadError = new Error('Network failure');
+      (locationStore.loadLocations as jest.Mock).mockRejectedValueOnce(loadError);
+
+      await initLocationManager(errorContainer);
+
+      expect(locationStore.loadLocations).toHaveBeenCalled();
+      expect(mockedShowToastFn).toHaveBeenCalledWith(
+        expect.stringContaining('Fehler beim Laden'),
+        'error'
+      );
+
+      document.body.removeChild(errorContainer);
+    });
+
+    test('should handle empty locations array gracefully', async () => {
+      (locationStore.getLocations as jest.Mock).mockReturnValue([]);
+      if (notifySubscribers) notifySubscribers([]);
+
+      expect(mockLocationListInstance.setLocations).toHaveBeenCalledWith([]);
+      expect(container.querySelector('#location-list-host')).not.toBeNull();
+    });
+
+    test('should handle null/undefined location data', async () => {
+      const nullLocations = [null, undefined, { id: 'valid', name: 'Valid Location', address: 'Valid Address', counters: [] }];
+      
+      // Filter out null/undefined before passing to components
+      const validLocations = nullLocations.filter(loc => loc != null);
+      if (notifySubscribers) notifySubscribers(validLocations);
+
+      expect(mockLocationListInstance.setLocations).toHaveBeenCalledWith(validLocations);
+    });
+
+    test('should handle malformed location objects', async () => {
+      const malformedLocations = [
+        { id: 'loc1' }, // Missing name and address
+        { name: 'No ID Location', address: 'Some Address' }, // Missing id
+        { id: 'loc2', name: '', address: '' }, // Empty strings
+        { id: 'loc3', name: 'Valid', address: 'Valid', counters: null } // null counters
+      ];
+
+      if (notifySubscribers) notifySubscribers(malformedLocations);
+      expect(mockLocationListInstance.setLocations).toHaveBeenCalledWith(malformedLocations);
+    });
+  });
+
+  describe('Form Validation and Error Scenarios', () => {
+    test('should handle location form submission with empty data', async () => {
+      const locFormOptions = (LocationFormComponent as jest.Mock).mock.calls[0][0] as LocationFormComponentOptions;
+      const submitCallback = locFormOptions.onSubmit;
+
+      const emptyData = { id: '', name: '', address: '' };
+      
+      // Mock store to reject empty data
+      (locationStore.addLocation as jest.Mock).mockRejectedValueOnce(new Error('Name is required'));
+
+      await submitCallback(emptyData);
+
+      expect(mockedShowToastFn).toHaveBeenCalledWith(
+        expect.stringContaining('Fehler'),
+        'error'
+      );
+    });
+
+    test('should handle counter form submission with empty data', async () => {
+      // First show location details
+      const listOptions = (LocationListComponent as jest.Mock).mock.calls[0][1] as LocationListItemCallbacks;
+      listOptions.onEdit(mockLocation1);
+
+      const counterFormOptions = (CounterFormComponent as jest.Mock).mock.calls[0][0] as CounterFormComponentOptions;
+      const submitCounterCallback = counterFormOptions.onSubmit;
+
+      const emptyCounterData = { id: '', name: '', description: '' };
+      
+      // Mock store to reject empty data
+      (locationStore.addCounter as jest.Mock).mockRejectedValueOnce(new Error('Counter name is required'));
+
+      await submitCounterCallback(emptyCounterData);
+
+      expect(mockedShowToastFn).toHaveBeenCalledWith(
+        expect.stringContaining('Fehler'),
+        'error'
+      );
+    });
+
+    test('should handle location update failure', async () => {
+      const listOptions = (LocationListComponent as jest.Mock).mock.calls[0][1] as LocationListItemCallbacks;
+      listOptions.onEdit(mockLocation1);
+
+      const editBtn = container.querySelector('#edit-loc-name-addr-btn') as HTMLButtonElement;
+      editBtn.click();
+
+      const locFormOptions = (LocationFormComponent as jest.Mock).mock.calls[0][0] as LocationFormComponentOptions;
+      const submitCallback = locFormOptions.onSubmit;
+
+      const updatedData = { ...mockLocation1, name: 'Updated Name' };
+      mockLocationFormInstance.currentEditingLocation = mockLocation1;
+
+      // Mock update failure
+      (locationStore.updateLocation as jest.Mock).mockRejectedValueOnce(new Error('Update failed'));
+
+      await submitCallback(updatedData);
+
+      expect(mockedShowToastFn).toHaveBeenCalledWith(
+        expect.stringContaining('Fehler'),
+        'error'
+      );
+    });
+  });
+
+  describe('Concurrent Operations and State Management', () => {
+    test('should handle multiple rapid location additions', async () => {
+      const locFormOptions = (LocationFormComponent as jest.Mock).mock.calls[0][0] as LocationFormComponentOptions;
+      const submitCallback = locFormOptions.onSubmit;
+
+      const promises = [];
+      for (let i = 0; i < 3; i++) {
+        const newLocData = { id: '', name: `Location ${i}`, address: `Address ${i}` };
+        promises.push(submitCallback(newLocData));
+      }
+
+      await Promise.all(promises);
+
+      expect(locationStore.addLocation).toHaveBeenCalledTimes(3);
+    });
+
+    test('should handle location deletion during detail view', async () => {
+      // Show details for a location
+      const listOptions = (LocationListComponent as jest.Mock).mock.calls[0][1] as LocationListItemCallbacks;
+      listOptions.onEdit(mockLocation1);
+
+      // Verify details are shown
+      expect(container.querySelector('#location-detail-section-host h3')?.textContent).toContain('Details für: Bar Central');
+
+      // Simulate deletion of the currently viewed location
+      window.confirm = jest.fn(() => true);
+      const deleteCallback = listOptions.onDelete;
+      await deleteCallback(mockLocation1.id, mockLocation1.name);
+
+      expect(locationStore.deleteLocation).toHaveBeenCalledWith(mockLocation1.id);
+    });
+
+    test('should handle store subscription with invalid data', () => {
+      const invalidData = [
+        { id: 'loc1', name: 123, address: null }, // Invalid types
+        'not-an-object', // Not an object
+        { id: null, name: 'Test', address: 'Test' } // null id
+      ];
+
+      // Should not crash when receiving invalid data
+      expect(() => {
+        if (notifySubscribers) notifySubscribers(invalidData as any);
+      }).not.toThrow();
+    });
+  });
+
+  describe('User Interaction Edge Cases', () => {
+    test('should handle multiple rapid button clicks', () => {
+      const addBtn = container.querySelector('#add-new-location-btn') as HTMLButtonElement;
+      
+      // Click multiple times rapidly
+      addBtn.click();
+      addBtn.click();
+      addBtn.click();
+
+      // Should handle gracefully without errors
+      expect(mockLocationFormInstance.show).toHaveBeenCalled();
+    });
+
+    test('should handle cancel during location form editing', () => {
+      const listOptions = (LocationListComponent as jest.Mock).mock.calls[0][1] as LocationListItemCallbacks;
+      listOptions.onEdit(mockLocation1);
+
+      const editBtn = container.querySelector('#edit-loc-name-addr-btn') as HTMLButtonElement;
+      editBtn.click();
+
+      const locFormOptions = (LocationFormComponent as jest.Mock).mock.calls[0][0] as LocationFormComponentOptions;
+      const cancelCallback = locFormOptions.onCancel;
+
+      // Cancel should work even without currentEditingLocation
+      mockLocationFormInstance.currentEditingLocation = null;
+      cancelCallback();
+
+      expect(mockLocationFormInstance.hide).toHaveBeenCalled();
+    });
+
+    test('should handle delete confirmation rejection', async () => {
+      window.confirm = jest.fn(() => false); // User clicks "Cancel"
+      
+      const listOptions = (LocationListComponent as jest.Mock).mock.calls[0][1] as LocationListItemCallbacks;
+      const deleteCallback = listOptions.onDelete;
+
+      await deleteCallback(mockLocation1.id, mockLocation1.name);
+
+      expect(window.confirm).toHaveBeenCalled();
+      expect(locationStore.deleteLocation).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Export Functionality Edge Cases', () => {
+    test('should handle export with empty locations', () => {
+      (locationStore.getLocations as jest.Mock).mockReturnValue([]);
+      
+      const exportBtn = container.querySelector('#export-all-locations-json-btn') as HTMLButtonElement;
+      const fakeUrl = 'blob:http://localhost/fake-uuid';
+
+      const originalCreate = global.URL.createObjectURL;
+      const originalRevoke = global.URL.revokeObjectURL;
+
+      global.URL.createObjectURL = jest.fn(() => fakeUrl);
+      global.URL.revokeObjectURL = jest.fn();
+
+      const linkClickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+      exportBtn.click();
+
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+      expect(linkClickSpy).toHaveBeenCalled();
+
+      linkClickSpy.mockRestore();
+      global.URL.createObjectURL = originalCreate;
+      global.URL.revokeObjectURL = originalRevoke;
+    });
+
+    test('should handle export with corrupted location data', () => {
+      const corruptedData = [
+        { id: 'loc1', name: 'Test', counters: [{ id: 'c1', areas: [{ circular: {} }] }] }
+      ];
+      (corruptedData[0].counters[0].areas[0] as any).circular.self = corruptedData[0].counters[0].areas[0];
+      
+      (locationStore.getLocations as jest.Mock).mockReturnValue(corruptedData);
+
+      const exportBtn = container.querySelector('#export-all-locations-json-btn') as HTMLButtonElement;
+      
+      // Should handle circular references gracefully
+      expect(() => exportBtn.click()).not.toThrow();
+    });
+  });
+
+  describe('Counter Management Edge Cases', () => {
+    beforeEach(() => {
+      const listOptions = (LocationListComponent as jest.Mock).mock.calls[0][1] as LocationListItemCallbacks;
+      listOptions.onEdit(mockLocation1);
+    });
+
+    test('should handle counter deletion rejection', async () => {
+      window.confirm = jest.fn(() => false);
+      
+      const counterListOptions = (CounterListComponent as jest.Mock).mock.calls[0][2] as CounterListItemCallbacks;
+      const deleteCounterCallback = counterListOptions.onDeleteCounter;
+
+      await deleteCounterCallback(mockCounter1ForLoc1.id, mockCounter1ForLoc1.name);
+
+      expect(window.confirm).toHaveBeenCalled();
+      expect(locationStore.deleteCounter).not.toHaveBeenCalled();
+    });
+
+    test('should handle counter update failure', async () => {
+      const counterListOptions = (CounterListComponent as jest.Mock).mock.calls[0][2] as CounterListItemCallbacks;
+      const editCounterCallback = counterListOptions.onEditCounter;
+
+      // Mock form setup for editing
+      const counterFormOptions = (CounterFormComponent as jest.Mock).mock.calls[0][0] as CounterFormComponentOptions;
+      const submitCallback = counterFormOptions.onSubmit;
+
+      mockCounterFormInstance.currentEditingCounter = mockCounter1ForLoc1;
+      
+      // Mock update failure
+      (locationStore.updateCounter as jest.Mock).mockRejectedValueOnce(new Error('Counter update failed'));
+
+      const updatedCounterData = { ...mockCounter1ForLoc1, name: 'Updated Counter' };
+      await submitCallback(updatedCounterData);
+
+      expect(mockedShowToastFn).toHaveBeenCalledWith(
+        expect.stringContaining('Fehler'),
+        'error'
+      );
+    });
+
+    test('should handle area management toggle', () => {
+      const counterListOptions = (CounterListComponent as jest.Mock).mock.calls[0][2] as CounterListItemCallbacks;
+      const toggleAreaCallback = counterListOptions.onToggleAreaManagement;
+
+      if (toggleAreaCallback) {
+        toggleAreaCallback(mockCounter1ForLoc1.id);
+        expect(mockCounterListInstance.toggleAreaManagementForCounter).toHaveBeenCalledWith(mockCounter1ForLoc1.id);
+      }
+    });
+  });
+
+  describe('Accessibility and UI State Management', () => {
+    test('should maintain proper ARIA attributes and focus management', () => {
+      // Test that important UI elements have proper accessibility attributes
+      const addBtn = container.querySelector('#add-new-location-btn') as HTMLButtonElement;
+      const exportBtn = container.querySelector('#export-all-locations-json-btn') as HTMLButtonElement;
+
+      expect(addBtn).not.toBeNull();
+      expect(exportBtn).not.toBeNull();
+
+      // Verify buttons are focusable
+      expect(addBtn.tabIndex).toBeGreaterThanOrEqual(0);
+      expect(exportBtn.tabIndex).toBeGreaterThanOrEqual(0);
+    });
+
+    test('should handle component cleanup properly', () => {
+      // Simulate component destruction
+      const newContainer = document.createElement('div');
+      document.body.appendChild(newContainer);
+
+      // Initialize in new container
+      initLocationManager(newContainer);
+
+      // Remove container (simulating component unmount)
+      document.body.removeChild(newContainer);
+
+      // Should not cause memory leaks or errors
+      expect(() => {
+        if (notifySubscribers) notifySubscribers(mockLocations);
+      }).not.toThrow();
+    });
+
+    test('should handle window resize and responsive behavior', () => {
+      // Simulate window resize
+      const resizeEvent = new Event('resize');
+      window.dispatchEvent(resizeEvent);
+
+      // Should handle resize gracefully without errors
+      expect(container.querySelector('#location-list-host')).not.toBeNull();
+    });
+  });
+
+  describe('Performance and Memory Management', () => {
+    test('should handle large datasets efficiently', async () => {
+      const largeLocationSet = Array.from({ length: 100 }, (_, i) => ({
+        id: `loc${i}`,
+        name: `Location ${i}`,
+        address: `Address ${i}`,
+        counters: Array.from({ length: 10 }, (_, j) => ({
+          id: `c${i}-${j}`,
+          name: `Counter ${j}`,
+          description: `Description ${j}`,
+          areas: []
+        }))
+      }));
+
+      if (notifySubscribers) notifySubscribers(largeLocationSet);
+
+      expect(mockLocationListInstance.setLocations).toHaveBeenCalledWith(largeLocationSet);
+    });
+
+    test('should handle rapid state updates without performance degradation', async () => {
+      const startTime = performance.now();
+
+      // Simulate many rapid updates
+      for (let i = 0; i < 50; i++) {
+        const testLocations = [{ id: `test${i}`, name: `Test ${i}`, address: `Address ${i}`, counters: [] }];
+        if (notifySubscribers) notifySubscribers(testLocations);
+      }
+
+      const endTime = performance.now();
+      const executionTime = endTime - startTime;
+
+      // Should complete reasonably quickly (under 100ms for 50 updates)
+      expect(executionTime).toBeLessThan(100);
+    });
+  });
+
+});

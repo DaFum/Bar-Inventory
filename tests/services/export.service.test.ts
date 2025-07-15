@@ -492,3 +492,490 @@ describe('ExportService', () => {
     });
   });
 }); // Closes the main ExportService describe block
+
+  describe('Advanced Data Validation and Edge Cases', () => {
+    it('should handle products with extremely long field values', () => {
+      const longString = 'A'.repeat(10000);
+      const productsWithLongValues = [
+        { 
+          id: 'p1', 
+          name: longString, 
+          category: longString, 
+          volume: 700, 
+          pricePerBottle: 20,
+          supplier: longString,
+          notes: longString
+        }
+      ];
+      
+      expect(() => exportService.exportProductsToCsv(productsWithLongValues)).not.toThrow();
+      const blobContent = (global.Blob as any).mock.calls[0][0][0];
+      expect(blobContent).toContain(`"${longString}"`);
+    });
+
+    it('should handle products with Unicode and emoji characters', () => {
+      const productsWithUnicode = [
+        { 
+          id: '🍺1', 
+          name: 'Bière Française 🇫🇷', 
+          category: 'Alcool 🍻', 
+          volume: 500, 
+          pricePerBottle: 25.50,
+          supplier: 'Ünîcødê Suppłîęr'
+        }
+      ];
+      
+      exportService.exportProductsToCsv(productsWithUnicode);
+      const blobContent = (global.Blob as any).mock.calls[0][0][0];
+      expect(blobContent).toContain('🍺1');
+      expect(blobContent).toContain('Bière Française 🇫🇷');
+      expect(blobContent).toContain('Alcool 🍻');
+    });
+
+    it('should handle numeric values at extreme ranges', () => {
+      const productsWithExtremeValues = [
+        { 
+          id: 'p1', 
+          name: 'Product A', 
+          category: 'Test', 
+          volume: Number.MAX_SAFE_INTEGER, 
+          pricePerBottle: Number.MIN_VALUE,
+          pricePer100ml: 999999999.999999999
+        },
+        { 
+          id: 'p2', 
+          name: 'Product B', 
+          category: 'Test', 
+          volume: 0, 
+          pricePerBottle: 0,
+          pricePer100ml: 0.000000001
+        }
+      ];
+      
+      exportService.exportProductsToCsv(productsWithExtremeValues);
+      const blobContent = (global.Blob as any).mock.calls[0][0][0];
+      expect(blobContent).toContain(Number.MAX_SAFE_INTEGER.toString());
+      expect(blobContent).toContain(Number.MIN_VALUE.toString());
+    });
+
+    it('should handle products with scientific notation values', () => {
+      const productsWithScientificNotation = [
+        { 
+          id: 'p1', 
+          name: 'Product A', 
+          category: 'Test', 
+          volume: 1e10, 
+          pricePerBottle: 1.23e-5,
+          pricePer100ml: 4.56e+3
+        }
+      ];
+      
+      exportService.exportProductsToCsv(productsWithScientificNotation);
+      const blobContent = (global.Blob as any).mock.calls[0][0][0];
+      expect(blobContent).toContain('10000000000'); // 1e10
+      expect(blobContent).toContain('0.0000123'); // 1.23e-5
+    });
+
+    it('should handle circular reference-like data structures safely', () => {
+      const locationWithDeepNesting = {
+        id: 'loc1',
+        name: 'Test Location',
+        address: '123 Test St',
+        counters: Array.from({ length: 50 }, (_, i) => ({
+          id: `ctr${i}`,
+          name: `Counter ${i}`,
+          description: `Description ${i}`,
+          areas: Array.from({ length: 20 }, (_, j) => ({
+            id: `area${i}-${j}`,
+            name: `Area ${i}-${j}`,
+            displayOrder: j,
+            inventoryItems: Array.from({ length: 100 }, (_, k) => ({
+              productId: `p${k}`,
+              startCrates: k % 10,
+              startBottles: k % 20,
+              startOpenVolumeMl: k * 10,
+              endCrates: (k % 10) - 1,
+              endBottles: (k % 20) - 1,
+              endOpenVolumeMl: k * 10 - 5
+            }))
+          }))
+        }))
+      };
+      
+      expect(() => exportService.exportLocationToJson(locationWithDeepNesting)).not.toThrow();
+      const jsonContent = (global.Blob as any).mock.calls[0][0][0];
+      expect(() => JSON.parse(jsonContent)).not.toThrow();
+    });
+  });
+
+  describe('Performance and Stress Testing', () => {
+    it('should handle export of maximum realistic product count efficiently', () => {
+      const startTime = Date.now();
+      const massiveProducts = Array.from({ length: 50000 }, (_, i) => ({
+        id: `product-${i}`,
+        name: `Product ${i}`,
+        category: `Category ${i % 100}`,
+        volume: 500 + (i % 1000),
+        pricePerBottle: 10 + (i * 0.01),
+        pricePer100ml: 2 + (i * 0.001),
+        itemsPerCrate: 12,
+        supplier: `Supplier ${i % 50}`,
+        imageUrl: `https://example.com/image${i}.jpg`,
+        notes: `Notes for product ${i}`
+      }));
+      
+      exportService.exportProductsToCsv(massiveProducts);
+      const endTime = Date.now();
+      
+      expect(endTime - startTime).toBeLessThan(5000); // Should complete within 5 seconds
+      expect(createObjectURLSpy).toHaveBeenCalled();
+    });
+
+    it('should handle memory-intensive inventory data without issues', () => {
+      const memoryIntensiveArea = {
+        id: 'area1',
+        name: 'Memory Test Area',
+        displayOrder: 1,
+        inventoryItems: Array.from({ length: 10000 }, (_, i) => ({
+          productId: `p${i}`,
+          startCrates: Math.floor(Math.random() * 100),
+          startBottles: Math.floor(Math.random() * 24),
+          startOpenVolumeMl: Math.random() * 500,
+          endCrates: Math.floor(Math.random() * 100),
+          endBottles: Math.floor(Math.random() * 24),
+          endOpenVolumeMl: Math.random() * 500
+        }))
+      };
+
+      const largeProductList = Array.from({ length: 5000 }, (_, i) => ({
+        id: `p${i}`,
+        name: `Product ${i}`,
+        category: `Category ${i % 50}`,
+        volume: 500,
+        pricePerBottle: 20
+      }));
+
+      (CalculationService.calculateAreaConsumption as jest.Mock).mockReturnValue(
+        Array.from({ length: 10000 }, (_, i) => ({
+          productId: `p${i}`,
+          consumedUnits: Math.random() * 10,
+          consumedVolumeMl: Math.random() * 5000,
+          costOfConsumption: Math.random() * 200,
+          notes: [`Note ${i}`]
+        }))
+      );
+      
+      expect(() => exportService.exportAreaInventoryToCsv(
+        memoryIntensiveArea, 
+        'Test Location', 
+        'Test Counter', 
+        largeProductList, 
+        true
+      )).not.toThrow();
+    });
+
+    it('should handle rapid successive export calls without resource exhaustion', () => {
+      const rapidCallCount = 100;
+      const promises: Promise<void>[] = [];
+      
+      for (let i = 0; i < rapidCallCount; i++) {
+        promises.push(
+          new Promise<void>(resolve => {
+            setTimeout(() => {
+              exportService.exportProductsToCsv([mockProducts[0]!]);
+              resolve();
+            }, Math.random() * 10);
+          })
+        );
+      }
+      
+      expect(() => Promise.all(promises)).not.toThrow();
+      expect(createObjectURLSpy.mock.calls.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Browser Compatibility and Environment Testing', () => {
+    it('should handle missing URL API gracefully', () => {
+      const originalURL = global.URL;
+      try {
+        delete (global as any).URL;
+        
+        expect(() => exportService.exportProductsToCsv(mockProducts)).not.toThrow();
+        expect(ToastNotifications.showToast).toHaveBeenCalledWith(
+          expect.stringContaining('Browser nicht unterstützt'),
+          'error'
+        );
+      } finally {
+        (global as any).URL = originalURL;
+      }
+    });
+
+    it('should handle missing document.createElement gracefully', () => {
+      const originalCreateElement = document.createElement;
+      try {
+        (document as any).createElement = undefined;
+        
+        expect(() => exportService.exportProductsToCsv(mockProducts)).not.toThrow();
+        expect(ToastNotifications.showToast).toHaveBeenCalledWith(
+          expect.stringContaining('Browser nicht unterstützt'),
+          'error'
+        );
+      } finally {
+        document.createElement = originalCreateElement;
+      }
+    });
+
+    it('should handle missing Blob constructor gracefully', () => {
+      const originalBlob = global.Blob;
+      try {
+        delete (global as any).Blob;
+        
+        expect(() => exportService.exportProductsToCsv(mockProducts)).not.toThrow();
+        expect(ToastNotifications.showToast).toHaveBeenCalledWith(
+          expect.stringContaining('Browser nicht unterstützt'),
+          'error'
+        );
+      } finally {
+        (global as any).Blob = originalBlob;
+      }
+    });
+
+    it('should handle DOM elements without style property', () => {
+      createElementSpy.mockReturnValue({
+        href: '',
+        download: '',
+        click: linkClickSpy
+        // Intentionally omitting style property
+      } as any);
+      
+      expect(() => exportService.exportProductsToCsv(mockProducts)).not.toThrow();
+      expect(linkClickSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('Security and Data Integrity Testing', () => {
+    it('should sanitize potentially malicious filenames', () => {
+      const maliciousNames = [
+        '../../../etc/passwd',
+        'test<script>alert("xss")</script>',
+        'CON', 'PRN', 'AUX', 'NUL', // Windows reserved names
+        'file.exe',
+        'test\x00null.txt'
+      ];
+      
+      maliciousNames.forEach(name => {
+        const testArea = { ...mockArea, name };
+        exportService.exportAreaInventoryToCsv(testArea, mockLocation.name, mockCounter.name, mockProducts, false);
+        const downloadCall = createElementSpy.mock.results[createElementSpy.mock.results.length - 1]!.value;
+        
+        expect(downloadCall.download).not.toContain('../');
+        expect(downloadCall.download).not.toContain('<script>');
+        expect(downloadCall.download).not.toContain('\x00');
+      });
+    });
+
+    it('should prevent CSV injection in exported data', () => {
+      const maliciousProducts = [
+        { 
+          id: '=cmd|"/c calc"!A0', 
+          name: '@SUM(1+1)*cmd|"/c calc"!A0', 
+          category: '+2+5+cmd|"/c calc"!A0',
+          volume: 700, 
+          pricePerBottle: 20,
+          supplier: '-2+3+cmd|"/c calc"!A0'
+        }
+      ];
+      
+      exportService.exportProductsToCsv(maliciousProducts);
+      const blobContent = (global.Blob as any).mock.calls[0][0][0];
+      
+      // CSV injection attempts should be escaped or neutralized
+      expect(blobContent).not.toMatch(/^[=@+\-]/m); // Formula indicators at start of fields
+    });
+
+    it('should handle extremely large single field values without causing DoS', () => {
+      const megabyteString = 'A'.repeat(1024 * 1024); // 1MB string
+      const productWithLargeField = [
+        { 
+          id: 'p1', 
+          name: megabyteString, 
+          category: 'Test', 
+          volume: 700, 
+          pricePerBottle: 20
+        }
+      ];
+      
+      const startTime = Date.now();
+      exportService.exportProductsToCsv(productWithLargeField);
+      const endTime = Date.now();
+      
+      expect(endTime - startTime).toBeLessThan(10000); // Should not hang
+      expect(createObjectURLSpy).toHaveBeenCalled();
+    });
+
+    it('should validate JSON structure integrity in exports', () => {
+      exportService.exportLocationToJson(mockLocation);
+      const jsonContent = (global.Blob as any).mock.calls[0][0][0];
+      const parsedJson = JSON.parse(jsonContent);
+      
+      // Verify required structure
+      expect(parsedJson).toHaveProperty('exportTimestamp');
+      expect(parsedJson).toHaveProperty('locationDetails');
+      expect(parsedJson).toHaveProperty('counters');
+      expect(Array.isArray(parsedJson.counters)).toBe(true);
+      
+      // Verify no prototype pollution
+      expect(parsedJson.__proto__).toBeUndefined();
+      expect(parsedJson.constructor).toBeUndefined();
+    });
+  });
+
+  describe('Internationalization and Localization', () => {
+    it('should handle right-to-left text in exports', () => {
+      const rtlProducts = [
+        { 
+          id: 'p1', 
+          name: 'منتج عربي', 
+          category: 'فئة اختبار', 
+          volume: 700, 
+          pricePerBottle: 20,
+          supplier: 'مورد عربي'
+        }
+      ];
+      
+      exportService.exportProductsToCsv(rtlProducts);
+      const blobContent = (global.Blob as any).mock.calls[0][0][0];
+      expect(blobContent).toContain('منتج عربي');
+      expect(blobContent).toContain('فئة اختبار');
+    });
+
+    it('should handle mixed language content correctly', () => {
+      const multilingualProducts = [
+        { 
+          id: 'p1', 
+          name: 'Product English Deutsch Français 日本語 中文 العربية', 
+          category: 'Mixed Languages', 
+          volume: 700, 
+          pricePerBottle: 20
+        }
+      ];
+      
+      exportService.exportProductsToCsv(multilingualProducts);
+      const blobContent = (global.Blob as any).mock.calls[0][0][0];
+      expect(blobContent).toContain('Product English Deutsch Français 日本語 中文 العربية');
+    });
+
+    it('should maintain UTF-8 encoding in blob creation', () => {
+      exportService.exportProductsToCsv(mockProducts);
+      const blobOptions = (global.Blob as any).mock.calls[0][1];
+      expect(blobOptions.type).toContain('charset=utf-8');
+    });
+  });
+
+  describe('Real-world Integration Scenarios', () => {
+    it('should handle export during network connectivity issues', () => {
+      // Simulate network-related errors that might affect blob creation or URL generation
+      createObjectURLSpy.mockImplementation(() => {
+        throw new DOMException('Network error', 'NetworkError');
+      });
+      
+      expect(() => exportService.exportProductsToCsv(mockProducts)).not.toThrow();
+      expect(ToastNotifications.showToast).toHaveBeenCalledWith(
+        expect.stringContaining('Fehler beim Erstellen des Download-Links'),
+        'error'
+      );
+    });
+
+    it('should handle concurrent exports of different types', () => {
+      // Simulate multiple concurrent export operations
+      exportService.exportProductsToCsv(mockProducts);
+      exportService.exportAreaInventoryToCsv(mockArea, mockLocation.name, mockCounter.name, mockProducts, true);
+      exportService.exportLocationToJson(mockLocation);
+      
+      expect(createObjectURLSpy).toHaveBeenCalledTimes(3);
+      expect(revokeObjectURLSpy).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle products with incomplete calculation data', () => {
+      (CalculationService.calculateAreaConsumption as jest.Mock).mockReturnValue([
+        { productId: 'p1', consumedUnits: null, consumedVolumeMl: undefined, costOfConsumption: NaN, notes: null },
+        { productId: 'p2' } // Missing calculation fields
+      ]);
+      
+      exportService.exportAreaInventoryToCsv(mockArea, mockLocation.name, mockCounter.name, mockProducts, true);
+      const blobContent = (global.Blob as any).mock.calls[0][0][0];
+      
+      // Should handle null/undefined/NaN values gracefully
+      expect(blobContent).toContain('""'); // Should convert to empty strings
+    });
+
+    it('should maintain data consistency across multiple export formats', () => {
+      // Export same data in different formats and verify consistency
+      exportService.exportAreaInventoryToCsv(mockArea, mockLocation.name, mockCounter.name, mockProducts, false);
+      const csvContent = (global.Blob as any).mock.calls[0][0][0];
+      
+      exportService.exportLocationToJson(mockLocation);
+      const jsonContent = (global.Blob as any).mock.calls[1][0][0];
+      const jsonData = JSON.parse(jsonContent);
+      
+      // Verify that core data matches between formats
+      expect(csvContent).toContain(mockArea.inventoryItems[0]!.productId);
+      expect(jsonData.counters[0].areas[0].inventoryItems[0].productId).toBe(mockArea.inventoryItems[0]!.productId);
+    });
+  });
+
+  describe('Accessibility and User Experience', () => {
+    it('should provide meaningful error messages for common user errors', () => {
+      // Test various error scenarios that users might encounter
+      const errorScenarios = [
+        { 
+          setup: () => (global as any).Blob = undefined,
+          expectedMessage: 'Browser nicht unterstützt'
+        },
+        { 
+          setup: () => createObjectURLSpy.mockImplementation(() => { throw new Error('Quota exceeded'); }),
+          expectedMessage: 'Fehler beim Erstellen des Download-Links'
+        },
+        { 
+          setup: () => createElementSpy.mockImplementation(() => { throw new Error('DOM not available'); }),
+          expectedMessage: 'Fehler beim Erstellen des Download-Elements'
+        }
+      ];
+      
+      errorScenarios.forEach(({ setup, expectedMessage }) => {
+        jest.clearAllMocks();
+        setup();
+        
+        expect(() => exportService.exportProductsToCsv(mockProducts)).not.toThrow();
+        expect(ToastNotifications.showToast).toHaveBeenCalledWith(
+          expect.stringContaining(expectedMessage),
+          'error'
+        );
+      });
+    });
+
+    it('should generate descriptive filenames that help users identify content', () => {
+      const timestamp = new Date().toISOString().split('T')[0];
+      
+      exportService.exportAreaInventoryToCsv(mockArea, mockLocation.name, mockCounter.name, mockProducts, true);
+      const downloadCall = createElementSpy.mock.results[0]!.value;
+      
+      expect(downloadCall.download).toContain(mockLocation.name.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_'));
+      expect(downloadCall.download).toContain(mockCounter.name.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_'));
+      expect(downloadCall.download).toContain(mockArea.name.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_'));
+      expect(downloadCall.download).toContain('.csv');
+    });
+
+    it('should handle downloads in browsers with restrictive download policies', () => {
+      // Simulate browsers that might block automatic downloads
+      linkClickSpy.mockImplementation(() => {
+        throw new DOMException('Download blocked by policy', 'SecurityError');
+      });
+      
+      expect(() => exportService.exportProductsToCsv(mockProducts)).not.toThrow();
+      expect(ToastNotifications.showToast).toHaveBeenCalledWith(
+        expect.stringContaining('Download konnte nicht gestartet werden'),
+        'error'
+      );
+    });
+  });

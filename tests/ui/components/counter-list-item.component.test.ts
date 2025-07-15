@@ -260,6 +260,25 @@ describe('CounterListItemComponent', () => {
 
   // Additional Edge Cases and Error Handling Tests
   describe('Edge Cases and Error Handling', () => {
+    let mockLocation: LocationModel;
+    let mockCounter: Counter;
+    let mockCallbacks: CounterListItemCallbacks;
+
+    beforeEach(() => {
+      mockLocation = { id: 'loc-edge', name: 'Edge Case Location', address: 'Addr', counters: [] };
+      mockCounter = {
+        id: 'counter-edge',
+        name: 'Edge Counter',
+        description: 'Edge case service counter',
+        areas: [{ id: 'area-edge', name: 'Shelf Edge', inventoryItems: [], displayOrder: 1 }]
+      };
+      mockLocation.counters.push(mockCounter);
+
+      mockCallbacks = {
+        onEditCounter: jest.fn(),
+        onDeleteCounter: jest.fn(),
+      };
+    });
     test('should handle counter with no areas gracefully', () => {
       const counterWithNoAreas: Counter = {
         id: 'counter-no-areas',
@@ -564,6 +583,25 @@ describe('CounterListItemComponent', () => {
   });
 
   describe('Integration with Store and External Dependencies', () => {
+    let mockLocation: LocationModel;
+    let mockCounter: Counter;
+    let mockCallbacks: CounterListItemCallbacks;
+
+    beforeEach(() => {
+      mockLocation = { id: 'loc-integration', name: 'Integration Location', address: 'Addr', counters: [] };
+      mockCounter = {
+        id: 'counter-integration',
+        name: 'Integration Counter',
+        description: 'Integration service counter',
+        areas: []
+      };
+      mockLocation.counters.push(mockCounter);
+
+      mockCallbacks = {
+        onEditCounter: jest.fn(),
+        onDeleteCounter: jest.fn(),
+      };
+    });
     test('should handle store operations with different location and counter IDs', async () => {
       const differentLocation: LocationModel = {
         id: 'loc-different',
@@ -623,6 +661,16 @@ describe('CounterListItemComponent', () => {
   });
 
   describe('Performance and Memory Management', () => {
+    let mockLocation: LocationModel;
+    let mockCallbacks: CounterListItemCallbacks;
+
+    beforeEach(() => {
+      mockLocation = { id: 'loc-perf', name: 'Perf Location', address: 'Addr', counters: [] };
+      mockCallbacks = {
+        onEditCounter: jest.fn(),
+        onDeleteCounter: jest.fn(),
+      };
+    });
     test('should not create excessive DOM nodes', () => {
       const initialChildCount = document.body.children.length;
       
@@ -649,6 +697,12 @@ describe('CounterListItemComponent', () => {
       const originalComponent = component;
       originalComponent.getElement().remove();
       
+      const mockCounter: Counter = {
+        id: 'counter-recreate',
+        name: 'Recreated Counter',
+        description: 'Recreated service counter',
+        areas: []
+      };
       const newComponent = new CounterListItemComponent(mockLocation, mockCounter, mockCallbacks);
       document.body.appendChild(newComponent.getElement());
       
