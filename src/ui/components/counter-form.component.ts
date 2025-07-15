@@ -90,7 +90,7 @@ export class CounterFormComponent extends BaseComponent<HTMLDivElement> {
     event.preventDefault();
     const name = this.nameInput.value.trim();
     if (!name) {
-      showToast('Name is required.', 'error');
+      showToast('Name ist erforderlich.', 'error');
       return;
     }
 
