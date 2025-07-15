@@ -565,15 +565,6 @@ function handleInventoryInputChange(event: Event): void {
         // Proper unsaved changes tracking should be implemented if needed.
     }
 
-    const focusNextInput = () => {
-        const allInputs = Array.from(document.querySelectorAll('.inventory-table .inventory-input:not([disabled])')) as HTMLInputElement[];
-        const currentIndex = allInputs.indexOf(inputElement);
-        if (currentIndex !== -1 && currentIndex < allInputs.length - 1) {
-            allInputs[currentIndex + 1]?.focus();
-        } else if (currentIndex === allInputs.length - 1) {
-            document.getElementById('save-inventory-btn')?.focus();
-        }
-    }, 10);
 }
 
 /**
