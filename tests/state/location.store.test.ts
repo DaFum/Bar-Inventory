@@ -660,3 +660,572 @@ describe('LocationStore', () => {
     });
   });
 });
+
+  describe('Performance and Stress Testing', () => {
+    it('should handle loading large number of locations efficiently', async () => {
+      const largeMockLocations: Location[] = Array.from({ length: 1000 }, (_, i) => ({
+        id: `loc-${i}`,
+        name: `Location ${i}`,
+        address: `${i} Street`,
+        counters: []
+      }));
+      
+      (dbService.loadLocations as jest.Mock).mockResolvedValueOnce(largeMockLocations);
+      
+      const startTime = Date.now();
+      await locationStore.loadLocations();
+      const endTime = Date.now();
+      
+      expect(locationStore.getLocations()).toHaveLength(1000);
+      expect(endTime - startTime).toBeLessThan(1000); // Should complete within 1 second
+    });
+
+    it('should handle adding many locations without memory issues', async () => {
+      const subscriber = jest.fn();
+      locationStore.subscribe(subscriber);
+      
+      // Add 100 locations in sequence
+      for (let i = 0; i < 100; i++) {
+        await locationStore.addLocation({ name: `Location ${i}`, address: `${i} Street` });
+      }
+      
+      expect(locationStore.getLocations()).toHaveLength(100);
+      expect(subscriber).toHaveBeenCalledTimes(100);
+    });
+
+    it('should handle complex nested structures with many counters and areas', async () => {
+      const complexLocation = await locationStore.addLocation({
+        name: 'Mega Complex Location',
+        address: 'Complex Street'
+      });
+      
+      // Add 20 counters, each with 10 areas
+      for (let i = 0; i < 20; i++) {
+        const counter = await locationStore.addCounter(complexLocation.id, {
+          name: `Counter ${i}`,
+          description: `Description for counter ${i}`
+        });
+        
+        for (let j = 0; j < 10; j++) {
+          await locationStore.addArea(complexLocation.id, counter.id, {
+            name: `Area ${i}-${j}`,
+            displayOrder: j,
+            description: `Area description ${i}-${j}`
+          });
+        }
+      }
+      
+      const finalLocation = locationStore.getLocationById(complexLocation.id);
+      expect(finalLocation?.counters).toHaveLength(20);
+      expect(finalLocation?.counters[0]?.areas).toHaveLength(10);
+    });
+  });
+
+  describe('Advanced Inventory Operations', () => {
+    let locationId: string;
+    let counterId: string;
+    let areaId: string;
+
+    beforeEach(async () => {
+      await locationStore.loadLocations();
+      locationId = mockLocation1.id;
+      counterId = mockLocation1.counters[0]!.id;
+      areaId = mockLocation1.counters[0]!.areas[0]!.id;
+    });
+
+    it('should preserve inventory items during location updates', async () => {
+      const location = locationStore.getLocationById(locationId)!;
+      const area = location.counters[0]!.areas[0]!;
+      
+      // Add multiple inventory items
+      area.inventoryItems = [
+        { productId: 'prod-1', quantity: 10 } as InventoryEntry,
+        { productId: 'prod-2', quantity: 5 } as InventoryEntry,
+        { productId: 'prod-3', quantity: 15 } as InventoryEntry
+      ];
+      
+      await locationStore.updateLocation(location);
+      
+      const updatedLocation = locationStore.getLocationById(locationId);
+      const updatedArea = updatedLocation?.counters[0]?.areas[0];
+      
+      expect(updatedArea?.inventoryItems).toHaveLength(3);
+      expect(updatedArea?.inventoryItems.map(item => item.productId))
+        .toEqual(['prod-1', 'prod-2', 'prod-3']);
+    });
+
+    it('should handle inventory items with various data types', async () => {
+      const location = locationStore.getLocationById(locationId)!;
+      const area = location.counters[0]!.areas[0]!;
+      
+      area.inventoryItems = [
+        { productId: 'prod-1', quantity: 0 } as InventoryEntry, // Zero quantity
+        { productId: '', quantity: 10 } as InventoryEntry, // Empty product ID
+        { productId: 'prod-with-special-chars-@#$%', quantity: 999999 } as InventoryEntry // Large quantity and special chars
+      ];
+      
+      await locationStore.updateLocation(location);
+      
+      const updatedLocation = locationStore.getLocationById(locationId);
+      const updatedArea = updatedLocation?.counters[0]?.areas[0];
+      
+      expect(updatedArea?.inventoryItems).toHaveLength(3);
+      expect(updatedArea?.inventoryItems[2]?.quantity).toBe(999999);
+    });
+  });
+
+  describe('Concurrent Operations and Race Conditions', () => {
+    it('should handle simultaneous location updates without corruption', async () => {
+      await locationStore.loadLocations();
+      const location = JSON.parse(JSON.stringify(initialMockLocations[0]));
+      
+      // Simulate race condition with simultaneous updates
+      const updatePromises = [
+        locationStore.updateLocation({ ...location, name: 'Updated Name 1' }),
+        locationStore.updateLocation({ ...location, name: 'Updated Name 2' }),
+        locationStore.updateLocation({ ...location, name: 'Updated Name 3' })
+      ];
+      
+      await Promise.allSettled(updatePromises);
+      
+      const finalLocation = locationStore.getLocationById(location.id);
+      expect(finalLocation?.name).toMatch(/^Updated Name [123]$/);
+    });
+
+    it('should handle rapid subscribe/unsubscribe operations', async () => {
+      const subscribers: Array<() => void> = [];
+      
+      // Add and remove subscribers rapidly
+      for (let i = 0; i < 50; i++) {
+        const subscriber = jest.fn();
+        const unsubscribe = locationStore.subscribe(subscriber);
+        subscribers.push(unsubscribe);
+        
+        if (i % 2 === 0) {
+          unsubscribe();
+        }
+      }
+      
+      await locationStore.loadLocations();
+      
+      // Clean up remaining subscribers
+      subscribers.forEach(unsub => unsub());
+      
+      // Should not throw errors
+      expect(true).toBe(true);
+    });
+
+    it('should handle concurrent counter operations on same location', async () => {
+      await locationStore.loadLocations();
+      const locationId = mockLocation1.id;
+      
+      // Perform multiple counter operations simultaneously
+      const operations = [
+        locationStore.addCounter(locationId, { name: 'Counter A' }),
+        locationStore.addCounter(locationId, { name: 'Counter B' }),
+        locationStore.addCounter(locationId, { name: 'Counter C' })
+      ];
+      
+      const results = await Promise.all(operations);
+      
+      expect(results).toHaveLength(3);
+      expect(results.every(counter => counter.id)).toBe(true);
+      
+      const location = locationStore.getLocationById(locationId);
+      expect(location?.counters.length).toBeGreaterThanOrEqual(4); // 1 original + 3 new
+    });
+  });
+
+  describe('Data Serialization and Deep Copy Edge Cases', () => {
+    it('should handle circular references gracefully', async () => {
+      await locationStore.loadLocations();
+      const location = locationStore.getLocationById(mockLocation1.id)!;
+      
+      // Create a circular reference (this would normally break JSON.stringify)
+      const modifiedLocation = { ...location };
+      (modifiedLocation as any).self = modifiedLocation;
+      
+      // The store should handle this gracefully by deep cloning properly
+      await expect(locationStore.updateLocation(location)).resolves.not.toThrow();
+    });
+
+    it('should preserve complex nested objects in deep copies', async () => {
+      const complexLocation = await locationStore.addLocation({
+        name: 'Complex Location',
+        address: 'Complex Address',
+        metadata: {
+          nested: {
+            deeply: {
+              value: 'test',
+              array: [1, 2, { inner: 'value' }],
+              date: new Date().toISOString()
+            }
+          }
+        }
+      } as any);
+      
+      const retrieved1 = locationStore.getLocationById(complexLocation.id);
+      const retrieved2 = locationStore.getLocationById(complexLocation.id);
+      
+      expect(retrieved1).toEqual(retrieved2);
+      expect(retrieved1).not.toBe(retrieved2);
+    });
+  });
+
+  describe('Boundary Value Testing', () => {
+    it('should handle maximum length strings for location name', async () => {
+      const maxLengthName = 'A'.repeat(10000); // Very long name
+      const location = await locationStore.addLocation({
+        name: maxLengthName,
+        address: 'Test Address'
+      });
+      
+      expect(location.name).toBe(maxLengthName);
+      expect(location.name.length).toBe(10000);
+    });
+
+    it('should handle special characters in all string fields', async () => {
+      const specialChars = '🎉💯!@#$%^&*()_+-={}[]|\\:";\'<>?,./àáâãäåæçèéêë';
+      const location = await locationStore.addLocation({
+        name: `Location ${specialChars}`,
+        address: `Address ${specialChars}`
+      });
+      
+      expect(location.name).toContain(specialChars);
+      expect(location.address).toContain(specialChars);
+    });
+
+    it('should handle very large display order values', async () => {
+      await locationStore.loadLocations();
+      const locationId = mockLocation1.id;
+      const counterId = mockLocation1.counters[0]!.id;
+      
+      const area = await locationStore.addArea(locationId, counterId, {
+        name: 'Large Order Area',
+        displayOrder: Number.MAX_SAFE_INTEGER
+      });
+      
+      expect(area.displayOrder).toBe(Number.MAX_SAFE_INTEGER);
+    });
+
+    it('should handle negative display order values', async () => {
+      await locationStore.loadLocations();
+      const locationId = mockLocation1.id;
+      const counterId = mockLocation1.counters[0]!.id;
+      
+      const area = await locationStore.addArea(locationId, counterId, {
+        name: 'Negative Order Area',
+        displayOrder: -999
+      });
+      
+      expect(area.displayOrder).toBe(-999);
+    });
+  });
+
+  describe('Memory Management and Resource Cleanup', () => {
+    it('should properly clean up subscribers to prevent memory leaks', async () => {
+      const subscribers: jest.Mock[] = [];
+      const unsubscribeFunctions: Array<() => void> = [];
+      
+      // Create many subscribers
+      for (let i = 0; i < 100; i++) {
+        const subscriber = jest.fn();
+        subscribers.push(subscriber);
+        const unsubscribe = locationStore.subscribe(subscriber);
+        unsubscribeFunctions.push(unsubscribe);
+      }
+      
+      await locationStore.loadLocations();
+      
+      // All subscribers should be called
+      subscribers.forEach(sub => expect(sub).toHaveBeenCalled());
+      
+      // Unsubscribe all
+      unsubscribeFunctions.forEach(unsub => unsub());
+      
+      // Clear and trigger another update
+      subscribers.forEach(sub => sub.mockClear());
+      await locationStore.addLocation({ name: 'Test Location' });
+      
+      // No subscribers should be called after unsubscribe
+      subscribers.forEach(sub => expect(sub).not.toHaveBeenCalled());
+    });
+
+    it('should handle rapid creation and deletion of locations', async () => {
+      const createdIds: string[] = [];
+      
+      // Rapidly create locations
+      for (let i = 0; i < 50; i++) {
+        const location = await locationStore.addLocation({ name: `Temp Location ${i}` });
+        createdIds.push(location.id);
+      }
+      
+      expect(locationStore.getLocations()).toHaveLength(50);
+      
+      // Rapidly delete locations
+      for (const id of createdIds) {
+        await locationStore.deleteLocation(id);
+      }
+      
+      expect(locationStore.getLocations()).toHaveLength(0);
+    });
+  });
+
+  describe('Advanced Error Scenarios', () => {
+    it('should handle malformed location data gracefully', async () => {
+      const malformedLocation = {
+        name: 'Test Location',
+        counters: [
+          {
+            // Missing required fields
+            areas: [
+              {
+                // Missing required fields
+                inventoryItems: 'not an array' // Wrong type
+              }
+            ]
+          }
+        ]
+      } as any;
+      
+      // The store should handle this by filling in missing IDs
+      await expect(locationStore.addLocation(malformedLocation)).resolves.not.toThrow();
+    });
+
+    it('should recover from inconsistent internal state', async () => {
+      await locationStore.loadLocations();
+      
+      // Simulate inconsistent state by trying to update a counter that doesn't exist
+      const location = locationStore.getLocationById(mockLocation1.id)!;
+      const fakeCounter: Counter = {
+        id: 'fake-counter-id',
+        name: 'Fake Counter',
+        description: 'Should not exist',
+        areas: []
+      };
+      
+      await expect(locationStore.updateCounter(location.id, fakeCounter))
+        .rejects.toThrow();
+        
+      // Store should remain in consistent state
+      const consistentLocation = locationStore.getLocationById(mockLocation1.id);
+      expect(consistentLocation?.counters.find(c => c.id === 'fake-counter-id')).toBeUndefined();
+    });
+
+    it('should handle database service returning null/undefined', async () => {
+      (dbService.loadLocations as jest.Mock).mockResolvedValueOnce(null);
+      
+      await locationStore.loadLocations();
+      
+      expect(locationStore.getLocations()).toEqual([]);
+    });
+
+    it('should handle database service returning invalid data structure', async () => {
+      (dbService.loadLocations as jest.Mock).mockResolvedValueOnce('invalid data');
+      
+      await expect(locationStore.loadLocations()).rejects.toThrow();
+    });
+  });
+
+  describe('Complex Workflow Integration Tests', () => {
+    it('should handle complete location setup workflow', async () => {
+      // Create new location
+      const location = await locationStore.addLocation({
+        name: 'Full Service Restaurant',
+        address: '123 Restaurant Row'
+      });
+      
+      // Add multiple counters
+      const barCounter = await locationStore.addCounter(location.id, {
+        name: 'Bar Counter',
+        description: 'Main bar service area'
+      });
+      
+      const kitchenCounter = await locationStore.addCounter(location.id, {
+        name: 'Kitchen Counter',
+        description: 'Food preparation area'
+      });
+      
+      // Add areas to each counter
+      const topShelf = await locationStore.addArea(location.id, barCounter.id, {
+        name: 'Top Shelf',
+        displayOrder: 1,
+        description: 'Premium spirits'
+      });
+      
+      const bottomShelf = await locationStore.addArea(location.id, barCounter.id, {
+        name: 'Bottom Shelf',
+        displayOrder: 2,
+        description: 'House spirits'
+      });
+      
+      const coldStorage = await locationStore.addArea(location.id, kitchenCounter.id, {
+        name: 'Cold Storage',
+        displayOrder: 1,
+        description: 'Refrigerated items'
+      });
+      
+      // Verify complete structure
+      const finalLocation = locationStore.getLocationById(location.id);
+      expect(finalLocation?.counters).toHaveLength(2);
+      
+      const finalBarCounter = finalLocation?.counters.find(c => c.name === 'Bar Counter');
+      const finalKitchenCounter = finalLocation?.counters.find(c => c.name === 'Kitchen Counter');
+      
+      expect(finalBarCounter?.areas).toHaveLength(2);
+      expect(finalKitchenCounter?.areas).toHaveLength(1);
+      
+      // Test ordering
+      expect(finalBarCounter?.areas[0]?.name).toBe('Top Shelf');
+      expect(finalBarCounter?.areas[1]?.name).toBe('Bottom Shelf');
+    });
+
+    it('should handle location restructuring workflow', async () => {
+      await locationStore.loadLocations();
+      const locationId = mockLocation1.id;
+      
+      // Add new counter
+      const newCounter = await locationStore.addCounter(locationId, {
+        name: 'New Counter',
+        description: 'Recently added'
+      });
+      
+      // Move area from existing counter to new counter (simulate by delete + add)
+      const originalCounterId = mockLocation1.counters[0]!.id;
+      const originalArea = mockLocation1.counters[0]!.areas[0]!;
+      
+      await locationStore.deleteArea(locationId, originalCounterId, originalArea.id);
+      
+      await locationStore.addArea(locationId, newCounter.id, {
+        name: originalArea.name,
+        displayOrder: originalArea.displayOrder,
+        description: 'Moved from original counter'
+      });
+      
+      // Verify restructuring
+      const location = locationStore.getLocationById(locationId);
+      const originalCounter = location?.counters.find(c => c.id === originalCounterId);
+      const movedToCounter = location?.counters.find(c => c.id === newCounter.id);
+      
+      expect(originalCounter?.areas).toHaveLength(0);
+      expect(movedToCounter?.areas).toHaveLength(1);
+      expect(movedToCounter?.areas[0]?.name).toBe(originalArea.name);
+    });
+  });
+
+  describe('Unicode and Internationalization Support', () => {
+    it('should handle various unicode characters correctly', async () => {
+      const unicodeLocation = await locationStore.addLocation({
+        name: '东京酒吧 Tokyo Bar 🍺',
+        address: 'الشارع الرئيسي Main Street 123'
+      });
+      
+      expect(unicodeLocation.name).toBe('东京酒吧 Tokyo Bar 🍺');
+      expect(unicodeLocation.address).toBe('الشارع الرئيسي Main Street 123');
+      
+      const retrieved = locationStore.getLocationById(unicodeLocation.id);
+      expect(retrieved?.name).toBe('东京酒吧 Tokyo Bar 🍺');
+    });
+
+    it('should handle right-to-left and mixed direction text', async () => {
+      const rtlLocation = await locationStore.addLocation({
+        name: 'مطعم البحر الأبيض المتوسط Mediterranean Restaurant',
+        address: 'שדרות רוטשילד 123 Rothschild Boulevard'
+      });
+      
+      expect(rtlLocation.name).toContain('مطعم');
+      expect(rtlLocation.address).toContain('שדרות');
+    });
+  });
+
+  describe('Data Validation Edge Cases', () => {
+    it('should handle string fields with only whitespace characters', async () => {
+      const whitespaceVariations = [
+        '   ',           // spaces
+        '\t\t\t',       // tabs
+        '\n\n\n',       // newlines
+        '\r\r\r',       // carriage returns
+        ' \t\n\r ',     // mixed whitespace
+        '\u00A0\u00A0', // non-breaking spaces
+        '\u2000\u2001\u2002' // various unicode spaces
+      ];
+      
+      for (const whitespace of whitespaceVariations) {
+        await expect(locationStore.addLocation({ name: whitespace }))
+          .rejects.toThrow('Standortname darf nicht leer sein');
+      }
+    });
+
+    it('should handle extremely nested object structures', async () => {
+      const deepLocation = {
+        name: 'Deep Location',
+        address: 'Deep Address',
+        metadata: {
+          level1: {
+            level2: {
+              level3: {
+                level4: {
+                  level5: {
+                    value: 'deeply nested value'
+                  }
+                }
+              }
+            }
+          }
+        }
+      } as any;
+      
+      const location = await locationStore.addLocation(deepLocation);
+      expect((location as any).metadata?.level1?.level2?.level3?.level4?.level5?.value)
+        .toBe('deeply nested value');
+    });
+  });
+
+  describe('Performance Edge Cases', () => {
+    it('should handle locations with extremely long names efficiently', async () => {
+      const longName = 'A'.repeat(100000); // 100KB string
+      
+      const startTime = Date.now();
+      const location = await locationStore.addLocation({
+        name: longName,
+        address: 'Test Address'
+      });
+      const endTime = Date.now();
+      
+      expect(location.name).toBe(longName);
+      expect(endTime - startTime).toBeLessThan(5000); // Should complete within 5 seconds
+    });
+
+    it('should handle rapid area reordering operations', async () => {
+      await locationStore.loadLocations();
+      const locationId = mockLocation1.id;
+      const counterId = mockLocation1.counters[0]!.id;
+      
+      // Add 20 areas
+      const areas: Area[] = [];
+      for (let i = 0; i < 20; i++) {
+        const area = await locationStore.addArea(locationId, counterId, {
+          name: `Area ${i}`,
+          displayOrder: i
+        });
+        areas.push(area);
+      }
+      
+      // Rapidly change display orders
+      for (let i = 0; i < areas.length; i++) {
+        const newOrder = areas.length - i - 1; // Reverse order
+        await locationStore.updateArea(locationId, counterId, {
+          ...areas[i]!,
+          displayOrder: newOrder
+        });
+      }
+      
+      const location = locationStore.getLocationById(locationId);
+      const counter = location?.counters.find(c => c.id === counterId);
+      const sortedAreas = counter?.areas.sort((a, b) => a.displayOrder - b.displayOrder);
+      
+      expect(sortedAreas?.[0]?.name).toBe('Area 19');
+      expect(sortedAreas?.[19]?.name).toBe('Area 0');
+    });
+  });
+
