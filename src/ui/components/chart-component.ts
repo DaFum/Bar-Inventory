@@ -41,13 +41,7 @@ export class ChartComponent {
         labels: Object.keys(stats.categoryCounts),
         datasets: [{
           data: Object.values(stats.categoryCounts),
-          backgroundColor: [
-            '#ff6384',
-            '#36a2eb',
-            '#cc65fe',
-            '#ffce56',
-            '#4bc0c0',
-          ],
+          backgroundColor: this.generateColors(Object.keys(stats.categoryCounts).length),
           borderWidth: 2,
           borderColor: '#ffffff',
         }],
