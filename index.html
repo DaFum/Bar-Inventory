@@ -1,34 +1,82 @@
-<!doctype html>
-<html lang="de" data-theme="light">
-  <!-- Added data-theme for potential CSS hooks -->
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Inventur-App für Bars</title>
-    <!-- Placeholder for styles -->
-    <link rel="stylesheet" href="css/style.css" />
-    <meta
-      name="description"
-      content="Inventur-App für Bars zur schnellen Bestandsaufnahme."
-    />
-    <link rel="icon" href="favicon.ico" type="image/x-icon" />
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json" />
-    <!-- Theme color for PWA -->
-    <meta name="theme-color" content="#333333" />
-  </head>
-  <body>
-    <header>
-      <h1>Inventur-App</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bar Inventory Manager</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.ico">
+    <meta name="theme-color" content="#2196F3">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="app-header">
+        <h1>Bar Inventory Manager</h1>
+        <button id="install-button" style="display: none;">Install App</button>
     </header>
-    <main id="app-container">
-      <!-- App content will be rendered here by JavaScript -->
-      <p>Lade App...</p>
+
+    <main class="app-main">
+        <section class="stats-section">
+            <div class="stat-card">
+                <h3>Total Items</h3>
+                <span id="total-items">0</span>
+            </div>
+            <div class="stat-card">
+                <h3>Low Stock</h3>
+                <span id="low-stock-items">0</span>
+            </div>
+            <div class="stat-card">
+                <h3>Total Value</h3>
+                <span id="total-value">$0.00</span>
+            </div>
+        </section>
+
+        <section class="controls-section">
+            <form id="add-item-form" class="add-item-form">
+                <input name="name" placeholder="Item name" required>
+                <select name="category" required>
+                    <option value="">Select category</option>
+                    <option value="Spirits">Spirits</option>
+                    <option value="Beer">Beer</option>
+                    <option value="Wine">Wine</option>
+                    <option value="Garnish">Garnish</option>
+                </select>
+                <select name="area" required>
+                    <option value="">Select area</option>
+                    <option value="Main Bar">Main Bar</option>
+                    <option value="Prep Station">Prep Station</option>
+                    <option value="Storage Room">Storage Room</option>
+                </select>
+                <input name="quantity" type="number" placeholder="Quantity" required>
+                <input name="unit" placeholder="Unit" required>
+                <input name="minThreshold" type="number" placeholder="Min threshold" required>
+                <input name="cost" type="number" step="0.01" placeholder="Cost">
+                <button type="submit">Add Item</button>
+            </form>
+
+            <div class="filter-controls">
+                <input id="search-input" placeholder="Search items...">
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="category" data-value="all">All Categories</button>
+                    <button class="filter-btn" data-filter="category" data-value="Spirits">Spirits</button>
+                    <button class="filter-btn" data-filter="category" data-value="Beer">Beer</button>
+                    <button class="filter-btn" data-filter="stock" data-value="low">Low Stock</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <div class="inventory-panel">
+                <h2>Inventory Items</h2>
+                <div id="inventory-list" class="inventory-list"></div>
+            </div>
+
+            <div class="chart-panel">
+                <canvas id="inventory-chart" width="400" height="300"></canvas>
+            </div>
+        </section>
     </main>
-    <footer>
-      <p>&copy; 2024 Inventur-App</p>
-    </footer>
-    <!-- Main application script -->
-    <script type="module" src="dist/app.js"></script>
-  </body>
+
+    <script type="module" src="src/app.js"></script>
+</body>
 </html>
