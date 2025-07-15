@@ -175,7 +175,7 @@ class LocationStore {
   // Methods for Counters
   async addCounter(
     locationId: string,
-    counterData: Partial<Counter>
+    counterData: Pick<Counter, 'name' | 'description'>
   ): Promise<Counter> {
     if (!counterData.name?.trim()) {
       throw new Error('Tresenname darf nicht leer sein');
