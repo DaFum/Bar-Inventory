@@ -115,10 +115,13 @@ describe('ThemeService', () => {
     test('should initialize with light theme when no stored theme and system prefers light', () => {
       const mediaQueryList = {
         matches: false,
+        media: '(prefers-color-scheme: dark)',
+        onchange: null,
         addEventListener: jest.fn(),
         addListener: jest.fn(),
         removeEventListener: jest.fn(),
         removeListener: jest.fn(),
+        dispatchEvent: jest.fn(),
       };
       mockMatchMedia.mockReturnValue(mediaQueryList);
       mockLocalStorage.getItem.mockReturnValue(null);
