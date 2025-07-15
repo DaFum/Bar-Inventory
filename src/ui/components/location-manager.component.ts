@@ -35,8 +35,12 @@ export class LocationManagerComponent extends BaseComponent<HTMLDivElement> {
             </div>
         `;
 
-        const listHost = this.element.querySelector<HTMLDivElement>('#location-list-host')!;
-        this.detailSectionHost = this.element.querySelector<HTMLDivElement>('#location-detail-section-host')!;
+        const listHost = this.element.querySelector<HTMLDivElement>('#location-list-host');
+        this.detailSectionHost = this.element.querySelector<HTMLDivElement>('#location-detail-section-host');
+
+        if (!listHost || !this.detailSectionHost) {
+            throw new Error('Erforderliche DOM-Elemente konnten nicht gefunden werden');
+        }
 
         const listCallbacks: LocationListItemCallbacks = {
             onEdit: (location) => this.showLocationDetails(location),
