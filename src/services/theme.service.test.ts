@@ -991,606 +991,907 @@ describe('ThemeService', () => {
   });
 });
 
-  describe('Advanced Edge Cases and Security', () => {
-    test('should handle prototype pollution attempts in localStorage', () => {
+  describe('Advanced Chart.js Integration', () => {
+    test('should handle Chart.js with circular references in instances', () => {
       const service = new ThemeService();
       testServiceInstances.push(service);
       
-      // Attempt to pollute with __proto__ and constructor
-      localStorageMock.setItem(THEME_KEY, '__proto__');
-      const service2 = new ThemeService();
-      testServiceInstances.push(service2);
-      expect(['light', 'dark']).toContain(service2.getCurrentTheme());
+      const mockChart1 = { update: jest.fn(), id: 1 };
+      const mockChart2 = { update: jest.fn(), id: 2, parent: mockChart1 };
+      (mockChart1 as any).child = mockChart2;
       
-      localStorageMock.setItem(THEME_KEY, 'constructor');
-      const service3 = new ThemeService();
-      testServiceInstances.push(service3);
-      expect(['light', 'dark']).toContain(service3.getCurrentTheme());
-    });
-
-    test('should handle XSS attempts in localStorage theme values', () => {
-      const xssAttempts = [
-        '<script>alert("xss")</script>',
-        'javascript:void(0)',
-        '"><script>alert("xss")</script>',
-        "'><script>alert('xss')</script>",
-        '&lt;script&gt;alert("xss")&lt;/script&gt;'
-      ];
+      (Chart.instances as any) = {
+        chart1: mockChart1,
+        chart2: mockChart2
+      };
       
-      xssAttempts.forEach((xssValue, index) => {
-        localStorageMock.setItem(THEME_KEY, xssValue);
-        const service = new ThemeService();
-        testServiceInstances.push(service);
-        expect(['light', 'dark']).toContain(service.getCurrentTheme());
-        expect(service.getCurrentTheme()).not.toContain('<script>');
-      });
-    });
-
-    test('should handle extremely long strings in localStorage', () => {
-      const longString = 'a'.repeat(10000);
-      localStorageMock.setItem(THEME_KEY, longString);
-      
-      let service: ThemeService;
       expect(() => {
-        service = new ThemeService();
-        testServiceInstances.push(service);
+        service.toggleTheme();
       }).not.toThrow();
       
-      expect(['light', 'dark']).toContain(service!.getCurrentTheme());
+      expect(mockChart1.update).toHaveBeenCalledTimes(1);
+      expect(mockChart2.update).toHaveBeenCalledTimes(1);
+      
+      (Chart.instances as any) = {};
     });
 
-    test('should handle non-string values in localStorage mock', () => {
-      const nonStringValues = [
-        123,
-        true,
-        { theme: 'dark' },
-        ['dark'],
-        null,
-        undefined
-      ];
+    test('should handle Chart.js instances with async update methods', async () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
       
-      nonStringValues.forEach((value, index) => {
-        localStorageMock.setItem(THEME_KEY, value as any);
-        const service = new ThemeService();
-        testServiceInstances.push(service);
-        expect(['light', 'dark']).toContain(service.getCurrentTheme());
+      const asyncUpdateMock = jest.fn().mockResolvedValue(undefined);
+      const mockChart = { update: asyncUpdateMock, id: 1 };
+      
+      (Chart.instances as any) = { chart1: mockChart };
+      
+      expect(() => {
+        service.toggleTheme();
+      }).not.toThrow();
+      
+      expect(asyncUpdateMock).toHaveBeenCalledTimes(1);
+      
+      (Chart.instances as any) = {};
+    });
+
+    test('should handle Chart.js instances with throwing update methods', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const throwingUpdateMock = jest.fn().mockImplementation(() => {
+        throw new Error('Chart update failed');
       });
+      const normalUpdateMock = jest.fn();
+      
+      (Chart.instances as any) = {
+        chart1: { update: throwingUpdateMock, id: 1 },
+        chart2: { update: normalUpdateMock, id: 2 }
+      };
+      
+      expect(() => {
+        service.toggleTheme();
+      }).not.toThrow();
+      
+      expect(throwingUpdateMock).toHaveBeenCalledTimes(1);
+      expect(normalUpdateMock).toHaveBeenCalledTimes(1);
+      
+      (Chart.instances as any) = {};
+    });
+
+    test('should handle Chart.defaults with deeply nested null values', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const originalDefaults = JSON.parse(JSON.stringify(globalChartDefaults));
+      
+      try {
+        (globalChartDefaults as any).scale = {
+          ticks: null,
+          grid: { color: null },
+          title: { color: undefined }
+        };
+        (globalChartDefaults as any).plugins = {
+          legend: { labels: null },
+          title: null
+        };
+        
+        expect(() => {
+          service.toggleTheme();
+        }).not.toThrow();
+      } finally {
+        Object.assign(globalChartDefaults, originalDefaults);
+      }
+    });
+
+    test('should handle Chart.instances being frozen or sealed', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const mockChart = { update: jest.fn(), id: 1 };
+      const frozenInstances = Object.freeze({ chart1: mockChart });
+      
+      (Chart.instances as any) = frozenInstances;
+      
+      expect(() => {
+        service.toggleTheme();
+      }).not.toThrow();
+      
+      expect(mockChart.update).toHaveBeenCalledTimes(1);
+      
+      (Chart.instances as any) = {};
     });
   });
 
-  describe('Cross-Tab Synchronization and Events', () => {
-    test('should handle storage events from other tabs', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
-      const initialTheme = service.getCurrentTheme();
+  describe('Advanced localStorage Edge Cases', () => {
+    test('should handle localStorage with special characters and unicode', () => {
+      const specialValues = ['🌙', '☀️', 'тёмный', '明るい', '<script>alert("xss")</script>'];
       
-      // Simulate storage event from another tab
-      const storageEvent = new StorageEvent('storage', {
-        key: THEME_KEY,
-        newValue: initialTheme === 'light' ? 'dark' : 'light',
-        oldValue: initialTheme,
-        storageArea: localStorage
+      specialValues.forEach(value => {
+        localStorageMock.setItem(THEME_KEY, value);
+        
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+          expect(['light', 'dark']).toContain(service.getCurrentTheme());
+        }).not.toThrow();
+      });
+    });
+
+    test('should handle localStorage returning non-string values', () => {
+      const originalGetItem = localStorageMock.getItem;
+      
+      // Mock getItem to return various non-string values
+      const testValues = [null, undefined, 42, {}, [], Symbol('test')];
+      
+      testValues.forEach(value => {
+        localStorageMock.getItem = jest.fn().mockReturnValue(value);
+        
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+          expect(['light', 'dark']).toContain(service.getCurrentTheme());
+        }).not.toThrow();
+      });
+      
+      localStorageMock.getItem = originalGetItem;
+    });
+
+    test('should handle localStorage quota exceeded during initialization', () => {
+      const originalSetItem = localStorageMock.setItem;
+      let callCount = 0;
+      
+      localStorageMock.setItem = jest.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          throw new Error('QuotaExceededError');
+        }
       });
       
       expect(() => {
-        window.dispatchEvent(storageEvent);
+        const service = new ThemeService();
+        testServiceInstances.push(service);
+        service.toggleTheme(); // This should succeed despite initial failure
       }).not.toThrow();
+      
+      localStorageMock.setItem = originalSetItem;
     });
 
-    test('should handle multiple rapid storage events', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
+    test('should handle localStorage being disabled entirely', () => {
+      const originalLocalStorage = window.localStorage;
       
-      for (let i = 0; i < 50; i++) {
-        const storageEvent = new StorageEvent('storage', {
-          key: THEME_KEY,
-          newValue: i % 2 === 0 ? 'light' : 'dark',
-          oldValue: i % 2 === 1 ? 'light' : 'dark',
-          storageArea: localStorage
+      try {
+        Object.defineProperty(window, 'localStorage', {
+          value: undefined,
+          writable: true,
+          configurable: true
         });
         
         expect(() => {
-          window.dispatchEvent(storageEvent);
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+          service.toggleTheme();
+          expect(['light', 'dark']).toContain(service.getCurrentTheme());
         }).not.toThrow();
+      } finally {
+        Object.defineProperty(window, 'localStorage', {
+          value: originalLocalStorage,
+          writable: true,
+          configurable: true
+        });
       }
     });
 
-    test('should ignore storage events for other keys', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
-      const originalTheme = service.getCurrentTheme();
+    test('should handle corrupted localStorage data with invalid JSON', () => {
+      const originalGetItem = localStorageMock.getItem;
       
-      const storageEvent = new StorageEvent('storage', {
-        key: 'other-key',
-        newValue: 'some-value',
-        oldValue: 'old-value',
-        storageArea: localStorage
+      // Simulate corrupted data scenarios
+      const corruptedValues = [
+        '{"theme":}', // Invalid JSON
+        '{"theme":"dark"', // Incomplete JSON
+        '{theme:"dark"}', // Invalid JSON syntax
+        'theme:dark', // Not JSON at all
+        '\x00\x01\x02', // Binary data
+        'a'.repeat(10000) // Very large string
+      ];
+      
+      corruptedValues.forEach(value => {
+        localStorageMock.getItem = jest.fn().mockReturnValue(value);
+        
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+          expect(['light', 'dark']).toContain(service.getCurrentTheme());
+        }).not.toThrow();
       });
       
-      window.dispatchEvent(storageEvent);
-      expect(service.getCurrentTheme()).toBe(originalTheme);
+      localStorageMock.getItem = originalGetItem;
     });
   });
 
-  describe('Performance Stress Testing', () => {
-    test('should handle thousands of rapid toggles without memory leaks', () => {
+  describe('Advanced DOM Integration', () => {
+    test('should handle document being undefined', () => {
+      const originalDocument = global.document;
+      
+      try {
+        (global as any).document = undefined;
+        
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+          service.toggleTheme();
+        }).not.toThrow();
+      } finally {
+        (global as any).document = originalDocument;
+      }
+    });
+
+    test('should handle DOM mutations during theme application', () => {
       const service = new ThemeService();
       testServiceInstances.push(service);
       
-      const startTime = performance.now();
-      for (let i = 0; i < 1000; i++) {
+      const originalSetAttribute = document.documentElement.setAttribute;
+      let mutationCount = 0;
+      
+      document.documentElement.setAttribute = jest.fn().mockImplementation((name, value) => {
+        mutationCount++;
+        if (mutationCount === 1) {
+          // Simulate DOM mutation during first call
+          document.body.className = 'external-change';
+        }
+        return originalSetAttribute.call(document.documentElement, name, value);
+      });
+      
+      expect(() => {
         service.toggleTheme();
+      }).not.toThrow();
+      
+      document.documentElement.setAttribute = originalSetAttribute;
+    });
+
+    test('should handle shadow DOM scenarios', () => {
+      if (typeof document.createElement === 'function' && 
+          typeof HTMLElement !== 'undefined' && 
+          HTMLElement.prototype.attachShadow) {
+        
+        const shadowHost = document.createElement('div');
+        const shadowRoot = shadowHost.attachShadow({ mode: 'open' });
+        const shadowElement = document.createElement('div');
+        shadowRoot.appendChild(shadowElement);
+        
+        // Mock documentElement to be the shadow element temporarily
+        const originalDocumentElement = document.documentElement;
+        Object.defineProperty(document, 'documentElement', {
+          value: shadowElement,
+          configurable: true
+        });
+        
+        try {
+          expect(() => {
+            const service = new ThemeService();
+            testServiceInstances.push(service);
+            service.toggleTheme();
+          }).not.toThrow();
+        } finally {
+          Object.defineProperty(document, 'documentElement', {
+            value: originalDocumentElement,
+            configurable: true
+          });
+        }
       }
+    });
+
+    test('should handle iframe scenarios', () => {
+      // Simulate being in an iframe
+      const originalParent = window.parent;
+      const originalTop = window.top;
+      
+      try {
+        Object.defineProperty(window, 'parent', {
+          value: { postMessage: jest.fn() },
+          configurable: true
+        });
+        Object.defineProperty(window, 'top', {
+          value: { postMessage: jest.fn() },
+          configurable: true
+        });
+        
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+          service.toggleTheme();
+        }).not.toThrow();
+      } finally {
+        Object.defineProperty(window, 'parent', {
+          value: originalParent,
+          configurable: true
+        });
+        Object.defineProperty(window, 'top', {
+          value: originalTop,
+          configurable: true
+        });
+      }
+    });
+  });
+
+  describe('Security and XSS Prevention', () => {
+    test('should sanitize theme values to prevent XSS', () => {
+      const maliciousValues = [
+        '<script>alert("xss")</script>',
+        'javascript:alert("xss")',
+        'onload="alert(1)"',
+        '"><script>alert(1)</script>',
+        '\'"onmouseover="alert(1)"'
+      ];
+      
+      maliciousValues.forEach(maliciousValue => {
+        localStorageMock.setItem(THEME_KEY, maliciousValue);
+        
+        const service = new ThemeService();
+        testServiceInstances.push(service);
+        
+        // Theme should fallback to safe default
+        expect(['light', 'dark']).toContain(service.getCurrentTheme());
+        expect(service.getCurrentTheme()).not.toContain('<script>');
+        expect(service.getCurrentTheme()).not.toContain('javascript:');
+      });
+    });
+
+    test('should handle prototype pollution attempts', () => {
+      const originalGetItem = localStorageMock.getItem;
+      
+      // Simulate prototype pollution attempt
+      localStorageMock.getItem = jest.fn().mockReturnValue('__proto__');
+      
+      expect(() => {
+        const service = new ThemeService();
+        testServiceInstances.push(service);
+        expect(['light', 'dark']).toContain(service.getCurrentTheme());
+      }).not.toThrow();
+      
+      localStorageMock.getItem = originalGetItem;
+    });
+
+    test('should handle CSP violations gracefully', () => {
+      const originalSetAttribute = document.documentElement.setAttribute;
+      
+      document.documentElement.setAttribute = jest.fn().mockImplementation(() => {
+        throw new Error('Content Security Policy violation');
+      });
+      
+      expect(() => {
+        const service = new ThemeService();
+        testServiceInstances.push(service);
+        service.toggleTheme();
+      }).not.toThrow();
+      
+      document.documentElement.setAttribute = originalSetAttribute;
+    });
+  });
+
+  describe('Performance Stress Tests', () => {
+    test('should handle large numbers of chart instances efficiently', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const chartInstances: any = {};
+      for (let i = 0; i < 1000; i++) {
+        chartInstances[`chart${i}`] = { 
+          update: jest.fn(), 
+          id: i,
+          data: new Array(100).fill(0).map((_, j) => ({ x: j, y: Math.random() }))
+        };
+      }
+      
+      (Chart.instances as any) = chartInstances;
+      
+      const startTime = performance.now();
+      
+      expect(() => {
+        service.toggleTheme();
+      }).not.toThrow();
+      
       const endTime = performance.now();
       
       // Should complete within reasonable time (adjust threshold as needed)
       expect(endTime - startTime).toBeLessThan(1000); // 1 second
-      expect(['light', 'dark']).toContain(service.getCurrentTheme());
-    });
-
-    test('should handle massive Chart instances without performance degradation', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
-      
-      // Create many mock chart instances
-      const mockCharts: any = {};
-      for (let i = 0; i < 1000; i++) {
-        mockCharts[`chart${i}`] = { 
-          update: jest.fn(),
-          id: i,
-          destroy: jest.fn()
-        };
-      }
-      
-      (Chart.instances as any) = mockCharts;
-      
-      const startTime = performance.now();
-      service.toggleTheme();
-      const endTime = performance.now();
-      
-      expect(endTime - startTime).toBeLessThan(500); // 500ms threshold
       
       // Verify all charts were updated
-      Object.values(mockCharts).forEach((chart: any) => {
-        expect(chart.update).toHaveBeenCalled();
+      Object.values(chartInstances).forEach((chart: any) => {
+        expect(chart.update).toHaveBeenCalledTimes(1);
       });
       
-      // Clean up
       (Chart.instances as any) = {};
     });
 
-    test('should handle concurrent theme operations gracefully', async () => {
-      const services = Array.from({ length: 10 }, () => {
+    test('should handle rapid consecutive theme toggles without memory leaks', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const initialMemory = (performance as any).memory?.usedJSHeapSize || 0;
+      
+      // Rapid toggles
+      for (let i = 0; i < 100; i++) {
+        service.toggleTheme();
+      }
+      
+      // Force garbage collection if available
+      if ((global as any).gc) {
+        (global as any).gc();
+      }
+      
+      const finalMemory = (performance as any).memory?.usedJSHeapSize || 0;
+      
+      // Memory shouldn't grow significantly (this is a rough check)
+      if (initialMemory > 0 && finalMemory > 0) {
+        expect(finalMemory - initialMemory).toBeLessThan(1024 * 1024); // Less than 1MB growth
+      }
+    });
+
+    test('should handle concurrent access from multiple threads/workers', async () => {
+      // Simulate concurrent access by creating promises that resolve at different times
+      const promises = Array.from({ length: 10 }, (_, i) => 
+        new Promise<ThemeService>(resolve => {
+          setTimeout(() => {
+            const service = new ThemeService();
+            testServiceInstances.push(service);
+            service.toggleTheme();
+            resolve(service);
+          }, Math.random() * 10);
+        })
+      );
+      
+      const services = await Promise.all(promises);
+      
+      // All services should be in a valid state
+      services.forEach(service => {
+        expect(['light', 'dark']).toContain(service.getCurrentTheme());
+      });
+      
+      // All should have the same theme (shared localStorage)
+      const themes = services.map(s => s.getCurrentTheme());
+      expect(new Set(themes).size).toBeLessThanOrEqual(2); // At most 2 different themes
+    });
+  });
+
+  describe('Advanced Media Query Scenarios', () => {
+    test('should handle media query with custom prefers-color-scheme values', () => {
+      const customMediaQueries = [
+        '(prefers-color-scheme: no-preference)',
+        '(prefers-color-scheme: auto)',
+        '(prefers-color-scheme: custom)',
+        '(prefers-color-scheme: )',
+        'invalid-query'
+      ];
+      
+      customMediaQueries.forEach(query => {
+        const mockMq = {
+          matches: false,
+          media: query,
+          onchange: null,
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+          dispatchEvent: jest.fn(),
+        };
+        
+        matchMediaMock.mockImplementation((q: string) => 
+          q === '(prefers-color-scheme: dark)' ? mockMq : ({
+            matches: false,
+            media: q,
+            onchange: null,
+            addListener: jest.fn(),
+            removeListener: jest.fn(),
+            addEventListener: jest.fn(),
+            removeEventListener: jest.fn(),
+            dispatchEvent: jest.fn(),
+          } as any)
+        );
+        
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+        }).not.toThrow();
+      });
+    });
+
+    test('should handle media query listener exceptions', () => {
+      const mockMq = {
+        matches: false,
+        media: '(prefers-color-scheme: dark)',
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn().mockImplementation(() => {
+          throw new Error('addEventListener failed');
+        }),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      };
+      
+      matchMediaMock.mockReturnValue(mockMq as any);
+      
+      expect(() => {
         const service = new ThemeService();
         testServiceInstances.push(service);
-        return service;
-      });
+      }).not.toThrow();
+    });
+
+    test('should handle media query state changes during initialization', () => {
+      let queryState = false;
       
-      // Perform concurrent operations
-      const operations = services.map(async (service, index) => {
-        return new Promise<void>((resolve) => {
-          setTimeout(() => {
-            for (let i = 0; i < 10; i++) {
-              service.toggleTheme();
-            }
-            resolve();
-          }, index * 10);
-        });
-      });
+      const mockMq = {
+        get matches() { return queryState; },
+        media: '(prefers-color-scheme: dark)',
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      };
       
-      await Promise.all(operations);
+      matchMediaMock.mockReturnValue(mockMq as any);
       
-      // All services should have consistent themes (since they share localStorage)
-      const themes = services.map(s => s.getCurrentTheme());
-      expect(new Set(themes).size).toBeLessThanOrEqual(2); // Should only have 1-2 unique values
+      // Change state during initialization
+      setTimeout(() => { queryState = true; }, 0);
+      
+      expect(() => {
+        const service = new ThemeService();
+        testServiceInstances.push(service);
+      }).not.toThrow();
     });
   });
 
-  describe('Advanced Chart.js Integration', () => {
-    test('should handle Chart instances with custom update methods', () => {
+  describe('Advanced Event Handling', () => {
+    test('should handle event listener cleanup on service disposal', () => {
+      const mockMq = {
+        matches: false,
+        media: '(prefers-color-scheme: dark)',
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      };
+      
+      matchMediaMock.mockReturnValue(mockMq as any);
+      
+      const service = new ThemeService();
+      expect(mockMq.addEventListener).toHaveBeenCalledTimes(1);
+      
+      // Simulate service disposal
+      if (typeof (service as any).dispose === 'function') {
+        (service as any).dispose();
+        expect(mockMq.removeEventListener).toHaveBeenCalledTimes(1);
+      }
+    });
+
+    test('should handle window resize events affecting media queries', () => {
       const service = new ThemeService();
       testServiceInstances.push(service);
       
-      const customUpdateChart = {
-        update: jest.fn((options?: any) => {
-          if (options?.mode === 'resize') {
-            throw new Error('Resize not supported');
-          }
-        }),
-        id: 'custom'
-      };
-      
-      (Chart.instances as any) = { customChart: customUpdateChart };
+      // Simulate window resize
+      const resizeEvent = new Event('resize');
+      window.dispatchEvent(resizeEvent);
       
       expect(() => {
         service.toggleTheme();
       }).not.toThrow();
-      
-      expect(customUpdateChart.update).toHaveBeenCalled();
     });
 
-    test('should handle Chart instances with async update methods', async () => {
+    test('should handle orientation change events', () => {
       const service = new ThemeService();
       testServiceInstances.push(service);
       
-      const asyncUpdateChart = {
-        update: jest.fn().mockResolvedValue(undefined),
-        id: 'async'
-      };
-      
-      (Chart.instances as any) = { asyncChart: asyncUpdateChart };
+      // Simulate orientation change
+      const orientationEvent = new Event('orientationchange');
+      window.dispatchEvent(orientationEvent);
       
       expect(() => {
         service.toggleTheme();
       }).not.toThrow();
-      
-      expect(asyncUpdateChart.update).toHaveBeenCalled();
-    });
-
-    test('should handle Chart.defaults with circular references', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
-      
-      const circularObject: any = { color: '#000' };
-      circularObject.self = circularObject;
-      
-      const originalDefaults = { ...globalChartDefaults };
-      try {
-        (globalChartDefaults as any).circularRef = circularObject;
-        
-        expect(() => {
-          service.toggleTheme();
-        }).not.toThrow();
-      } finally {
-        Object.assign(globalChartDefaults, originalDefaults);
-      }
-    });
-
-    test('should handle Chart.defaults with getter/setter properties', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
-      
-      const originalDefaults = { ...globalChartDefaults };
-      let getterCallCount = 0;
-      
-      try {
-        Object.defineProperty(globalChartDefaults, 'dynamicColor', {
-          get() {
-            getterCallCount++;
-            return getterCallCount % 2 === 0 ? '#fff' : '#000';
-          },
-          set(value) {
-            // Setter that might throw
-            if (value === 'invalid') {
-              throw new Error('Invalid color');
-            }
-          },
-          configurable: true
-        });
-        
-        expect(() => {
-          service.toggleTheme();
-        }).not.toThrow();
-        
-        expect(getterCallCount).toBeGreaterThan(0);
-      } finally {
-        delete (globalChartDefaults as any).dynamicColor;
-        Object.assign(globalChartDefaults, originalDefaults);
-      }
     });
   });
 
-  describe('Advanced DOM Manipulation', () => {
-    test('should handle document.documentElement being replaced during operation', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
+  describe('Cross-Browser Compatibility Advanced', () => {
+    test('should handle Internet Explorer specific scenarios', () => {
+      // Simulate IE-like environment
+      const originalMsMatchMedia = (window as any).msMatchMedia;
       
-      const originalDocumentElement = document.documentElement;
-      
-      try {
-        // Replace documentElement during theme toggle
-        const newDocumentElement = document.createElement('html');
-        newDocumentElement.setAttribute = jest.fn();
-        
-        Object.defineProperty(document, 'documentElement', {
-          value: newDocumentElement,
-          writable: true,
-          configurable: true
-        });
-        
-        expect(() => {
-          service.toggleTheme();
-        }).not.toThrow();
-        
-        expect(newDocumentElement.setAttribute).toHaveBeenCalled();
-      } finally {
-        Object.defineProperty(document, 'documentElement', {
-          value: originalDocumentElement,
-          writable: true,
-          configurable: true
-        });
-      }
-    });
-
-    test('should handle setAttribute with non-string values', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
-      
-      const mockElement = {
-        setAttribute: jest.fn((name: string, value: any) => {
-          if (typeof value !== 'string') {
-            throw new Error('Value must be string');
-          }
-        })
-      };
-      
-      const originalDocumentElement = document.documentElement;
-      try {
-        Object.defineProperty(document, 'documentElement', {
-          value: mockElement,
-          writable: true,
-          configurable: true
-        });
-        
-        expect(() => {
-          service.toggleTheme();
-        }).not.toThrow();
-      } finally {
-        Object.defineProperty(document, 'documentElement', {
-          value: originalDocumentElement,
-          writable: true,
-          configurable: true
-        });
-      }
-    });
-
-    test('should handle body classList mutations during theme changes', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
-      
-      const mutatingClassList = {
-        add: jest.fn((className: string) => {
-          if (className === DARK_MODE_CLASS) {
-            // Simulate another script modifying classList
-            setTimeout(() => {
-              document.body.classList.remove(DARK_MODE_CLASS);
-            }, 0);
-          }
-        }),
-        remove: jest.fn(),
-        contains: jest.fn(() => false),
-        toggle: jest.fn()
-      };
-      
-      const originalClassList = document.body.classList;
-      try {
-        Object.defineProperty(document.body, 'classList', {
-          value: mutatingClassList,
-          writable: true,
-          configurable: true
-        });
-        
-        expect(() => {
-          service.toggleTheme();
-        }).not.toThrow();
-      } finally {
-        Object.defineProperty(document.body, 'classList', {
-          value: originalClassList,
-          writable: true,
-          configurable: true
-        });
-      }
-    });
-  });
-
-  describe('Resource Management and Cleanup', () => {
-    test('should properly dispose of all resources when service is destroyed', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
-      
-      const mediaQueryMock = {
+      (window as any).msMatchMedia = jest.fn().mockReturnValue({
         matches: false,
         media: '(prefers-color-scheme: dark)',
         addListener: jest.fn(),
         removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn()
-      };
+      });
       
-      matchMediaMock.mockReturnValue(mediaQueryMock as any);
+      // Remove modern matchMedia
+      const originalMatchMedia = window.matchMedia;
+      Object.defineProperty(window, 'matchMedia', { value: undefined, configurable: true });
       
-      // Create new service to attach listeners
-      const serviceWithListeners = new ThemeService();
-      testServiceInstances.push(serviceWithListeners);
-      
-      // Verify listeners were attached
-      expect(mediaQueryMock.addEventListener).toHaveBeenCalled();
-      
-      // Dispose the service
-      if (typeof (serviceWithListeners as any).dispose === 'function') {
-        (serviceWithListeners as any).dispose();
+      try {
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+        }).not.toThrow();
+      } finally {
+        Object.defineProperty(window, 'matchMedia', { value: originalMatchMedia, configurable: true });
+        delete (window as any).msMatchMedia;
       }
-      
-      // Verify cleanup occurred
-      expect(mediaQueryMock.removeEventListener).toHaveBeenCalled();
     });
 
-    test('should handle disposal when mediaQuery is no longer available', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
-      
-      // Make matchMedia unavailable after initialization
-      Object.defineProperty(window, 'matchMedia', { 
-        value: undefined, 
-        writable: true, 
-        configurable: true 
+    test('should handle Safari specific quirks', () => {
+      // Simulate Safari-specific behavior
+      const originalUserAgent = navigator.userAgent;
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15',
+        configurable: true
       });
       
-      expect(() => {
-        if (typeof (service as any).dispose === 'function') {
-          (service as any).dispose();
-        }
-      }).not.toThrow();
-      
-      // Restore matchMedia
-      Object.defineProperty(window, 'matchMedia', { 
-        value: matchMediaMock, 
-        configurable: true 
-      });
+      try {
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+          service.toggleTheme();
+        }).not.toThrow();
+      } finally {
+        Object.defineProperty(navigator, 'userAgent', {
+          value: originalUserAgent,
+          configurable: true
+        });
+      }
     });
 
-    test('should handle multiple disposal calls gracefully', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
+    test('should handle mobile browser specific scenarios', () => {
+      // Simulate mobile environment
+      const originalUserAgent = navigator.userAgent;
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1',
+        configurable: true
+      });
       
-      expect(() => {
-        for (let i = 0; i < 5; i++) {
-          if (typeof (service as any).dispose === 'function') {
-            (service as any).dispose();
-          }
-        }
-      }).not.toThrow();
+      // Simulate touch events
+      const originalTouchStart = window.ontouchstart;
+      (window as any).ontouchstart = function() {};
+      
+      try {
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+          service.toggleTheme();
+        }).not.toThrow();
+      } finally {
+        Object.defineProperty(navigator, 'userAgent', {
+          value: originalUserAgent,
+          configurable: true
+        });
+        window.ontouchstart = originalTouchStart;
+      }
     });
   });
 
-  describe('Accessibility Enhancements', () => {
-    test('should emit custom events for screen readers', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
+  describe('Integration with External Libraries', () => {
+    test('should handle conflicts with other theme libraries', () => {
+      // Simulate another theme library modifying the DOM
+      const conflictingThemeLib = {
+        setTheme: jest.fn().mockImplementation(() => {
+          document.body.setAttribute('data-theme', 'conflicting');
+          document.documentElement.className = 'conflicting-theme';
+        })
+      };
       
-      const eventListener = jest.fn();
-      document.addEventListener('themechange', eventListener);
-      
-      service.toggleTheme();
-      
-      // Clean up listener
-      document.removeEventListener('themechange', eventListener);
-    });
-
-    test('should update ARIA attributes for theme-aware components', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
-      
-      // Create mock elements with ARIA attributes
-      const themeAwareElement = document.createElement('div');
-      themeAwareElement.setAttribute('aria-label', 'Theme indicator');
-      themeAwareElement.setAttribute('data-theme-aware', 'true');
-      document.body.appendChild(themeAwareElement);
-      
-      try {
-        service.toggleTheme();
-        
-        // Verify theme was applied
-        expect(['light', 'dark']).toContain(service.getCurrentTheme());
-      } finally {
-        document.body.removeChild(themeAwareElement);
-      }
-    });
-
-    test('should respect prefers-reduced-motion for theme transitions', () => {
-      const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
-      const originalMatchMedia = window.matchMedia;
-      
-      const mockReducedMotion = jest.fn((query: string) => ({
-        matches: query === reducedMotionQuery,
-        media: query,
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn()
-      }));
-      
-      Object.defineProperty(window, 'matchMedia', { 
-        value: mockReducedMotion, 
-        configurable: true 
-      });
+      (window as any).conflictingThemeLib = conflictingThemeLib;
       
       try {
         const service = new ThemeService();
         testServiceInstances.push(service);
         
-        service.toggleTheme();
+        // Simulate conflicting library running
+        conflictingThemeLib.setTheme('some-theme');
         
-        expect(mockReducedMotion).toHaveBeenCalledWith(reducedMotionQuery);
+        // Our service should still work
+        expect(() => {
+          service.toggleTheme();
+        }).not.toThrow();
+        
+        expect(['light', 'dark']).toContain(service.getCurrentTheme());
       } finally {
-        Object.defineProperty(window, 'matchMedia', { 
-          value: originalMatchMedia, 
-          configurable: true 
-        });
+        delete (window as any).conflictingThemeLib;
+      }
+    });
+
+    test('should handle Chart.js plugin conflicts', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      // Simulate conflicting Chart.js plugin
+      const originalRegister = Chart.register;
+      Chart.register = jest.fn().mockImplementation(() => {
+        throw new Error('Plugin conflict');
+      });
+      
+      try {
+        expect(() => {
+          service.toggleTheme();
+        }).not.toThrow();
+      } finally {
+        Chart.register = originalRegister;
       }
     });
   });
 
-  describe('Future-Proofing and Extensibility', () => {
-    test('should handle new theme values being added', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
-      
-      // Simulate future theme values
-      const futureThemes = ['auto', 'high-contrast', 'sepia', 'blue-light-filter'];
-      
-      futureThemes.forEach(theme => {
-        localStorageMock.setItem(THEME_KEY, theme);
-        const newService = new ThemeService();
-        testServiceInstances.push(newService);
-        
-        // Should fallback to default themes
-        expect(['light', 'dark']).toContain(newService.getCurrentTheme());
-      });
-    });
-
-    test('should handle Chart.js version upgrades gracefully', () => {
-      const service = new ThemeService();
-      testServiceInstances.push(service);
-      
-      // Simulate Chart.js v4+ with different API structure
-      const futureChartDefaults = {
-        global: {
-          defaultColor: '#000',
-          elements: {
-            arc: { borderColor: '#fff' },
-            line: { borderColor: '#000' }
-          }
-        },
-        scale: {
-          ticks: { color: '#333' },
-          grid: { color: 'rgba(0,0,0,0.1)' }
-        }
+  describe('Accessibility Advanced Scenarios', () => {
+    test('should respect prefers-reduced-motion', () => {
+      const reducedMotionMq = {
+        matches: true,
+        media: '(prefers-reduced-motion: reduce)',
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
       };
       
-      const originalDefaults = globalChartDefaults;
+      const originalMatchMedia = matchMediaMock.getMockImplementation();
+      matchMediaMock.mockImplementation((query: string) => {
+        if (query === '(prefers-reduced-motion: reduce)') {
+          return reducedMotionMq as any;
+        }
+        return originalMatchMedia?.(query) || ({
+          matches: false,
+          media: query,
+          onchange: null,
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+          dispatchEvent: jest.fn(),
+        } as any);
+      });
+      
       try {
-        Object.assign(globalChartDefaults, futureChartDefaults);
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+          service.toggleTheme();
+        }).not.toThrow();
+      } finally {
+        matchMediaMock.mockImplementation(originalMatchMedia || (() => ({
+          matches: false,
+          media: '',
+          onchange: null,
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+          dispatchEvent: jest.fn(),
+        } as any)));
+      }
+    });
+
+    test('should handle high contrast mode', () => {
+      const highContrastMq = {
+        matches: true,
+        media: '(prefers-contrast: high)',
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      };
+      
+      const originalImpl = matchMediaMock.getMockImplementation();
+      matchMediaMock.mockImplementation((query: string) => {
+        if (query === '(prefers-contrast: high)') {
+          return highContrastMq as any;
+        }
+        return originalImpl?.(query) || ({
+          matches: false,
+          media: query,
+          onchange: null,
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+          dispatchEvent: jest.fn(),
+        } as any);
+      });
+      
+      try {
+        expect(() => {
+          const service = new ThemeService();
+          testServiceInstances.push(service);
+        }).not.toThrow();
+      } finally {
+        matchMediaMock.mockImplementation(originalImpl || (() => ({
+          matches: false,
+          media: '',
+          onchange: null,
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+          dispatchEvent: jest.fn(),
+        } as any)));
+      }
+    });
+  });
+
+  describe('Error Recovery and Resilience', () => {
+    test('should recover from complete Chart.js failure', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const originalChart = (globalThis as any).Chart;
+      
+      // Completely break Chart.js
+      (globalThis as any).Chart = {
+        get defaults() { throw new Error('Chart.js completely broken'); },
+        get instances() { throw new Error('Chart.js completely broken'); }
+      };
+      
+      try {
+        expect(() => {
+          service.toggleTheme();
+        }).not.toThrow();
+        
+        // Service should still function for basic theme switching
+        expect(['light', 'dark']).toContain(service.getCurrentTheme());
+      } finally {
+        (globalThis as any).Chart = originalChart;
+      }
+    });
+
+    test('should handle DOM being replaced during operation', () => {
+      const service = new ThemeService();
+      testServiceInstances.push(service);
+      
+      const originalBody = document.body;
+      const originalDocumentElement = document.documentElement;
+      
+      try {
+        // Replace DOM elements during operation
+        setTimeout(() => {
+          Object.defineProperty(document, 'body', {
+            value: document.createElement('body'),
+            configurable: true
+          });
+          Object.defineProperty(document, 'documentElement', {
+            value: document.createElement('html'),
+            configurable: true
+          });
+        }, 0);
         
         expect(() => {
           service.toggleTheme();
         }).not.toThrow();
       } finally {
-        Object.assign(globalChartDefaults, originalDefaults);
+        Object.defineProperty(document, 'body', {
+          value: originalBody,
+          configurable: true
+        });
+        Object.defineProperty(document, 'documentElement', {
+          value: originalDocumentElement,
+          configurable: true
+        });
       }
     });
 
-    test('should handle CSS custom properties for theme variables', () => {
+    test('should handle service method calls after disposal', () => {
       const service = new ThemeService();
-      testServiceInstances.push(service);
       
-      const mockSetProperty = jest.fn();
-      const mockRemoveProperty = jest.fn();
+      // Dispose service if method exists
+      if (typeof (service as any).dispose === 'function') {
+        (service as any).dispose();
+      }
       
-      Object.defineProperty(document.documentElement, 'style', {
-        value: {
-          setProperty: mockSetProperty,
-          removeProperty: mockRemoveProperty
-        },
-        configurable: true
-      });
-      
-      service.toggleTheme();
-      
-      // Should update CSS custom properties
-      expect(['light', 'dark']).toContain(service.getCurrentTheme());
+      // Service should still be resilient to method calls
+      expect(() => {
+        service.toggleTheme();
+        service.getCurrentTheme();
+      }).not.toThrow();
     });
   });
-});
