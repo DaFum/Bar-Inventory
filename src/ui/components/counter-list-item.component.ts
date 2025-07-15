@@ -182,7 +182,11 @@ export class CounterListItemComponent extends BaseComponent<HTMLDivElement> {
         this.location = location;
         this.counter = counter;
 
-        this.render();
+        // Update the counter name span directly
+        const counterNameSpan = this.rootElement.querySelector('.counter-name');
+        if (counterNameSpan) {
+            counterNameSpan.textContent = escapeHtml(this.counter.name);
+        }
 
         if (this.isAreaManagementVisible && this.areaListComponent && counterAreasPotentiallyChanged) {
             this.areaListComponent.setAreas(this.counter.areas || []);
