@@ -274,12 +274,10 @@ export class LocationManagerComponent extends BaseComponent<HTMLDivElement> {
                 await locationStore.updateCounter(this.activeLocation.id, updatedCounterPayload);
                 showToast(`Tresen "${counterData.name}" aktualisiert.`, 'success');
             } else {
-                const newCounterPayload: Partial<Counter> = {
+                const newCounterPayload: Pick<Counter, 'name' | 'description'> = {
                     name: counterData.name,
+                    description: counterData.description?.trim() || '',
                 };
-                if (counterData.description !== undefined && counterData.description.trim() !== '') {
-                    newCounterPayload.description = counterData.description;
-                }
                 await locationStore.addCounter(this.activeLocation.id, newCounterPayload);
                 showToast(`Tresen "${counterData.name}" hinzugefügt.`, 'success');
             }
