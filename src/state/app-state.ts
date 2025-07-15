@@ -13,7 +13,11 @@ export class AppState {
 
   public static getInstance(): AppState {
     if (!AppState.instance) {
-      AppState.instance = new AppState();
+      synchronized (AppState.lock) {
+        if (!AppState.instance) {
+          AppState.instance = new AppState();
+        }
+      }
     }
     return AppState.instance;
   }
