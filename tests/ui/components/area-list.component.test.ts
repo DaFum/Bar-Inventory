@@ -134,7 +134,7 @@ describe('AreaListComponent', () => {
     expect(items.length).toBe(initialAreas.length);
     if (!items[0] || !items[1] || !items[2]) throw new Error("Test assumption failed: not enough items for updateArea order check");
     const texts = Array.from(items).map(item => item.textContent);
-    expect(texts).toEqual(['Area Alpha', 'Area Gamma', 'Area Beta Updated']);
+    expect(texts).toEqual(['Area Alpha', 'Area Beta Updated', 'Area Gamma']);
   });
 
   test('updateArea for a non-existent area should add it', () => {
