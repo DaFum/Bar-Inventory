@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
-import { Product } from '../models';
-import { dbService } from '../services/indexeddb.service';
-import { AppState } from './app-state';
-import { productStore } from './product.store';
+import { Product } from '../../src/models';
+import { dbService } from '../../src/services/indexeddb.service';
+import { AppState } from '../../src/state/app-state';
+import { productStore } from '../../src/state/product.store';
 
 // Mock dependencies
 vi.mock('../services/indexeddb.service');
