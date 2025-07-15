@@ -24,17 +24,23 @@ jest.mock('../../../src/state/location.store', () => ({
   },
 }));
 
-const mockAreaListComponentInstance = {
-    getElement: jest.fn(() => document.createElement('div')),
-    appendTo: jest.fn(),
-    setAreas: jest.fn(),
-};
-const mockAreaFormComponentInstance = {
-    getElement: jest.fn(() => document.createElement('div')),
-    appendTo: jest.fn(),
-    show: jest.fn(),
-    hide: jest.fn(),
-};
+const mockAreaListComponentInstance = (() => {
+    const element = document.createElement('div');
+    return {
+        getElement: jest.fn(() => element),
+        appendTo: jest.fn(),
+        setAreas: jest.fn(),
+    };
+})();
+const mockAreaFormComponentInstance = (() => {
+    const element = document.createElement('div');
+    return {
+        getElement: jest.fn(() => element),
+        appendTo: jest.fn(),
+        show: jest.fn(),
+        hide: jest.fn(),
+    };
+})();
 
 jest.mock('../../../src/ui/components/area-list.component', () => ({
     AreaListComponent: jest.fn().mockImplementation(() => mockAreaListComponentInstance),
