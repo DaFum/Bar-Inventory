@@ -117,7 +117,7 @@ export class LocationManagerComponent extends BaseComponent<HTMLDivElement> {
                             showToast('Ungültiges JSON-Format. Es muss ein Array von Standorten sein.', 'error');
                         }
                     } catch (error) {
-                        showToast(`Fehler beim Importieren der Standorte: ${error}`, 'error');
+                        showToast('Fehler beim Importieren der Standorte. Details finden Sie in der Konsole.', 'error');
                         console.error('Error importing locations from JSON:', error);
                     }
                 }
