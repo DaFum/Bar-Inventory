@@ -441,7 +441,7 @@ describe('CounterFormComponent', () => {
     });
 
     test('should handle show with null counter', () => {
-      component.show(null);
+      component.show();
       expect(component.currentEditingCounter).toBeNull();
       expect(component.getElement().querySelector('#counter-form-title-comp')?.textContent).toBe('Neuen Tresen erstellen');
     });

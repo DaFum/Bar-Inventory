@@ -2,13 +2,13 @@
   "name": "bar-inventory-pwa",
   "version": "2.0.0",
   "description": "Professional Bar Inventory Management PWA with TypeScript",
-  "main": "dist/app.js",
+  "main": "dist/main.js",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"tsc --watch\" \"live-server --host=localhost --port=8080 --watch=dist,css,*.html\"",
     "build": "tsc && npm run copy-assets",
     "copy-assets": "cpx2 \"css/**/*\" dist/css && cpx2 \"*.html\" dist && cpx2 manifest.json dist",
-    "start": "npm run build && node dist/app.js",
+    "start": "npm run build && node dist/main.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -16,7 +16,8 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.ts",
     "serve": "live-server dist --host=localhost --port=8080",
-    "clean": "rimraf dist node_modules"
+    "clean": "rimraf dist node_modules",
+    "docs": "typedoc --out docs src"
   },
   "keywords": [
     "inventory",
@@ -27,7 +28,7 @@
   "author": "DaFum",
   "license": "MIT",
   "devDependencies": {
-    "@types/jest": "^29.5.12",
+    "@types/jest": "^29.5.14",
     "@types/node": "^24.0.10",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
@@ -42,6 +43,7 @@
     "prettier": "^3.2.5",
     "rimraf": "^6.0.1",
     "ts-jest": "^29.4.0",
+    "typedoc": "^0.25.13",
     "typescript": "^5.3.3"
   },
   "dependencies": {

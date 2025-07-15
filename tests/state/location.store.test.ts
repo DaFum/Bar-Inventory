@@ -13,9 +13,12 @@ jest.mock('../../src/services/indexeddb.service', () => ({
 }));
 
 // Improved mock for generateId to ensure uniqueness in tests
-let mockIdCounter = 0;
+let mockIdCounter = 1752485442720;
 jest.mock('../../src/utils/helpers', () => ({
-  generateId: jest.fn((prefix: string) => `${prefix}-mock-id-${mockIdCounter++}`),
+  generateId: jest.fn((prefix: string) => {
+    mockIdCounter++;
+    return `${prefix}-mock-id-${mockIdCounter}`;
+  }),
 }));
 
 describe('LocationStore', () => {
@@ -247,7 +250,6 @@ describe('LocationStore', () => {
         expect(notFound).toBeUndefined();
     });
   });
-// }); // Premature closing moved to the end of the file
 
   describe('Error Handling', () => {
     it('should handle dbService.loadLocations failure', async () => {
@@ -544,8 +546,11 @@ describe('LocationStore', () => {
       const finalLocation = locationStore.getLocationById(newLocation.id);
       
       expect(finalLocation?.counters).toHaveLength(2);
-      expect(finalLocation?.counters[0]?.areas).toHaveLength(2);
-      expect(finalLocation?.counters[1]?.areas).toHaveLength(1);
+      // The order of counters is not guaranteed, so we need to find the correct counter
+      const finalCounter1 = finalLocation?.counters.find(c => c.name === 'Counter 1');
+      const finalCounter2 = finalLocation?.counters.find(c => c.name === 'Counter 2');
+      expect(finalCounter1?.areas).toHaveLength(2);
+      expect(finalCounter2?.areas).toHaveLength(1);
     });
   });
 
@@ -654,4 +659,4 @@ describe('LocationStore', () => {
       expect(subscriber).toHaveBeenCalledTimes(1);
     });
   });
-}); // This closes the main 'LocationStore' describe block
+});

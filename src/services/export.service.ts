@@ -190,7 +190,6 @@ export class ExportService {
    * This is more for backup or internal transfer than for direct spreadsheet use.
    * @param location The Location object.
    */
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   public exportLocationToJson(location: Location): void {
     // Decide if products should be embedded or if product catalog is separate
     // The _allProducts parameter was removed as it was unused.

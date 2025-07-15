@@ -1,6 +1,7 @@
 import { Location, Counter, Area } from '../models';
 import { dbService } from '../services/indexeddb.service';
 import { generateId } from '../utils/helpers';
+import { AppState } from './app-state';
 
 type LocationSubscriber = (locations: Location[]) => void;
 
@@ -9,16 +10,16 @@ type LocationSubscriber = (locations: Location[]) => void;
  * Handles CRUD operations and notifies subscribers of changes.
  */
 class LocationStore {
-  private locations: Location[] = [];
   private subscribers: LocationSubscriber[] = [];
+  private appState: AppState;
 
   constructor() {
-    // Initial data loading can be triggered here or explicitly by the application.
+    this.appState = AppState.getInstance();
   }
 
   // Private helper to find a location or throw an error
   private _getLocationOrFail(locationId: string): Location {
-    const location = this.locations.find((loc) => loc.id === locationId);
+    const location = this.appState.locations.find((loc) => loc.id === locationId);
     if (!location) {
       throw new Error(`Location with id ${locationId} not found.`);
     }
@@ -35,14 +36,11 @@ class LocationStore {
   }
 
   private notifySubscribers(): void {
-    // Locations are not currently sorted by default in the store before notifying.
-    // Sorting can be handled by components if needed, or implemented here.
     this.subscribers.forEach((callback) => {
       try {
-        callback([...this.locations]); // Return a copy
+        callback([...this.appState.locations]); // Return a copy
       } catch (error) {
         console.error('LocationStore: Error in subscriber during notify:', error);
-        // Continue notifying other subscribers
       }
     });
   }
@@ -72,7 +70,7 @@ class LocationStore {
    * @returns An array of locations.
    */
   getLocations(): Location[] {
-    return [...this.locations]; // Return a copy
+    return [...this.appState.locations]; // Return a copy
   }
 
   /**
@@ -81,7 +79,7 @@ class LocationStore {
    * @returns A deep copy of the location if found, otherwise undefined.
    */
   getLocationById(locationId: string): Location | undefined {
-    const location = this.locations.find((loc) => loc.id === locationId);
+    const location = this.appState.locations.find((loc) => loc.id === locationId);
     return location ? JSON.parse(JSON.stringify(location)) : undefined;
   }
 
@@ -90,7 +88,7 @@ class LocationStore {
    */
   async loadLocations(): Promise<void> {
     try {
-      this.locations = await dbService.loadLocations();
+      this.appState.locations = await dbService.loadLocations();
       this.notifySubscribers();
     } catch (error) {
       console.error('LocationStore: Error loading locations from DB', error);
@@ -105,7 +103,6 @@ class LocationStore {
    */
   async addLocation(locationData: Pick<Location, 'name' | 'address'>): Promise<Location> {
     try {
-      // Validierung
       if (!locationData.name?.trim()) {
         throw new Error('Standortname darf nicht leer sein');
       }
@@ -114,13 +111,12 @@ class LocationStore {
         id: generateId('loc'),
         name: locationData.name.trim(),
         counters: [],
-        // Conditionally add address if provided, to comply with exactOptionalPropertyTypes
       };
       if (locationData.address !== undefined) {
         newLocation.address = locationData.address;
       }
       await dbService.saveLocation(newLocation);
-      this.locations.push(newLocation); // Add to local cache
+      this.appState.locations.push(newLocation); // Add to local cache
       this.notifySubscribers();
       return newLocation;
     } catch (error) {
@@ -137,7 +133,6 @@ class LocationStore {
    */
   async updateLocation(location: Location): Promise<Location> {
     try {
-      // Ensure all nested IDs are present (though they should be if generated correctly)
       location.counters.forEach((counter) => {
         counter.id = counter.id || generateId('ctr');
         counter.areas.forEach((area) => {
@@ -146,9 +141,9 @@ class LocationStore {
       });
 
       await dbService.saveLocation(location);
-      const index = this.locations.findIndex((l) => l.id === location.id);
+      const index = this.appState.locations.findIndex((l) => l.id === location.id);
       if (index !== -1) {
-        this.locations[index] = location;
+        this.appState.locations[index] = location;
       } else {
         throw new Error(`Location with id ${location.id} not found for update`);
       }
@@ -166,30 +161,21 @@ class LocationStore {
    */
   async deleteLocation(locationId: string): Promise<void> {
     try {
-      // Ensure location exists before attempting to delete from DB or local cache
-      this._getLocationOrFail(locationId); // This will throw if not found
+      this._getLocationOrFail(locationId);
 
       await dbService.delete('locations', locationId);
-      this.locations = this.locations.filter((l) => l.id !== locationId);
+      this.appState.locations = this.appState.locations.filter((l) => l.id !== locationId);
       this.notifySubscribers();
     } catch (error) {
-      // Log if it's not the "not found" error from _getLocationOrFail, or rethrow all
       console.error('LocationStore: Error deleting location', error);
       throw error;
     }
   }
 
   // Methods for Counters
-  /**
-   * Adds a new counter to a specified location.
-   * @param locationId - The ID of the parent location.
-   * @param counterData - Object containing the name and optional description for the new counter.
-   * @returns The newly created counter.
-   * @throws Error if the parent location is not found.
-   */
   async addCounter(
     locationId: string,
-    counterData: Pick<Counter, 'name' | 'description'>
+    counterData: Partial<Counter>
   ): Promise<Counter> {
     if (!counterData.name?.trim()) {
       throw new Error('Tresenname darf nicht leer sein');
@@ -201,12 +187,11 @@ class LocationStore {
       name: counterData.name.trim(),
       areas: [],
     };
-    if (counterData.description !== undefined) {
+    if (counterData.description) {
       newCounter.description = counterData.description;
     }
     location.counters.push(newCounter);
-    // The whole location object is saved, so this implicitly saves the new counter.
-    await this.updateLocation(location); // This will also notify subscribers.
+    await this.updateLocation(location);
     return newCounter;
   }
 
@@ -219,7 +204,7 @@ class LocationStore {
     }
 
     location.counters[counterIndex] = updatedCounter;
-    await this.updateLocation(location); // Saves the whole location and notifies
+    await this.updateLocation(location);
     return updatedCounter;
   }
 
@@ -232,7 +217,7 @@ class LocationStore {
     }
 
     location.counters.splice(counterIndex, 1);
-    await this.updateLocation(location); // Saves the whole location and notifies
+    await this.updateLocation(location);
   }
 
   // Methods for Areas
@@ -250,7 +235,7 @@ class LocationStore {
     const newArea: Area = {
       id: generateId('area'),
       name: areaData.name.trim(),
-      inventoryItems: [], // Initialize with empty inventoryItems
+      inventoryItems: [],
     };
     if (areaData.description !== undefined) {
       newArea.description = areaData.description;
@@ -259,8 +244,8 @@ class LocationStore {
       newArea.displayOrder = areaData.displayOrder;
     }
     counter.areas.push(newArea);
-    this.sortAreas(counter); // Sort areas after adding
-    await this.updateLocation(location); // Saves the whole location and notifies
+    this.sortAreas(counter);
+    await this.updateLocation(location);
     return newArea;
   }
 
@@ -274,8 +259,8 @@ class LocationStore {
     }
 
     counter.areas[areaIndex] = updatedArea;
-    this.sortAreas(counter); // Sort areas after updating
-    await this.updateLocation(location); // Saves the whole location and notifies
+    this.sortAreas(counter);
+    await this.updateLocation(location);
     return updatedArea;
   }
 
@@ -289,38 +274,27 @@ class LocationStore {
     }
 
     counter.areas.splice(areaIndex, 1);
-    // No need to re-sort here if only removing, but doesn't hurt if sortAreas is idempotent
-    // this.sortAreas(counter); // Sorting after delete is optional, can be removed if not desired
-    await this.updateLocation(location); // Saves the whole location and notifies
+    await this.updateLocation(location);
   }
 
   private sortAreas(counter: Counter): void {
     counter.areas.sort((a, b) => {
       if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
         if (a.displayOrder !== b.displayOrder) {
-          // Primary sort by displayOrder
           return a.displayOrder - b.displayOrder;
         }
       } else if (a.displayOrder !== undefined) {
-        // Areas with displayOrder come first
         return -1;
       } else if (b.displayOrder !== undefined) {
         return 1;
       }
-      // Fallback to name sorting if displayOrder is the same or not defined for one/both
       return a.name.localeCompare(b.name);
     });
   }
 
-  /**
-   * Resets the store to its initial empty state.
-   * Primarily for use in testing environments.
-   */
   public reset(): void {
-    this.locations = [];
+    this.appState.locations = [];
     this.subscribers = [];
-    // Note: This does not clear the database, only the in-memory state.
-    // Tests that mock dbService should also clear their dbService mocks if needed.
   }
 }
 
