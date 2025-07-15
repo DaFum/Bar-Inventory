@@ -105,7 +105,7 @@ export class CounterFormComponent extends BaseComponent<HTMLDivElement> {
       await this.onSubmit(counterData);
       this.hide();
     } catch (error) {
-      showToast('Error saving counter.', 'error');
+      showToast('Fehler beim Speichern des Zählers.', 'error');
       console.error('Failed to save counter:', error);
     }
   }
