@@ -2,26 +2,31 @@
 // Handles DOMContentLoaded and initializes the UI.
 
 import { initializeApp } from "./ui/ui-manager";
+import { storageService } from './services/storage.service';
+import { AppState } from './state/app-state';
 
 class Application {
   constructor() {
     this.initialize();
   }
 
-  private initialize(): void {
+  private async initialize(): Promise<void> {
     console.log("Application initializing...");
     // Setup basic event listeners or initial UI components
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => {
-        this.setupApp();
+      document.addEventListener("DOMContentLoaded", async () => {
+        await this.setupApp();
       });
     } else {
       // DOMContentLoaded has already fired
-      this.setupApp();
+      await this.setupApp();
     }
   }
 
-  private setupApp(): void {
+  private async setupApp(): Promise<void> {
+    const appState = AppState.getInstance();
+    await storageService.loadState(appState);
+
     const appContainer = document.getElementById("app-container");
     if (appContainer) {
       console.log("DOM content loaded, app container found. Initializing UI.");

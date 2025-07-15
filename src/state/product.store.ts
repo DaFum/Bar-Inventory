@@ -1,5 +1,5 @@
 import { Product } from '../models';
-import { dbService } from '../services/indexeddb.service';
+import { storageService } from '../services/storage.service';
 import { AppState } from './app-state';
 
 type ProductSubscriber = (products: Product[]) => void;
@@ -59,7 +59,8 @@ class ProductStore {
    */
   async loadProducts(): Promise<void> {
     try {
-      this.appState.products = await dbService.loadProducts();
+      // The new storage service handles loading into the app state
+      await storageService.loadState(this.appState);
       this.notifySubscribers();
     } catch (error) {
       console.error('ProductStore: Error loading products from DB', error);
@@ -75,7 +76,7 @@ class ProductStore {
    */
   async addProduct(product: Product): Promise<Product> {
     try {
-      await dbService.saveProduct(product);
+      await storageService.saveProduct(product);
       this.appState.products.push(product);
       this.notifySubscribers();
       return product;
@@ -92,7 +93,7 @@ class ProductStore {
    */
   async updateProduct(product: Product): Promise<Product> {
     try {
-      await dbService.saveProduct(product);
+      await storageService.saveProduct(product);
       const index = this.appState.products.findIndex((p) => p.id === product.id);
       if (index !== -1) {
         this.appState.products[index] = product;
@@ -113,7 +114,7 @@ class ProductStore {
    */
   async deleteProduct(productId: string): Promise<void> {
     try {
-      await dbService.delete('products', productId);
+      await storageService.deleteProduct(productId);
       this.appState.products = this.appState.products.filter((p) => p.id !== productId);
       this.notifySubscribers();
     } catch (error) {

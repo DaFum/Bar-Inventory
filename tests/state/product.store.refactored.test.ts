@@ -5,7 +5,7 @@ import { AppState } from '../../src/state/app-state';
 
 jest.mock('../../src/services/indexeddb.service', () => ({
   dbService: {
-    loadProducts: jest.fn(),
+    loadAllApplicationData: jest.fn(),
     saveProduct: jest.fn(),
     delete: jest.fn(),
   },
@@ -19,7 +19,7 @@ describe('ProductStore (Refactored)', () => {
   let appState: AppState;
 
   beforeEach(() => {
-    (dbService.loadProducts as jest.Mock).mockClear().mockResolvedValue([...mockProductsList]);
+    (dbService.loadAllApplicationData as jest.Mock).mockClear().mockResolvedValue({ products: [...mockProductsList], locations: [] });
     (dbService.saveProduct as jest.Mock).mockClear().mockImplementation(async (product: Product) => product.id);
     (dbService.delete as jest.Mock).mockClear().mockResolvedValue(undefined);
 
@@ -34,7 +34,7 @@ describe('ProductStore (Refactored)', () => {
 
       await productStore.loadProducts();
 
-      expect(dbService.loadProducts).toHaveBeenCalledTimes(1);
+      expect(dbService.loadAllApplicationData).toHaveBeenCalledTimes(1);
       expect(appState.products).toEqual(mockProductsList);
       expect(subscriber).toHaveBeenCalledWith(mockProductsList);
     });

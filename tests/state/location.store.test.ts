@@ -22,25 +22,27 @@ jest.mock('../../src/utils/helpers', () => ({
 }));
 
 describe('LocationStore', () => {
-  const mockLocation1: Location = {
-    id: 'loc1',
-    name: 'Main Bar',
-    address: '123 Bar Street',
-    counters: [
-      { id: 'ctr1', name: 'Front Counter', description: 'Main service', areas: [
-        { id: 'area1', name: 'Top Shelf', displayOrder: 1, inventoryItems: [] }
-      ]}
-    ],
-  };
-  const mockLocation2: Location = {
-    id: 'loc2',
-    name: 'Patio Bar',
-    address: '456 Garden Ave',
-    counters: [],
-  };
+  let mockLocation1: Location;
+  let mockLocation2: Location;
   let initialMockLocations: Location[];
 
   beforeEach(() => {
+    mockLocation1 = {
+      id: 'loc1',
+      name: 'Main Bar',
+      address: '123 Bar Street',
+      counters: [
+        { id: 'ctr1', name: 'Front Counter', description: 'Main service', areas: [
+          { id: 'area1', name: 'Top Shelf', displayOrder: 1, inventoryItems: [] }
+        ]}
+      ],
+    };
+    mockLocation2 = {
+      id: 'loc2',
+      name: 'Patio Bar',
+      address: '456 Garden Ave',
+      counters: [],
+    };
     // Deep clone to ensure tests don't interfere via shared mock objects
     initialMockLocations = [
         JSON.parse(JSON.stringify(mockLocation1)),
@@ -284,13 +286,6 @@ describe('LocationStore', () => {
   });
 
   describe('Input Validation', () => {
-    // Define local mockLocation1 for this describe block
-    const localMockLocation1: Location = {
-        id: 'loc1', name: 'Main Bar', address: '123 Bar Street',
-        counters: [{ id: 'ctr1', name: 'Front Counter', description: 'Main service', areas: [
-            { id: 'area1', name: 'Top Shelf', displayOrder: 1, inventoryItems: [] }
-        ]}]
-    };
     it('should throw error for null location name', async () => {
       await expect(locationStore.addLocation({ name: null as any })).rejects.toThrow();
     });
@@ -315,27 +310,17 @@ describe('LocationStore', () => {
 
     it('should throw error for counter name with only whitespace', async () => {
       await locationStore.loadLocations();
-      // localMockLocation1 is defined at the start of this describe block
-      await expect(locationStore.addCounter(localMockLocation1.id, { name: '   ' })).rejects.toThrow();
+      await expect(locationStore.addCounter(mockLocation1.id, { name: '   ' })).rejects.toThrow();
     });
 
     it('should throw error for area name with only whitespace', async () => {
       await locationStore.loadLocations();
-      // localMockLocation1 is defined at the start of this describe block
-      const counterId = localMockLocation1.counters[0]!.id;
-      await expect(locationStore.addArea(localMockLocation1.id, counterId, { name: '   ' })).rejects.toThrow();
+      const counterId = mockLocation1.counters[0]!.id;
+      await expect(locationStore.addArea(mockLocation1.id, counterId, { name: '   ' })).rejects.toThrow();
     });
   });
 
   describe('Edge Cases', () => {
-    // Define local mockLocation1 for this describe block
-    const localMockLocation1: Location = {
-        id: 'loc1', name: 'Main Bar', address: '123 Bar Street',
-        counters: [{ id: 'ctr1', name: 'Front Counter', description: 'Main service', areas: [
-            { id: 'area1', name: 'Top Shelf', displayOrder: 1, inventoryItems: [] }
-        ]}]
-    };
-
     it('should handle updating non-existent location', async () => {
       await locationStore.loadLocations();
       const nonExistentLocation: Location = {
@@ -366,26 +351,22 @@ describe('LocationStore', () => {
         description: 'Does not exist',
         areas: []
       };
-      // localMockLocation1 is defined at the start of this describe block
-      await expect(locationStore.updateCounter(localMockLocation1.id, nonExistentCounter)).rejects.toThrow();
+      await expect(locationStore.updateCounter(mockLocation1.id, nonExistentCounter)).rejects.toThrow();
     });
 
     it('should handle deleting non-existent counter', async () => {
       await locationStore.loadLocations();
-      // localMockLocation1 is defined at the start of this describe block
-      await expect(locationStore.deleteCounter(localMockLocation1.id, 'non-existent-counter')).rejects.toThrow();
+      await expect(locationStore.deleteCounter(mockLocation1.id, 'non-existent-counter')).rejects.toThrow();
     });
 
     it('should handle adding area to non-existent counter', async () => {
       await locationStore.loadLocations();
-      // localMockLocation1 is defined at the start of this describe block
-      await expect(locationStore.addArea(localMockLocation1.id, 'non-existent-counter', { name: 'Test Area' })).rejects.toThrow();
+      await expect(locationStore.addArea(mockLocation1.id, 'non-existent-counter', { name: 'Test Area' })).rejects.toThrow();
     });
 
     it('should handle updating non-existent area', async () => {
       await locationStore.loadLocations();
-      // localMockLocation1 is defined at the start of this describe block
-      const counterId = localMockLocation1.counters[0]!.id;
+      const counterId = mockLocation1.counters[0]!.id;
       const nonExistentArea: Area = {
         id: 'non-existent-area',
         name: 'Non-existent Area',
@@ -393,14 +374,13 @@ describe('LocationStore', () => {
         inventoryItems: []
       };
       
-      await expect(locationStore.updateArea(localMockLocation1.id, counterId, nonExistentArea)).rejects.toThrow();
+      await expect(locationStore.updateArea(mockLocation1.id, counterId, nonExistentArea)).rejects.toThrow();
     });
 
     it('should handle deleting non-existent area', async () => {
       await locationStore.loadLocations();
-      // localMockLocation1 is defined at the start of this describe block
-      const counterId = localMockLocation1.counters[0]!.id;
-      await expect(locationStore.deleteArea(localMockLocation1.id, counterId, 'non-existent-area')).rejects.toThrow();
+      const counterId = mockLocation1.counters[0]!.id;
+      await expect(locationStore.deleteArea(mockLocation1.id, counterId, 'non-existent-area')).rejects.toThrow();
     });
   });
 
@@ -452,18 +432,10 @@ describe('LocationStore', () => {
   });
 
   describe('Data Consistency', () => {
-    // Define local mockLocation1 for this describe block
-    const localMockLocation1: Location = {
-        id: 'loc1', name: 'Main Bar', address: '123 Bar Street',
-        counters: [{ id: 'ctr1', name: 'Front Counter', description: 'Main service', areas: [
-            { id: 'area1', name: 'Top Shelf', displayOrder: 1, inventoryItems: [] }
-        ]}]
-    };
-
     it('should maintain proper area display order after multiple operations', async () => {
       await locationStore.loadLocations(); // Ensures initial data is loaded
-      const locId = localMockLocation1.id;
-      const counterId = localMockLocation1.counters[0]!.id;
+      const locId = initialMockLocations[0]!.id;
+      const counterId = initialMockLocations[0]!.counters[0]!.id;
       
       // Add multiple areas with different display orders
       await locationStore.addArea(locId, counterId, { name: 'Area 2', displayOrder: 2 });
@@ -479,9 +451,9 @@ describe('LocationStore', () => {
 
     it('should preserve inventory items when updating areas', async () => {
       await locationStore.loadLocations(); // Ensures initial data is loaded
-      const locId = localMockLocation1.id;
-      const counterId = localMockLocation1.counters[0]!.id;
-      const areaId = localMockLocation1.counters[0]!.areas[0]!.id;
+      const locId = initialMockLocations[0]!.id;
+      const counterId = initialMockLocations[0]!.counters[0]!.id;
+      const areaId = initialMockLocations[0]!.counters[0]!.areas[0]!.id;
       
       // Add inventory items to the area
       const location = locationStore.getLocationById(locId)!;
@@ -489,7 +461,7 @@ describe('LocationStore', () => {
       const area = counter.areas.find(a => a.id === areaId)!;
       
       // For this test, we will ensure the inventory item has a productId, not a name directly
-      area.inventoryItems.push({ productId: 'prod-xyz' } as InventoryEntry); // Corrected to use productId
+      area.inventoryItems.push({ productId: 'prod-xyz', startCrates: 1 } as InventoryEntry); // Corrected to use productId
       await locationStore.updateLocation(location);
       
       // Update area name
@@ -728,9 +700,9 @@ describe('LocationStore', () => {
 
     beforeEach(async () => {
       await locationStore.loadLocations();
-      locationId = mockLocation1.id;
-      counterId = mockLocation1.counters[0]!.id;
-      areaId = mockLocation1.counters[0]!.areas[0]!.id;
+      locationId = initialMockLocations[0]!.id;
+      counterId = initialMockLocations[0]!.counters[0]!.id;
+      areaId = initialMockLocations[0]!.counters[0]!.areas[0]!.id;
     });
 
     it('should preserve inventory items during location updates', async () => {
@@ -759,9 +731,9 @@ describe('LocationStore', () => {
       const area = location.counters[0]!.areas[0]!;
       
       area.inventoryItems = [
-        { productId: 'prod-1', quantity: 0 } as InventoryEntry, // Zero quantity
-        { productId: '', quantity: 10 } as InventoryEntry, // Empty product ID
-        { productId: 'prod-with-special-chars-@#$%', quantity: 999999 } as InventoryEntry // Large quantity and special chars
+        { productId: 'prod-1', startCrates: 0 } as InventoryEntry, // Zero quantity
+        { productId: '', startCrates: 10 } as InventoryEntry, // Empty product ID
+        { productId: 'prod-with-special-chars-@#$%', startCrates: 999999 } as InventoryEntry // Large quantity and special chars
       ];
       
       await locationStore.updateLocation(location);
@@ -770,7 +742,7 @@ describe('LocationStore', () => {
       const updatedArea = updatedLocation?.counters[0]?.areas[0];
       
       expect(updatedArea?.inventoryItems).toHaveLength(3);
-      expect(updatedArea?.inventoryItems[2]?.quantity).toBe(999999);
+      expect(updatedArea?.inventoryItems[2]?.startCrates).toBe(999999);
     });
   });
 
