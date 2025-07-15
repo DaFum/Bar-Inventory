@@ -233,8 +233,12 @@ export class LocationManagerComponent extends BaseComponent<HTMLDivElement> {
             <div id="counter-form-host-for-${location.id}" class="mt-2" style="display:none;"></div>
         `;
 
-        const counterListHostTarget = this.countersManagementHost.querySelector<HTMLDivElement>(`#counter-list-host-for-${location.id}`)!;
-        const counterFormHostTarget = this.countersManagementHost.querySelector<HTMLDivElement>(`#counter-form-host-for-${location.id}`)!;
+        const counterListHostTarget = this.countersManagementHost.querySelector<HTMLDivElement>(`#counter-list-host-for-${location.id}`);
+        const counterFormHostTarget = this.countersManagementHost.querySelector<HTMLDivElement>(`#counter-form-host-for-${location.id}`);
+
+        if (!counterListHostTarget || !counterFormHostTarget) {
+            throw new Error('Counter-Management DOM-Elemente konnten nicht gefunden werden');
+        }
 
         const counterListCallbacks = {
             onEditCounter: (counter: Counter) => {
