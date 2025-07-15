@@ -42,7 +42,7 @@ import { escapeHtml } from '../../../src/utils/security';
 import { showToast } from '../../../src/ui/components/toast-notifications';
 
 describe('AreaFormComponent', () => {
-    let component: AreaFormComponent;
+    let component: AreaFormComponent | null = null;
     let mockOnSubmit: jest.MockedFunction<(areaData: any) => Promise<void>>;
     let mockOnCancel: jest.MockedFunction<() => void>;
     let mockArea: Area;
