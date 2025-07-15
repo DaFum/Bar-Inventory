@@ -287,9 +287,10 @@ function _calculateConsumptionData(items: InventoryEntry[], products: Product[])
     const consumptionValuesMl = consumedItemsForChart.map(c => c.consumedVolumeMl || 0);
     const costValues = consumedItemsForChart.map(c => c.costOfConsumption);
 
+    const productMap = new Map(products.map(p => [p.id, p]));
     const consumptionByCategory: { [category: string]: number } = {};
     consumedItemsForChart.forEach(c => {
-        const product = products.find(p => p.id === c.productId);
+        const product = productMap.get(c.productId);
         if (product) {
             consumptionByCategory[product.category] = (consumptionByCategory[product.category] || 0) + (c.consumedVolumeMl || 0);
         }
