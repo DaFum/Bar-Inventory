@@ -296,6 +296,36 @@ class LocationStore {
     this.appState.locations = [];
     this.subscribers = [];
   }
+
+  async importLocations(locations: Location[]): Promise<void> {
+    try {
+        for (const location of locations) {
+            const newLocation: Location = {
+                id: generateId('loc'),
+                name: location.name,
+                address: location.address,
+                counters: location.counters.map(counter => ({
+                    id: generateId('ctr'),
+                    name: counter.name,
+                    description: counter.description,
+                    areas: counter.areas.map(area => ({
+                        id: generateId('area'),
+                        name: area.name,
+                        description: area.description,
+                        displayOrder: area.displayOrder,
+                        inventoryItems: area.inventoryItems || []
+                    }))
+                }))
+            };
+            await storageService.saveLocation(newLocation);
+            this.appState.locations.push(newLocation);
+        }
+        this.notifySubscribers();
+    } catch (error) {
+        console.error('LocationStore: Error importing locations', error);
+        throw error;
+    }
+  }
 }
 
 export const locationStore = new LocationStore();
