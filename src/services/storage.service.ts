@@ -10,10 +10,15 @@ class StorageService {
   }
 
   async saveState(appState: AppState): Promise<void> {
-    await dbService.saveAllApplicationData({
-      products: appState.products,
-      locations: appState.locations,
-    });
+    try {
+      await dbService.saveAllApplicationData({
+        products: appState.products || [],
+        locations: appState.locations || [],
+      });
+    } catch (error) {
+      console.error('Failed to save application state:', error);
+      throw error;
+    }
   }
 
   async saveProduct(product: Product): Promise<void> {
