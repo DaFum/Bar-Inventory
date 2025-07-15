@@ -1,5 +1,5 @@
 import { Location, Counter, Area } from '../models';
-import { dbService } from '../services/indexeddb.service';
+import { storageService } from '../services/storage.service';
 import { generateId } from '../utils/helpers';
 import { AppState } from './app-state';
 
@@ -88,7 +88,7 @@ class LocationStore {
    */
   async loadLocations(): Promise<void> {
     try {
-      this.appState.locations = await dbService.loadLocations();
+      await storageService.loadState(this.appState);
       this.notifySubscribers();
     } catch (error) {
       console.error('LocationStore: Error loading locations from DB', error);
@@ -115,7 +115,7 @@ class LocationStore {
       if (locationData.address !== undefined) {
         newLocation.address = locationData.address;
       }
-      await dbService.saveLocation(newLocation);
+      await storageService.saveLocation(newLocation);
       this.appState.locations.push(newLocation); // Add to local cache
       this.notifySubscribers();
       return newLocation;
@@ -140,7 +140,7 @@ class LocationStore {
         });
       });
 
-      await dbService.saveLocation(location);
+      await storageService.saveLocation(location);
       const index = this.appState.locations.findIndex((l) => l.id === location.id);
       if (index !== -1) {
         this.appState.locations[index] = location;
@@ -163,7 +163,7 @@ class LocationStore {
     try {
       this._getLocationOrFail(locationId);
 
-      await dbService.delete('locations', locationId);
+      await storageService.deleteLocation(locationId);
       this.appState.locations = this.appState.locations.filter((l) => l.id !== locationId);
       this.notifySubscribers();
     } catch (error) {

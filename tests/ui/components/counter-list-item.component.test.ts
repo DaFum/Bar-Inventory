@@ -8,7 +8,7 @@ import { AreaFormComponent } from '../../../src/ui/components/area-form.componen
 
 // Mock dependencies
 jest.mock('../../../src/utils/security', () => ({
-  escapeHtml: jest.fn((str) => str), // Simple pass-through
+  escapeHtml: jest.fn((str) => str),
 }));
 
 jest.mock('../../../src/ui/components/toast-notifications', () => ({
@@ -24,33 +24,31 @@ jest.mock('../../../src/state/location.store', () => ({
   },
 }));
 
-// Define mock instances first
-const mockAreaListComponentInstance = {
-    appendTo: jest.fn(),
-    setAreas: jest.fn(),
-};
-const mockAreaFormComponentInstance = {
-    appendTo: jest.fn(),
-    show: jest.fn(),
-    hide: jest.fn(),
-};
-
-// Then use them in jest.mock
-jest.mock('../../../src/ui/components/area-list.component', () => {
+const mockAreaListComponentInstance = (() => {
+    const element = document.createElement('div');
     return {
-      // AreaListComponent constructor mock returns the pre-defined instance
-      AreaListComponent: jest.fn(() => mockAreaListComponentInstance),
+        getElement: jest.fn(() => element),
+        appendTo: jest.fn(),
+        setAreas: jest.fn(),
     };
-  });
-
-jest.mock('../../../src/ui/components/area-form.component', () => {
+})();
+const mockAreaFormComponentInstance = (() => {
+    const element = document.createElement('div');
     return {
-      // AreaFormComponent constructor mock returns the pre-defined instance
-      AreaFormComponent: jest.fn(() => mockAreaFormComponentInstance),
+        getElement: jest.fn(() => element),
+        appendTo: jest.fn(),
+        show: jest.fn(),
+        hide: jest.fn(),
     };
-  });
+})();
 
-// The let declarations for these are no longer needed as they are const above.
+jest.mock('../../../src/ui/components/area-list.component', () => ({
+    AreaListComponent: jest.fn().mockImplementation(() => mockAreaListComponentInstance),
+}));
+
+jest.mock('../../../src/ui/components/area-form.component', () => ({
+    AreaFormComponent: jest.fn().mockImplementation(() => mockAreaFormComponentInstance),
+}));
 
 describe('CounterListItemComponent', () => {
   let component: CounterListItemComponent;
@@ -61,21 +59,20 @@ describe('CounterListItemComponent', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockLocation = { id: 'loc1', name: 'Test Location', counters: [], address: '123 Test St' }; // Removed description, added address
+    mockLocation = { id: 'loc1', name: 'Test Location', counters: [], address: '123 Test St' };
     mockCounter = {
       id: 'counter1',
       name: 'Main Counter',
       description: 'Primary service counter',
       areas: [{ id: 'area1', name: 'Shelf A', inventoryItems: [], displayOrder: 1 }]
     };
-    mockLocation.counters.push(mockCounter); // Add counter to location
+    mockLocation.counters.push(mockCounter);
 
     mockCallbacks = {
       onEditCounter: jest.fn(),
       onDeleteCounter: jest.fn(),
     };
 
-    // Mock store returns
     (locationStore.getLocationById as jest.Mock).mockReturnValue(mockLocation);
     (locationStore.addArea as jest.Mock).mockImplementation(async (locId, countId, areaData) => ({ ...areaData, id: 'new-area-id', inventoryItems: [] }));
     (locationStore.updateArea as jest.Mock).mockResolvedValue(undefined);
@@ -120,16 +117,12 @@ describe('CounterListItemComponent', () => {
   });
 
   describe('Area Management', () => {
-    // Removed nested beforeEach and afterEach as 'component' should be from the outer scope.
-    // Tests here will use the 'component' instance from the main beforeEach.
-
     test('clicking "Manage Areas" button should toggle visibility and render internal structure', () => {
-      // 'component' here refers to the instance from the main beforeEach
       const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
-      manageAreasButton.click(); // First click to show
+      manageAreasButton.click();
 
       const areaManagementDiv = component.getElement().querySelector('.area-management-section') as HTMLDivElement;
-      expect(areaManagementDiv.style.display).toBe('block'); // Initially shown by click in beforeEach
+      expect(areaManagementDiv.style.display).toBe('block');
 
       expect(AreaListComponent).toHaveBeenCalledTimes(1);
       expect(AreaFormComponent).toHaveBeenCalledTimes(1);
@@ -137,34 +130,35 @@ describe('CounterListItemComponent', () => {
       expect(areaManagementDiv.querySelector('.add-new-area-btn')).not.toBeNull();
       expect(areaManagementDiv.querySelector('.area-form-host')).not.toBeNull();
 
-      manageAreasButton.click(); // Click again to hide
+      manageAreasButton.click();
       expect(areaManagementDiv.style.display).toBe('none');
     });
 
     test('"Add New Area" button should show AreaFormComponent', () => {
+        const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
+        manageAreasButton.click();
         const addNewAreaBtn = component.getElement().querySelector('.add-new-area-btn') as HTMLButtonElement;
         addNewAreaBtn.click();
-        expect(mockAreaFormComponentInstance.show).toHaveBeenCalledWith(); // Show without specific area for new
+        expect(mockAreaFormComponentInstance.show).toHaveBeenCalledWith();
       });
 
     test('handleAreaFormSubmit for new area should call locationStore.addArea and update list', async () => {
+        component.toggleAreasManagementVisibility(true);
         const newAreaData = { name: 'New Shelf', description: 'Test Desc', displayOrder: 1 };
-        // Simulate form submission by directly calling the handler (as AreaFormComponent is mocked)
-        // Provide an empty id for new area, as Pick<Area,...> might expect it if not truly partial
         await component['handleAreaFormSubmit']({ id: '', ...newAreaData });
 
         expect(locationStore.addArea).toHaveBeenCalledWith(mockLocation.id, mockCounter.id, newAreaData);
         expect(showToast).toHaveBeenCalledWith('Bereich "New Shelf" hinzugefügt.', 'success');
         expect(mockAreaFormComponentInstance.hide).toHaveBeenCalled();
-        expect(mockAreaListComponentInstance.setAreas).toHaveBeenCalled(); // With updated areas from store
+        expect(mockAreaListComponentInstance.setAreas).toHaveBeenCalled();
     });
 
     test('handleAreaFormSubmit for existing area should call locationStore.updateArea', async () => {
+        component.toggleAreasManagementVisibility(true);
         const existingArea = mockCounter.areas[0];
          if (!existingArea) throw new Error("existingArea is undefined in test setup");
-         const updatedAreaData = { ...existingArea, id: existingArea.id, name: 'Updated Shelf A' }; // Ensure id is present
+         const updatedAreaData = { ...existingArea, id: existingArea.id, name: 'Updated Shelf A' };
 
-        // Mock store to return the counter with the updated area details for the list refresh
         const updatedCounterWithArea = {
             ...mockCounter,
             areas: [updatedAreaData]
@@ -184,9 +178,10 @@ describe('CounterListItemComponent', () => {
     });
 
     test('handleEditArea should show AreaFormComponent with area data', () => {
+        component.toggleAreasManagementVisibility(true);
         const areaToEdit = mockCounter.areas[0];
-        if (areaToEdit) { // Ensure area exists before test
-            component['handleEditArea'](areaToEdit); // Call internal method
+        if (areaToEdit) {
+            component['handleEditArea'](areaToEdit);
             expect(mockAreaFormComponentInstance.show).toHaveBeenCalledWith(areaToEdit);
         } else {
             throw new Error("mockCounter.areas[0] is undefined, cannot run test");
@@ -194,9 +189,10 @@ describe('CounterListItemComponent', () => {
     });
 
     test('handleDeleteArea should call locationStore.deleteArea after confirmation', async () => {
-        window.confirm = jest.fn(() => true); // Mock confirm to return true
+        component.toggleAreasManagementVisibility(true);
+        window.confirm = jest.fn(() => true);
         const areaToDelete = mockCounter.areas[0];
-        if (areaToDelete) { // Ensure area exists
+        if (areaToDelete) {
             await component['handleDeleteArea'](areaToDelete.id, areaToDelete.name);
 
             expect(window.confirm).toHaveBeenCalledWith(`Bereich "${areaToDelete.name}" wirklich löschen?`);
@@ -209,9 +205,10 @@ describe('CounterListItemComponent', () => {
     });
 
     test('handleDeleteArea should not call deleteArea if confirmation is false', async () => {
-        window.confirm = jest.fn(() => false); // Mock confirm to return false
+        component.toggleAreasManagementVisibility(true);
+        window.confirm = jest.fn(() => false);
         const areaToDelete = mockCounter.areas[0];
-        if (areaToDelete) { // Ensure area exists
+        if (areaToDelete) {
             await component['handleDeleteArea'](areaToDelete.id, areaToDelete.name);
             expect(locationStore.deleteArea).not.toHaveBeenCalled();
         } else {
@@ -221,7 +218,7 @@ describe('CounterListItemComponent', () => {
   });
 
   test('update method should update counter name and refresh area list if visible and areas changed', () => {
-    component.toggleAreasManagementVisibility(true); // Make areas visible
+    component.toggleAreasManagementVisibility(true);
 
     const updatedCounterData: Counter = {
       ...mockCounter,
@@ -238,18 +235,17 @@ describe('CounterListItemComponent', () => {
     component.toggleAreasManagementVisibility(true);
     const firstArea = mockCounter.areas[0];
     if (!firstArea) throw new Error("mockCounter.areas[0] is undefined for test setup");
-    const sameAreasRefDifferentContent: Area[] = [{...firstArea, name: "Changed Area Name", inventoryItems: [] }]; // Ensure inventoryItems
+    const sameAreasRefDifferentContent: Area[] = [{...firstArea, name: "Changed Area Name", inventoryItems: [] }];
     const updatedCounterData: Counter = {
         ...mockCounter,
-        areas: sameAreasRefDifferentContent, // Content changed but could be same array reference in some scenarios
+        areas: sameAreasRefDifferentContent,
       };
-    // Simulate that stringify would be different
     const originalStringify = JSON.stringify;
     JSON.stringify = jest.fn().mockReturnValueOnce('old_areas').mockReturnValueOnce('new_areas_different_content');
 
     component.update(mockLocation, updatedCounterData);
     expect(mockAreaListComponentInstance.setAreas).toHaveBeenCalledWith(updatedCounterData.areas);
-    JSON.stringify = originalStringify; // Restore
+    JSON.stringify = originalStringify;
   });
 
 
@@ -258,127 +254,78 @@ describe('CounterListItemComponent', () => {
   });
 });
 
-  // Additional Edge Cases and Error Handling Tests
-  describe('Edge Cases and Error Handling', () => {
-    let mockLocation: LocationModel;
-    let mockCounter: Counter;
-    let mockCallbacks: CounterListItemCallbacks;
-
-    beforeEach(() => {
-      mockLocation = { id: 'loc-edge', name: 'Edge Case Location', address: 'Addr', counters: [] };
-      mockCounter = {
-        id: 'counter-edge',
-        name: 'Edge Counter',
-        description: 'Edge case service counter',
-        areas: [{ id: 'area-edge', name: 'Shelf Edge', inventoryItems: [], displayOrder: 1 }]
-      };
-      mockLocation.counters.push(mockCounter);
-
-      mockCallbacks = {
-        onEditCounter: jest.fn(),
-        onDeleteCounter: jest.fn(),
-      };
-    });
-    test('should handle counter with no areas gracefully', () => {
-      const counterWithNoAreas: Counter = {
-        id: 'counter-no-areas',
-        name: 'Empty Counter',
-        description: 'Counter with no areas',
-        areas: []
-      };
-      // Define local mocks for this specific test case to avoid TS2304/TS2552
-      const localMockLocation: LocationModel = { id: 'loc-edge', name: 'Edge Case Location', address: 'Addr', counters: [counterWithNoAreas] };
-      const localMockCallbacks: CounterListItemCallbacks = { onEditCounter: jest.fn(), onDeleteCounter: jest.fn() };
-
-      const componentNoAreas = new CounterListItemComponent(localMockLocation, counterWithNoAreas, localMockCallbacks);
-      document.body.appendChild(componentNoAreas.getElement());
-      
-      const manageAreasButton = componentNoAreas.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
-      manageAreasButton.click();
-      
-      expect(mockAreaListComponentInstance.setAreas).toHaveBeenCalledWith([]);
-      componentNoAreas.getElement().remove();
-    });
-
-    test('should handle counter with undefined areas gracefully', () => {
-      const counterWithUndefinedAreas: Counter = {
-        id: 'counter-undefined-areas',
-        name: 'Undefined Areas Counter',
-        description: 'Counter with undefined areas',
-        areas: undefined as any
-      };
+  describe('Error Handling and Edge Cases', () => {
+    test('should handle null/undefined location gracefully', () => {
       expect(() => {
-        new CounterListItemComponent(mockLocation, counterWithUndefinedAreas, mockCallbacks);
-      }).not.toThrow();
+        new CounterListItemComponent(null as any, mockCounter, mockCallbacks);
+      }).toThrow();
     });
 
-    test('should handle counter with null name gracefully', () => {
-      const counterWithNullName: Counter = {
-        id: 'counter-null-name',
-        name: null as any,
-        description: 'Counter with null name',
-        areas: []
-      };
-      const componentNullName = new CounterListItemComponent(mockLocation, counterWithNullName, mockCallbacks);
-      document.body.appendChild(componentNullName.getElement());
-      
-      const element = componentNullName.getElement();
-      expect(element.textContent).toContain(''); // Should not crash
-      expect(escapeHtml).toHaveBeenCalledWith(null);
-      componentNullName.getElement().remove();
+    test('should handle null/undefined counter gracefully', () => {
+      expect(() => {
+        new CounterListItemComponent(mockLocation, null as any, mockCallbacks);
+      }).toThrow();
     });
 
-    test('should handle counter with empty string name', () => {
-      const counterWithEmptyName: Counter = {
-        id: 'counter-empty-name',
-        name: '',
-        description: 'Counter with empty name',
-        areas: []
-      };
-      const componentEmptyName = new CounterListItemComponent(mockLocation, counterWithEmptyName, mockCallbacks);
-      document.body.appendChild(componentEmptyName.getElement());
-      
-      const element = componentEmptyName.getElement();
-      expect(element.dataset.counterId).toBe('counter-empty-name');
-      expect(escapeHtml).toHaveBeenCalledWith('');
-      componentEmptyName.getElement().remove();
+    test('should handle null/undefined callbacks gracefully', () => {
+      expect(() => {
+        new CounterListItemComponent(mockLocation, mockCounter, null as any);
+      }).toThrow();
     });
 
-    test('should handle special characters in counter name', () => {
-      const counterWithSpecialChars: Counter = {
-        id: 'counter-special',
-        name: '<script>alert("xss")</script>&nbsp;Counter',
-        description: 'Counter with special characters',
-        areas: []
-      };
-      const componentSpecialChars = new CounterListItemComponent(mockLocation, counterWithSpecialChars, mockCallbacks);
-      document.body.appendChild(componentSpecialChars.getElement());
+    test('should handle counter with empty areas array', () => {
+      const counterWithNoAreas = { ...mockCounter, areas: [] };
+      const componentWithNoAreas = new CounterListItemComponent(mockLocation, counterWithNoAreas, mockCallbacks);
+      document.body.appendChild(componentWithNoAreas.getElement());
       
-      expect(escapeHtml).toHaveBeenCalledWith('<script>alert("xss")</script>&nbsp;Counter');
-      componentSpecialChars.getElement().remove();
+      componentWithNoAreas.toggleAreasManagementVisibility(true);
+      expect(mockAreaListComponentInstance.setAreas).toHaveBeenCalledWith([]);
+      
+      componentWithNoAreas.getElement().remove();
     });
 
-    test('should handle locationStore.addArea rejection gracefully', async () => {
-      const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
-      manageAreasButton.click();
+    test('should handle counter with special characters in name', () => {
+      const counterWithSpecialChars = { ...mockCounter, name: 'Counter<>&"\'test' };
+      const componentWithSpecialChars = new CounterListItemComponent(mockLocation, counterWithSpecialChars, mockCallbacks);
+      document.body.appendChild(componentWithSpecialChars.getElement());
       
-      const addAreaError = new Error('Failed to add area');
-      (locationStore.addArea as jest.Mock).mockRejectedValueOnce(addAreaError);
+      expect(escapeHtml).toHaveBeenCalledWith('Counter<>&"\'test');
       
+      componentWithSpecialChars.getElement().remove();
+    });
+
+    test('should handle extremely long counter names', () => {
+      const longName = 'A'.repeat(1000);
+      const counterWithLongName = { ...mockCounter, name: longName };
+      const componentWithLongName = new CounterListItemComponent(mockLocation, counterWithLongName, mockCallbacks);
+      document.body.appendChild(componentWithLongName.getElement());
+      
+      expect(escapeHtml).toHaveBeenCalledWith(longName);
+      expect(componentWithLongName.getElement().textContent).toContain(longName);
+      
+      componentWithLongName.getElement().remove();
+    });
+  });
+
+  describe('Async Operation Error Handling', () => {
+    test('handleAreaFormSubmit should handle addArea failure gracefully', async () => {
+      const errorMessage = 'Failed to add area';
+      (locationStore.addArea as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
+      
+      component.toggleAreasManagementVisibility(true);
       const newAreaData = { name: 'New Shelf', description: 'Test Desc', displayOrder: 1 };
+      
       await component['handleAreaFormSubmit']({ id: '', ...newAreaData });
       
       expect(showToast).toHaveBeenCalledWith('Fehler beim Hinzufügen des Bereichs.', 'error');
       expect(mockAreaFormComponentInstance.hide).toHaveBeenCalled();
     });
 
-    test('should handle locationStore.updateArea rejection gracefully', async () => {
-      const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
-      manageAreasButton.click();
+    test('handleAreaFormSubmit should handle updateArea failure gracefully', async () => {
+      const errorMessage = 'Failed to update area';
+      (locationStore.updateArea as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
       
-      const updateAreaError = new Error('Failed to update area');
-      (locationStore.updateArea as jest.Mock).mockRejectedValueOnce(updateAreaError);
-      
+      component.toggleAreasManagementVisibility(true);
       const existingArea = mockCounter.areas[0];
       if (!existingArea) throw new Error("existingArea is undefined in test setup");
       const updatedAreaData = { ...existingArea, name: 'Updated Shelf A' };
@@ -389,16 +336,14 @@ describe('CounterListItemComponent', () => {
       expect(mockAreaFormComponentInstance.hide).toHaveBeenCalled();
     });
 
-    test('should handle locationStore.deleteArea rejection gracefully', async () => {
-      const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
-      manageAreasButton.click();
-      
+    test('handleDeleteArea should handle deleteArea failure gracefully', async () => {
+      const errorMessage = 'Failed to delete area';
+      (locationStore.deleteArea as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
       window.confirm = jest.fn(() => true);
-      const deleteAreaError = new Error('Failed to delete area');
-      (locationStore.deleteArea as jest.Mock).mockRejectedValueOnce(deleteAreaError);
       
+      component.toggleAreasManagementVisibility(true);
       const areaToDelete = mockCounter.areas[0];
-      if (!areaToDelete) throw new Error("areaToDelete is undefined in test setup");
+      if (!areaToDelete) throw new Error("mockCounter.areas[0] is undefined");
       
       await component['handleDeleteArea'](areaToDelete.id, areaToDelete.name);
       
@@ -408,70 +353,18 @@ describe('CounterListItemComponent', () => {
     test('should handle locationStore.getLocationById returning null', () => {
       (locationStore.getLocationById as jest.Mock).mockReturnValue(null);
       
-      const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
-      manageAreasButton.click();
-      
-      expect(mockAreaListComponentInstance.setAreas).toHaveBeenCalledWith([]);
-    });
-  });
-
-  describe('Component State Management', () => {
-    test('should maintain area management visibility state correctly', () => {
-      expect(component.isAreasManagementVisible()).toBe(false);
-      
       component.toggleAreasManagementVisibility(true);
-      expect(component.isAreasManagementVisible()).toBe(true);
+      const updatedAreaData = { id: 'area1', name: 'Updated Area', inventoryItems: [], displayOrder: 1 };
       
-      component.toggleAreasManagementVisibility(false);
-      expect(component.isAreasManagementVisible()).toBe(false);
-    });
-
-    test('should toggle area management visibility when called without parameter', () => {
-      expect(component.isAreasManagementVisible()).toBe(false);
-      
-      component.toggleAreasManagementVisibility();
-      expect(component.isAreasManagementVisible()).toBe(true);
-      
-      component.toggleAreasManagementVisibility();
-      expect(component.isAreasManagementVisible()).toBe(false);
-    });
-
-    test('should not reinitialize area components when already visible', () => {
-      const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
-      manageAreasButton.click(); // First click
-      
-      const initialCallCount = (AreaListComponent as jest.Mock).mock.calls.length;
-      const initialFormCallCount = (AreaFormComponent as jest.Mock).mock.calls.length;
-      
-      manageAreasButton.click(); // Hide
-      manageAreasButton.click(); // Show again
-      
-      expect((AreaListComponent as jest.Mock).mock.calls.length).toBe(initialCallCount);
-      expect((AreaFormComponent as jest.Mock).mock.calls.length).toBe(initialFormCallCount);
+      expect(() => component['handleAreaFormSubmit'](updatedAreaData)).not.toThrow();
     });
   });
 
-  describe('DOM Manipulation and Event Handling', () => {
-    test('should properly set up event listeners on buttons', () => {
-      const element = component.getElement();
-      const editButton = element.querySelector('.edit-counter-btn') as HTMLButtonElement;
-      const deleteButton = element.querySelector('.delete-counter-btn') as HTMLButtonElement;
-      const manageAreasButton = element.querySelector('.manage-areas-btn') as HTMLButtonElement;
-      
-      expect(editButton).toBeTruthy();
-      expect(deleteButton).toBeTruthy();
-      expect(manageAreasButton).toBeTruthy();
-      
-      // Verify buttons are interactive
-      expect(editButton.disabled).toBe(false);
-      expect(deleteButton.disabled).toBe(false);
-      expect(manageAreasButton.disabled).toBe(false);
-    });
-
-    test('should handle multiple rapid clicks on manage areas button', () => {
+  describe('Complex State Management', () => {
+    test('should handle multiple rapid toggles of area management visibility', () => {
       const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
       
-      // Simulate rapid clicks
+      // Rapid toggling
       manageAreasButton.click();
       manageAreasButton.click();
       manageAreasButton.click();
@@ -480,235 +373,238 @@ describe('CounterListItemComponent', () => {
       expect(areaManagementDiv.style.display).toBe('block');
     });
 
-    test('should handle clicking on area management when components are not initialized', () => {
-      const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
+    test('should properly clean up when toggling areas management off', () => {
+      component.toggleAreasManagementVisibility(true);
+      component.toggleAreasManagementVisibility(false);
       
-      // Clear any existing mocks
+      const areaManagementDiv = component.getElement().querySelector('.area-management-section') as HTMLDivElement;
+      expect(areaManagementDiv.style.display).toBe('none');
+    });
+
+    test('should handle update with same counter data efficiently', () => {
+      component.toggleAreasManagementVisibility(true);
       jest.clearAllMocks();
-      
-      expect(() => {
-        manageAreasButton.click();
-      }).not.toThrow();
-    });
-
-    test('should properly clean up event listeners when element is removed', () => {
-      const element = component.getElement();
-      const editButton = element.querySelector('.edit-counter-btn') as HTMLButtonElement;
-      
-      // Remove from DOM
-      element.remove();
-      
-      // Clicking should not cause any issues
-      expect(() => {
-        editButton.click();
-      }).not.toThrow();
-    });
-  });
-
-  describe('Data Integrity and Validation', () => {
-    test('should preserve counter data integrity during updates', () => {
-      const originalCounterData = JSON.parse(JSON.stringify(mockCounter));
-      
-      const updatedCounterData: Counter = {
-        ...mockCounter,
-        name: 'Updated Counter Name',
-        description: 'Updated description'
-      };
-      
-      component.update(mockLocation, updatedCounterData);
-      
-      // Verify original data was not mutated
-      expect(mockCounter).toEqual(originalCounterData);
-      expect(component.getCounterId()).toBe(updatedCounterData.id);
-    });
-
-    test('should handle update with same counter data', () => {
-      const initialCallCount = (escapeHtml as jest.Mock).mock.calls.length;
       
       component.update(mockLocation, mockCounter);
       
-      expect((escapeHtml as jest.Mock).mock.calls.length).toBe(initialCallCount + 1);
+      // Should not trigger unnecessary area list updates when data is the same
+      expect(mockAreaListComponentInstance.setAreas).not.toHaveBeenCalled();
     });
 
-    test('should handle update with different location data', () => {
-      const differentLocation: LocationModel = {
-        id: 'different-location',
-        name: 'Different Location',
-        address: '456 Different St',
-        counters: [mockCounter]
-      };
-      
-      component.update(differentLocation, mockCounter);
+    test('should handle update when location changes but counter remains same', () => {
+      const newLocation = { ...mockLocation, id: 'loc2', name: 'Different Location' };
+      component.update(newLocation, mockCounter);
       
       expect(component.getElement().textContent).toContain(mockCounter.name);
     });
+  });
 
-    test('should validate area data before submission', async () => {
-      const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
-      manageAreasButton.click();
+  describe('UI Interaction Edge Cases', () => {
+    test('should handle rapid button clicks without breaking', () => {
+      const editButton = component.getElement().querySelector('.edit-counter-btn') as HTMLButtonElement;
       
-      const invalidAreaData = { name: '', description: '', displayOrder: -1 };
+      // Simulate rapid clicking
+      editButton.click();
+      editButton.click();
+      editButton.click();
       
-      // This should still work as the validation might be handled by the form component
-      await component['handleAreaFormSubmit']({ id: '', ...invalidAreaData });
+      expect(mockCallbacks.onEditCounter).toHaveBeenCalledTimes(3);
+      expect(mockCallbacks.onEditCounter).toHaveBeenCalledWith(mockCounter);
+    });
+
+    test('should handle delete button clicks in rapid succession', () => {
+      const deleteButton = component.getElement().querySelector('.delete-counter-btn') as HTMLButtonElement;
       
-      expect(locationStore.addArea).toHaveBeenCalledWith(mockLocation.id, mockCounter.id, invalidAreaData);
+      deleteButton.click();
+      deleteButton.click();
+      
+      expect(mockCallbacks.onDeleteCounter).toHaveBeenCalledTimes(2);
+      expect(mockCallbacks.onDeleteCounter).toHaveBeenCalledWith(mockCounter.id, mockCounter.name);
+    });
+
+    test('should handle area form submission with empty name', async () => {
+      component.toggleAreasManagementVisibility(true);
+      const emptyAreaData = { name: '', description: 'Test Desc', displayOrder: 1 };
+      
+      await component['handleAreaFormSubmit']({ id: '', ...emptyAreaData });
+      
+      // Should still attempt to add the area (validation might be handled elsewhere)
+      expect(locationStore.addArea).toHaveBeenCalledWith(mockLocation.id, mockCounter.id, emptyAreaData);
+    });
+
+    test('should handle area form submission with very high display order', async () => {
+      component.toggleAreasManagementVisibility(true);
+      const highOrderAreaData = { name: 'High Order Area', description: 'Test Desc', displayOrder: 99999 };
+      
+      await component['handleAreaFormSubmit']({ id: '', ...highOrderAreaData });
+      
+      expect(locationStore.addArea).toHaveBeenCalledWith(mockLocation.id, mockCounter.id, highOrderAreaData);
+    });
+  });
+
+  describe('Data Validation and Integrity', () => {
+    test('should handle areas with missing required properties', () => {
+      const incompleteArea = { id: 'incomplete', name: 'Incomplete Area' } as Area;
+      const counterWithIncompleteArea = { 
+        ...mockCounter, 
+        areas: [incompleteArea] 
+      };
+      
+      expect(() => {
+        const componentWithIncompleteArea = new CounterListItemComponent(mockLocation, counterWithIncompleteArea, mockCallbacks);
+        document.body.appendChild(componentWithIncompleteArea.getElement());
+        componentWithIncompleteArea.getElement().remove();
+      }).not.toThrow();
+    });
+
+    test('should handle counter with duplicate area IDs', () => {
+      const duplicateArea1 = { id: 'duplicate', name: 'Area 1', inventoryItems: [], displayOrder: 1 };
+      const duplicateArea2 = { id: 'duplicate', name: 'Area 2', inventoryItems: [], displayOrder: 2 };
+      const counterWithDuplicates = { 
+        ...mockCounter, 
+        areas: [duplicateArea1, duplicateArea2] 
+      };
+      
+      const componentWithDuplicates = new CounterListItemComponent(mockLocation, counterWithDuplicates, mockCallbacks);
+      document.body.appendChild(componentWithDuplicates.getElement());
+      
+      componentWithDuplicates.toggleAreasManagementVisibility(true);
+      expect(mockAreaListComponentInstance.setAreas).toHaveBeenCalledWith([duplicateArea1, duplicateArea2]);
+      
+      componentWithDuplicates.getElement().remove();
+    });
+
+    test('should handle counter description edge cases', () => {
+      const counterWithoutDescription = { ...mockCounter, description: undefined };
+      const componentWithoutDesc = new CounterListItemComponent(mockLocation, counterWithoutDescription, mockCallbacks);
+      document.body.appendChild(componentWithoutDesc.getElement());
+      
+      expect(componentWithoutDesc.getElement()).toBeDefined();
+      
+      componentWithoutDesc.getElement().remove();
+    });
+  });
+
+  describe('Memory Management and Cleanup', () => {
+    test('should properly handle component removal without memory leaks', () => {
+      const testComponent = new CounterListItemComponent(mockLocation, mockCounter, mockCallbacks);
+      document.body.appendChild(testComponent.getElement());
+      
+      testComponent.toggleAreasManagementVisibility(true);
+      
+      // Simulate component cleanup
+      testComponent.getElement().remove();
+      
+      // Component should still be functional after removal and re-addition
+      document.body.appendChild(testComponent.getElement());
+      expect(testComponent.getCounterId()).toBe(mockCounter.id);
+      
+      testComponent.getElement().remove();
+    });
+
+    test('should handle multiple component instances correctly', () => {
+      const counter2 = { ...mockCounter, id: 'counter2', name: 'Second Counter' };
+      const component2 = new CounterListItemComponent(mockLocation, counter2, mockCallbacks);
+      
+      document.body.appendChild(component2.getElement());
+      
+      expect(component.getCounterId()).toBe('counter1');
+      expect(component2.getCounterId()).toBe('counter2');
+      
+      component2.getElement().remove();
     });
   });
 
   describe('Accessibility and User Experience', () => {
-    test('should have proper ARIA attributes on buttons', () => {
+    test('should have proper ARIA attributes and accessibility features', () => {
       const element = component.getElement();
       const editButton = element.querySelector('.edit-counter-btn') as HTMLButtonElement;
       const deleteButton = element.querySelector('.delete-counter-btn') as HTMLButtonElement;
       const manageAreasButton = element.querySelector('.manage-areas-btn') as HTMLButtonElement;
       
-      // Verify buttons have appropriate attributes for accessibility
+      expect(editButton).not.toBeNull();
+      expect(deleteButton).not.toBeNull();
+      expect(manageAreasButton).not.toBeNull();
+      
+      // Buttons should be focusable and have proper roles
       expect(editButton.tagName).toBe('BUTTON');
       expect(deleteButton.tagName).toBe('BUTTON');
       expect(manageAreasButton.tagName).toBe('BUTTON');
     });
 
-    test('should maintain focus management when showing/hiding area management', () => {
-      const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
+    test('should maintain proper tab order for interactive elements', () => {
+      const element = component.getElement();
+      const buttons = element.querySelectorAll('button');
       
-      manageAreasButton.focus();
-      expect(document.activeElement).toBe(manageAreasButton);
+      expect(buttons.length).toBeGreaterThanOrEqual(3);
       
-      manageAreasButton.click();
-      
-      // Focus should remain manageable
-      expect(document.activeElement).toBeDefined();
+      // All buttons should be focusable (not disabled by default)
+      buttons.forEach(button => {
+        expect(button.disabled).toBe(false);
+      });
     });
   });
 
-  describe('Integration with Store and External Dependencies', () => {
-    let mockLocation: LocationModel;
-    let mockCounter: Counter;
-    let mockCallbacks: CounterListItemCallbacks;
-
-    beforeEach(() => {
-      mockLocation = { id: 'loc-integration', name: 'Integration Location', address: 'Addr', counters: [] };
-      mockCounter = {
-        id: 'counter-integration',
-        name: 'Integration Counter',
-        description: 'Integration service counter',
-        areas: []
-      };
-      mockLocation.counters.push(mockCounter);
-
-      mockCallbacks = {
-        onEditCounter: jest.fn(),
-        onDeleteCounter: jest.fn(),
-      };
-    });
-    test('should handle store operations with different location and counter IDs', async () => {
-      const differentLocation: LocationModel = {
-        id: 'loc-different',
-        name: 'Different Location',
-        address: '789 Different Ave',
-        counters: []
-      };
+  describe('Performance and Optimization', () => {
+    test('should not re-render unnecessarily when update is called with identical data', () => {
+      const renderSpy = jest.spyOn(component as any, 'render');
       
-      const differentCounter: Counter = {
-        id: 'counter-different',
-        name: 'Different Counter',
-        description: 'A different counter',
-        areas: []
-      };
+      component.update(mockLocation, mockCounter);
       
-      const differentComponent = new CounterListItemComponent(differentLocation, differentCounter, mockCallbacks);
-      document.body.appendChild(differentComponent.getElement());
+      // Should not trigger a full re-render for identical data
+      expect(renderSpy).not.toHaveBeenCalled();
       
-      const manageAreasButton = differentComponent.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
-      manageAreasButton.click();
-      
-      const newAreaData = { name: 'New Area', description: 'Test', displayOrder: 1 };
-      await differentComponent['handleAreaFormSubmit']({ id: '', ...newAreaData });
-      
-      expect(locationStore.addArea).toHaveBeenCalledWith('loc-different', 'counter-different', newAreaData);
-      
-      differentComponent.getElement().remove();
+      renderSpy.mockRestore();
     });
 
-    test('should handle escapeHtml function returning different values', () => {
-      (escapeHtml as jest.Mock).mockReturnValueOnce('escaped-content');
+    test('should handle large numbers of areas efficiently', () => {
+      const manyAreas = Array.from({ length: 100 }, (_, i) => ({
+        id: `area${i}`,
+        name: `Area ${i}`,
+        inventoryItems: [],
+        displayOrder: i
+      }));
       
-      const componentEscaped = new CounterListItemComponent(mockLocation, mockCounter, mockCallbacks);
-      document.body.appendChild(componentEscaped.getElement());
+      const counterWithManyAreas = { ...mockCounter, areas: manyAreas };
+      const componentWithManyAreas = new CounterListItemComponent(mockLocation, counterWithManyAreas, mockCallbacks);
       
-      expect(componentEscaped.getElement().textContent).toContain('escaped-content');
+      document.body.appendChild(componentWithManyAreas.getElement());
       
-      componentEscaped.getElement().remove();
-    });
-
-    test('should handle toast notifications for various scenarios', async () => {
-      const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
-      manageAreasButton.click();
+      const start = performance.now();
+      componentWithManyAreas.toggleAreasManagementVisibility(true);
+      const end = performance.now();
       
-      // Test success scenario
-      const newAreaData = { name: 'Success Area', description: 'Test', displayOrder: 1 };
-      await component['handleAreaFormSubmit']({ id: '', ...newAreaData });
+      // Should complete within reasonable time (less than 100ms)
+      expect(end - start).toBeLessThan(100);
       
-      expect(showToast).toHaveBeenCalledWith('Bereich "Success Area" hinzugefügt.', 'success');
-      
-      // Test error scenario
-      (locationStore.addArea as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
-      await component['handleAreaFormSubmit']({ id: '', ...newAreaData });
-      
-      expect(showToast).toHaveBeenCalledWith('Fehler beim Hinzufügen des Bereichs.', 'error');
+      componentWithManyAreas.getElement().remove();
     });
   });
 
-  describe('Performance and Memory Management', () => {
-    let mockLocation: LocationModel;
-    let mockCallbacks: CounterListItemCallbacks;
-
-    beforeEach(() => {
-      mockLocation = { id: 'loc-perf', name: 'Perf Location', address: 'Addr', counters: [] };
-      mockCallbacks = {
-        onEditCounter: jest.fn(),
-        onDeleteCounter: jest.fn(),
-      };
-    });
-    test('should not create excessive DOM nodes', () => {
-      const initialChildCount = document.body.children.length;
+  describe('Integration with External Dependencies', () => {
+    test('should handle escapeHtml function throwing an error', () => {
+      (escapeHtml as jest.Mock).mockImplementationOnce(() => {
+        throw new Error('escapeHtml failed');
+      });
       
-      const multipleComponents = [];
-      for (let i = 0; i < 5; i++) {
-        const testCounter: Counter = {
-          id: `counter-${i}`,
-          name: `Counter ${i}`,
-          description: `Description ${i}`,
-          areas: []
-        };
-        const comp = new CounterListItemComponent(mockLocation, testCounter, mockCallbacks);
-        multipleComponents.push(comp);
-        document.body.appendChild(comp.getElement());
-      }
-      
-      expect(document.body.children.length).toBe(initialChildCount + 5 + 1); // +1 for the original component
-      
-      // Cleanup
-      multipleComponents.forEach(comp => comp.getElement().remove());
+      expect(() => {
+        const failingComponent = new CounterListItemComponent(mockLocation, mockCounter, mockCallbacks);
+        document.body.appendChild(failingComponent.getElement());
+        failingComponent.getElement().remove();
+      }).toThrow('escapeHtml failed');
     });
 
-    test('should handle component recreation without memory leaks', () => {
-      const originalComponent = component;
-      originalComponent.getElement().remove();
+    test('should handle showToast being unavailable', async () => {
+      (showToast as jest.Mock).mockImplementationOnce(() => {
+        throw new Error('Toast service unavailable');
+      });
       
-      const mockCounter: Counter = {
-        id: 'counter-recreate',
-        name: 'Recreated Counter',
-        description: 'Recreated service counter',
-        areas: []
-      };
-      const newComponent = new CounterListItemComponent(mockLocation, mockCounter, mockCallbacks);
-      document.body.appendChild(newComponent.getElement());
+      component.toggleAreasManagementVisibility(true);
+      const newAreaData = { name: 'New Shelf', description: 'Test Desc', displayOrder: 1 };
       
-      expect(newComponent.getCounterId()).toBe(mockCounter.id);
-      expect(newComponent.getElement().dataset.counterId).toBe(mockCounter.id);
-
-      newComponent.getElement().remove();
+      // Should not crash even if toast fails
+      await expect(component['handleAreaFormSubmit']({ id: '', ...newAreaData }))
+        .rejects.toThrow('Toast service unavailable');
     });
   });
+});

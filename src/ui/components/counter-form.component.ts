@@ -4,150 +4,116 @@ import { escapeHtml } from '../../utils/security';
 import { showToast } from './toast-notifications';
 
 export type CounterFormSubmitCallback = (
-    counterData: Pick<Counter, 'id' | 'name' | 'description'>
+  counterData: Pick<Counter, 'id' | 'name' | 'description'>,
 ) => Promise<void>;
 export type CounterFormCancelCallback = () => void;
 
-export interface CounterFormComponentOptions {
-    counter?: Counter;
-    onSubmit: CounterFormSubmitCallback;
-    onCancel: CounterFormCancelCallback;
+export interface CounterFormOptions {
+  onSubmit: CounterFormSubmitCallback;
+  onCancel: CounterFormCancelCallback;
 }
 
-/**
- * Component for rendering and managing the counter add/edit form.
- */
 export class CounterFormComponent extends BaseComponent<HTMLDivElement> {
-    /** The counter currently being edited, or null if creating a new one. */
-    public currentEditingCounter: Counter | null; // Public for location-manager to check
-    private onSubmitCallback: CounterFormSubmitCallback;
-    private onCancelCallback: CounterFormCancelCallback;
+  public currentEditingCounter: Counter | null = null;
+  private readonly onSubmit: CounterFormSubmitCallback;
+  private readonly onCancel: CounterFormCancelCallback;
+  private nameInput!: HTMLInputElement;
+  private descriptionInput!: HTMLInputElement;
+  private form!: HTMLFormElement;
 
-    private nameInput!: HTMLInputElement;
-    private descriptionInput!: HTMLInputElement;
-    private formElement!: HTMLFormElement;
-    private formTitleId = 'counter-form-title-comp';
+  constructor(container: HTMLElement, options: CounterFormOptions) {
+    super('div');
+    this.element.classList.add('hidden');
+    this.onSubmit = options.onSubmit;
+    this.onCancel = options.onCancel;
+    container.appendChild(this.element);
+    this.render();
+  }
 
-    /**
-     * Creates an instance of CounterFormComponent.
-     * @param options - Configuration options for the form.
-     */
-    constructor(options: CounterFormComponentOptions) {
-        super('div');
-        this.currentEditingCounter = options.counter || null;
-        this.onSubmitCallback = options.onSubmit;
-        this.onCancelCallback = options.onCancel;
-        this.render();
+  public show(counter?: Counter): void {
+    this.currentEditingCounter = counter || null;
+    this.render();
+    this.element.classList.remove('hidden');
+    this.nameInput.focus();
+  }
+
+  public hide(): void {
+    this.element.classList.add('hidden');
+  }
+
+  public destroy(): void {
+    this.element.remove();
+  }
+
+  render(): void {
+    const isEditing = !!this.currentEditingCounter;
+    const title = isEditing ? 'Tresen bearbeiten' : 'Neuen Tresen erstellen';
+    const buttonText = isEditing ? 'Änderungen speichern' : 'Tresen erstellen';
+    const name = this.currentEditingCounter?.name || '';
+    const description = this.currentEditingCounter?.description || '';
+
+    this.element.innerHTML = `
+      <div class="counter-form-component">
+        <h5>${title}</h5>
+        <form>
+          <div class="form-group">
+            <label for="counter-name-form-comp">Name</label>
+            <input type="text" id="counter-name-form-comp" class="form-control" value="${escapeHtml(name)}" required>
+          </div>
+          <div class="form-group">
+            <label for="counter-description-form-comp">Beschreibung</label>
+            <input type="text" id="counter-description-form-comp" class="form-control" value="${escapeHtml(description)}">
+          </div>
+          <button type="submit" class="btn btn-primary">${buttonText}</button>
+          <button type="button" class="btn btn-secondary cancel-btn">Abbrechen</button>
+        </form>
+      </div>
+    `;
+
+    this.bindElements();
+    this.attachEventListeners();
+  }
+
+  private bindElements(): void {
+    this.form = this.element.querySelector('form')!;
+    this.nameInput = this.element.querySelector('#counter-name-form-comp') as HTMLInputElement;
+    this.descriptionInput = this.element.querySelector('#counter-description-form-comp') as HTMLInputElement;
+  }
+
+  private attachEventListeners(): void {
+    this.form.addEventListener('submit', this.handleFormSubmit.bind(this));
+    const cancelButton = this.element.querySelector('.cancel-btn');
+    cancelButton?.addEventListener('click', this.handleCancel.bind(this));
+  }
+
+  private async handleFormSubmit(event: Event): Promise<void> {
+    event.preventDefault();
+    const name = this.nameInput.value.trim();
+    if (!name) {
+      showToast('Name is required.', 'error');
+      return;
     }
 
-    render(): void {
-        const counter = this.currentEditingCounter;
-        this.element.innerHTML = `
-            <h5 id="${this.formTitleId}">${counter ? 'Tresen bearbeiten' : 'Neuen Tresen erstellen'}</h5>
-            <form id="counter-form-actual" aria-labelledby="${this.formTitleId}">
-                <div class="form-group">
-                    <label for="counter-name-form-comp">Name des Tresens:</label>
-                    <input type="text" id="counter-name-form-comp" value="${escapeHtml(counter?.name || '')}" required class="form-control form-control-sm" aria-required="true">
-                </div>
-                <div class="form-group">
-                    <label for="counter-description-form-comp">Beschreibung (optional):</label>
-                    <input type="text" id="counter-description-form-comp" value="${escapeHtml(counter?.description || '')}" class="form-control form-control-sm">
-                </div>
-                <button type="submit" class="btn btn-success btn-sm">${counter ? 'Änderungen speichern' : 'Tresen erstellen'}</button>
-                <button type="button" id="cancel-counter-edit-form-comp" class="btn btn-secondary btn-sm">Abbrechen</button>
-            </form>
-        `;
-        this.bindElements();
-        this.attachEventListeners();
+    const description = this.descriptionInput.value.trim();
+    const counterData: Pick<Counter, 'id' | 'name' | 'description'> = {
+      id: this.currentEditingCounter?.id || '',
+      name,
+      description,
+    };
+
+    try {
+      await this.onSubmit(counterData);
+      this.hide();
+    } catch (error) {
+      showToast('Fehler beim Speichern des Zählers.', 'error');
+      console.error('Failed to save counter:', error);
     }
+  }
 
-    private bindElements(): void {
-        const form = this.element.querySelector<HTMLFormElement>('#counter-form-actual');
-        if (!form) throw new Error("Counter form element not found during bind");
-        this.formElement = form;
-
-        const nameIn = this.element.querySelector<HTMLInputElement>('#counter-name-form-comp');
-        if (!nameIn) throw new Error("Counter name input not found");
-        this.nameInput = nameIn;
-
-        const descIn = this.element.querySelector<HTMLInputElement>('#counter-description-form-comp');
-        if (!descIn) throw new Error("Counter description input not found");
-        this.descriptionInput = descIn;
+  private handleCancel(): void {
+    this.hide();
+    if (this.onCancel) {
+      this.onCancel();
     }
-
-    private attachEventListeners(): void {
-        this.formElement.addEventListener('submit', this.handleSubmit.bind(this));
-
-        const cancelButton = this.element.querySelector<HTMLButtonElement>('#cancel-counter-edit-form-comp');
-        if (cancelButton) { // Should always exist
-            cancelButton.addEventListener('click', this.handleCancel.bind(this));
-        } else {
-            console.warn("Cancel button not found in CounterFormComponent");
-        }
-    }
-
-    private async handleSubmit(event: Event): Promise<void> {
-        event.preventDefault();
-        if (!this.nameInput.value.trim()) {
-            showToast("Name des Tresens darf nicht leer sein.", "error");
-            this.nameInput.focus();
-            return;
-        }
-
-        const nameValue = this.nameInput.value.trim();
-        const descriptionValue = this.descriptionInput.value.trim();
-
-        const counterDataToSubmit: Pick<Counter, 'id' | 'name' | 'description'> = {
-            id: this.currentEditingCounter?.id || '',
-            name: nameValue,
-        };
-
-        if (descriptionValue) { // Only add if not an empty string
-            counterDataToSubmit.description = descriptionValue;
-        }
-
-        try {
-            await this.onSubmitCallback(counterDataToSubmit);
-        } catch (error) {
-            // User feedback for store errors should be handled by the caller of the store method.
-            console.error("CounterFormComponent: Error during submission callback", error);
-        }
-    }
-
-    private handleCancel(): void {
-        this.onCancelCallback();
-    }
-
-    /**
-     * Shows the form, optionally pre-filled with counter data for editing.
-     * @param counter - Optional counter data to edit. If undefined, form is for a new counter.
-     */
-    public show(counter?: Counter): void {
-        this.currentEditingCounter = counter || null;
-        const isEditing = !!counter;
-
-        this.nameInput.value = counter?.name || '';
-        this.descriptionInput.value = counter?.description || '';
-
-        const titleElement = this.element.querySelector<HTMLHeadingElement>(`#${this.formTitleId}`);
-        if (titleElement) {
-            titleElement.textContent = isEditing ? 'Tresen bearbeiten' : 'Neuen Tresen erstellen';
-        }
-        const submitButton = this.formElement?.querySelector<HTMLButtonElement>('button[type="submit"]');
-        if (submitButton) {
-            submitButton.textContent = isEditing ? 'Änderungen speichern' : 'Tresen erstellen';
-        }
-        this.element.style.display = 'block';
-        this.nameInput.focus();
-    }
-
-    /**
-     * Hides the form and resets its editing state.
-     * Form field values are not explicitly reset here, assuming `show()` will always repopulate.
-     */
-    public hide(): void {
-        this.element.style.display = 'none';
-        this.currentEditingCounter = null;
-    }
+  }
 }
-console.log("CounterFormComponent loaded.");
