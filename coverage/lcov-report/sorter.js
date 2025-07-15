@@ -118,9 +118,8 @@ function loadColumns() {
         for (i = 0; i < tableCols.length; i += 1) {
             colNode = tableCols[i];
             col = cols[i];
-            val = colNode.getAttribute('data-value');
-            // Note: val comes from data-value attribute, which should be safe
-            // Sanitization should be applied to user inputs, not DOM attributes
+            val = sanitizeValue(colNode.getAttribute('data-value'));
+            // Sanitize the value to prevent potential XSS vulnerabilities
             if (col.type === 'number') {
                 val = Number(val);
             }
