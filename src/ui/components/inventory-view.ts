@@ -267,7 +267,7 @@ function prepareInventoryItemsForArea(): void {
                     <th scope="col" class="w-1/5 text-center">Offen (ml)</th>
                 </tr>
             </thead>
-            <tbody id="inventory-list-body">
+            <tbody id="inventory-list-body-${area.id.replace(/[^a-zA-Z0-9]/g, '')}">
     `;
 
     area.inventoryItems.forEach((item, index) => {
