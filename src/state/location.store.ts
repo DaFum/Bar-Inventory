@@ -300,22 +300,37 @@ class LocationStore {
   async importLocations(locations: Location[]): Promise<void> {
     try {
         for (const location of locations) {
+            // Validate required fields
+            if (!location.name || !location.address || !Array.isArray(location.counters)) {
+                throw new Error(`Invalid location data: missing required fields`);
+            }
+          
             const newLocation: Location = {
                 id: generateId('loc'),
                 name: location.name,
                 address: location.address,
-                counters: location.counters.map(counter => ({
-                    id: generateId('ctr'),
-                    name: counter.name,
-                    description: counter.description,
-                    areas: counter.areas.map(area => ({
-                        id: generateId('area'),
-                        name: area.name,
-                        description: area.description,
-                        displayOrder: area.displayOrder,
-                        inventoryItems: area.inventoryItems || []
-                    }))
-                }))
+                counters: location.counters.map(counter => {
+                    if (!counter.name || !Array.isArray(counter.areas)) {
+                        throw new Error(`Invalid counter data in location "${location.name}"`);
+                    }
+                    return {
+                        id: generateId('ctr'),
+                        name: counter.name,
+                        description: counter.description,
+                        areas: counter.areas.map(area => {
+                            if (!area.name) {
+                                throw new Error(`Invalid area data in counter "${counter.name}"`);
+                            }
+                            return {
+                                id: generateId('area'),
+                                name: area.name,
+                                description: area.description,
+                                displayOrder: area.displayOrder,
+                                inventoryItems: area.inventoryItems || []
+                            };
+                        })
+                    };
+                })
             };
             await storageService.saveLocation(newLocation);
             this.appState.locations.push(newLocation);
