@@ -22,6 +22,18 @@ export class ChartComponent {
 
   renderCategoryChart(stats: InventoryStats): void {
     this.destroyExistingChart();
+  
+    // Check if there's data to display
+    if (Object.keys(stats.categoryCounts).length === 0) {
+      const ctx = this.canvas.getContext('2d');
+      if (ctx) {
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('No category data available', this.canvas.width / 2, this.canvas.height / 2);
+      }
+      return;
+    }
 
     const config: ChartConfiguration = {
       type: 'doughnut',
