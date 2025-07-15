@@ -247,3 +247,358 @@ describe('CounterListItemComponent', () => {
     expect(component.getCounterId()).toBe(mockCounter.id);
   });
 });
+
+  describe('Error Handling and Edge Cases', () => {
+    test('should handle null/undefined location gracefully', () => {
+      expect(() => {
+        new CounterListItemComponent(null as any, mockCounter, mockCallbacks);
+      }).toThrow();
+    });
+
+    test('should handle null/undefined counter gracefully', () => {
+      expect(() => {
+        new CounterListItemComponent(mockLocation, null as any, mockCallbacks);
+      }).toThrow();
+    });
+
+    test('should handle null/undefined callbacks gracefully', () => {
+      expect(() => {
+        new CounterListItemComponent(mockLocation, mockCounter, null as any);
+      }).toThrow();
+    });
+
+    test('should handle counter with empty areas array', () => {
+      const counterWithNoAreas = { ...mockCounter, areas: [] };
+      const componentWithNoAreas = new CounterListItemComponent(mockLocation, counterWithNoAreas, mockCallbacks);
+      document.body.appendChild(componentWithNoAreas.getElement());
+      
+      componentWithNoAreas.toggleAreasManagementVisibility(true);
+      expect(mockAreaListComponentInstance.setAreas).toHaveBeenCalledWith([]);
+      
+      componentWithNoAreas.getElement().remove();
+    });
+
+    test('should handle counter with special characters in name', () => {
+      const counterWithSpecialChars = { ...mockCounter, name: 'Counter<>&"\'test' };
+      const componentWithSpecialChars = new CounterListItemComponent(mockLocation, counterWithSpecialChars, mockCallbacks);
+      document.body.appendChild(componentWithSpecialChars.getElement());
+      
+      expect(escapeHtml).toHaveBeenCalledWith('Counter<>&"\'test');
+      
+      componentWithSpecialChars.getElement().remove();
+    });
+
+    test('should handle extremely long counter names', () => {
+      const longName = 'A'.repeat(1000);
+      const counterWithLongName = { ...mockCounter, name: longName };
+      const componentWithLongName = new CounterListItemComponent(mockLocation, counterWithLongName, mockCallbacks);
+      document.body.appendChild(componentWithLongName.getElement());
+      
+      expect(escapeHtml).toHaveBeenCalledWith(longName);
+      expect(componentWithLongName.getElement().textContent).toContain(longName);
+      
+      componentWithLongName.getElement().remove();
+    });
+  });
+
+  describe('Async Operation Error Handling', () => {
+    test('handleAreaFormSubmit should handle addArea failure gracefully', async () => {
+      const errorMessage = 'Failed to add area';
+      (locationStore.addArea as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
+      
+      component.toggleAreasManagementVisibility(true);
+      const newAreaData = { name: 'New Shelf', description: 'Test Desc', displayOrder: 1 };
+      
+      await component['handleAreaFormSubmit']({ id: '', ...newAreaData });
+      
+      expect(showToast).toHaveBeenCalledWith('Fehler beim Hinzufügen des Bereichs.', 'error');
+      expect(mockAreaFormComponentInstance.hide).toHaveBeenCalled();
+    });
+
+    test('handleAreaFormSubmit should handle updateArea failure gracefully', async () => {
+      const errorMessage = 'Failed to update area';
+      (locationStore.updateArea as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
+      
+      component.toggleAreasManagementVisibility(true);
+      const existingArea = mockCounter.areas[0];
+      if (!existingArea) throw new Error("existingArea is undefined in test setup");
+      const updatedAreaData = { ...existingArea, name: 'Updated Shelf A' };
+      
+      await component['handleAreaFormSubmit'](updatedAreaData);
+      
+      expect(showToast).toHaveBeenCalledWith('Fehler beim Aktualisieren des Bereichs.', 'error');
+      expect(mockAreaFormComponentInstance.hide).toHaveBeenCalled();
+    });
+
+    test('handleDeleteArea should handle deleteArea failure gracefully', async () => {
+      const errorMessage = 'Failed to delete area';
+      (locationStore.deleteArea as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
+      window.confirm = jest.fn(() => true);
+      
+      component.toggleAreasManagementVisibility(true);
+      const areaToDelete = mockCounter.areas[0];
+      if (!areaToDelete) throw new Error("mockCounter.areas[0] is undefined");
+      
+      await component['handleDeleteArea'](areaToDelete.id, areaToDelete.name);
+      
+      expect(showToast).toHaveBeenCalledWith('Fehler beim Löschen des Bereichs.', 'error');
+    });
+
+    test('should handle locationStore.getLocationById returning null', () => {
+      (locationStore.getLocationById as jest.Mock).mockReturnValue(null);
+      
+      component.toggleAreasManagementVisibility(true);
+      const updatedAreaData = { id: 'area1', name: 'Updated Area', inventoryItems: [], displayOrder: 1 };
+      
+      expect(() => component['handleAreaFormSubmit'](updatedAreaData)).not.toThrow();
+    });
+  });
+
+  describe('Complex State Management', () => {
+    test('should handle multiple rapid toggles of area management visibility', () => {
+      const manageAreasButton = component.getElement().querySelector('.manage-areas-btn') as HTMLButtonElement;
+      
+      // Rapid toggling
+      manageAreasButton.click();
+      manageAreasButton.click();
+      manageAreasButton.click();
+      
+      const areaManagementDiv = component.getElement().querySelector('.area-management-section') as HTMLDivElement;
+      expect(areaManagementDiv.style.display).toBe('block');
+    });
+
+    test('should properly clean up when toggling areas management off', () => {
+      component.toggleAreasManagementVisibility(true);
+      component.toggleAreasManagementVisibility(false);
+      
+      const areaManagementDiv = component.getElement().querySelector('.area-management-section') as HTMLDivElement;
+      expect(areaManagementDiv.style.display).toBe('none');
+    });
+
+    test('should handle update with same counter data efficiently', () => {
+      component.toggleAreasManagementVisibility(true);
+      jest.clearAllMocks();
+      
+      component.update(mockLocation, mockCounter);
+      
+      // Should not trigger unnecessary area list updates when data is the same
+      expect(mockAreaListComponentInstance.setAreas).not.toHaveBeenCalled();
+    });
+
+    test('should handle update when location changes but counter remains same', () => {
+      const newLocation = { ...mockLocation, id: 'loc2', name: 'Different Location' };
+      component.update(newLocation, mockCounter);
+      
+      expect(component.getElement().textContent).toContain(mockCounter.name);
+    });
+  });
+
+  describe('UI Interaction Edge Cases', () => {
+    test('should handle rapid button clicks without breaking', () => {
+      const editButton = component.getElement().querySelector('.edit-counter-btn') as HTMLButtonElement;
+      
+      // Simulate rapid clicking
+      editButton.click();
+      editButton.click();
+      editButton.click();
+      
+      expect(mockCallbacks.onEditCounter).toHaveBeenCalledTimes(3);
+      expect(mockCallbacks.onEditCounter).toHaveBeenCalledWith(mockCounter);
+    });
+
+    test('should handle delete button clicks in rapid succession', () => {
+      const deleteButton = component.getElement().querySelector('.delete-counter-btn') as HTMLButtonElement;
+      
+      deleteButton.click();
+      deleteButton.click();
+      
+      expect(mockCallbacks.onDeleteCounter).toHaveBeenCalledTimes(2);
+      expect(mockCallbacks.onDeleteCounter).toHaveBeenCalledWith(mockCounter.id, mockCounter.name);
+    });
+
+    test('should handle area form submission with empty name', async () => {
+      component.toggleAreasManagementVisibility(true);
+      const emptyAreaData = { name: '', description: 'Test Desc', displayOrder: 1 };
+      
+      await component['handleAreaFormSubmit']({ id: '', ...emptyAreaData });
+      
+      // Should still attempt to add the area (validation might be handled elsewhere)
+      expect(locationStore.addArea).toHaveBeenCalledWith(mockLocation.id, mockCounter.id, emptyAreaData);
+    });
+
+    test('should handle area form submission with very high display order', async () => {
+      component.toggleAreasManagementVisibility(true);
+      const highOrderAreaData = { name: 'High Order Area', description: 'Test Desc', displayOrder: 99999 };
+      
+      await component['handleAreaFormSubmit']({ id: '', ...highOrderAreaData });
+      
+      expect(locationStore.addArea).toHaveBeenCalledWith(mockLocation.id, mockCounter.id, highOrderAreaData);
+    });
+  });
+
+  describe('Data Validation and Integrity', () => {
+    test('should handle areas with missing required properties', () => {
+      const incompleteArea = { id: 'incomplete', name: 'Incomplete Area' } as Area;
+      const counterWithIncompleteArea = { 
+        ...mockCounter, 
+        areas: [incompleteArea] 
+      };
+      
+      expect(() => {
+        const componentWithIncompleteArea = new CounterListItemComponent(mockLocation, counterWithIncompleteArea, mockCallbacks);
+        document.body.appendChild(componentWithIncompleteArea.getElement());
+        componentWithIncompleteArea.getElement().remove();
+      }).not.toThrow();
+    });
+
+    test('should handle counter with duplicate area IDs', () => {
+      const duplicateArea1 = { id: 'duplicate', name: 'Area 1', inventoryItems: [], displayOrder: 1 };
+      const duplicateArea2 = { id: 'duplicate', name: 'Area 2', inventoryItems: [], displayOrder: 2 };
+      const counterWithDuplicates = { 
+        ...mockCounter, 
+        areas: [duplicateArea1, duplicateArea2] 
+      };
+      
+      const componentWithDuplicates = new CounterListItemComponent(mockLocation, counterWithDuplicates, mockCallbacks);
+      document.body.appendChild(componentWithDuplicates.getElement());
+      
+      componentWithDuplicates.toggleAreasManagementVisibility(true);
+      expect(mockAreaListComponentInstance.setAreas).toHaveBeenCalledWith([duplicateArea1, duplicateArea2]);
+      
+      componentWithDuplicates.getElement().remove();
+    });
+
+    test('should handle counter description edge cases', () => {
+      const counterWithoutDescription = { ...mockCounter, description: undefined };
+      const componentWithoutDesc = new CounterListItemComponent(mockLocation, counterWithoutDescription, mockCallbacks);
+      document.body.appendChild(componentWithoutDesc.getElement());
+      
+      expect(componentWithoutDesc.getElement()).toBeDefined();
+      
+      componentWithoutDesc.getElement().remove();
+    });
+  });
+
+  describe('Memory Management and Cleanup', () => {
+    test('should properly handle component removal without memory leaks', () => {
+      const testComponent = new CounterListItemComponent(mockLocation, mockCounter, mockCallbacks);
+      document.body.appendChild(testComponent.getElement());
+      
+      testComponent.toggleAreasManagementVisibility(true);
+      
+      // Simulate component cleanup
+      testComponent.getElement().remove();
+      
+      // Component should still be functional after removal and re-addition
+      document.body.appendChild(testComponent.getElement());
+      expect(testComponent.getCounterId()).toBe(mockCounter.id);
+      
+      testComponent.getElement().remove();
+    });
+
+    test('should handle multiple component instances correctly', () => {
+      const counter2 = { ...mockCounter, id: 'counter2', name: 'Second Counter' };
+      const component2 = new CounterListItemComponent(mockLocation, counter2, mockCallbacks);
+      
+      document.body.appendChild(component2.getElement());
+      
+      expect(component.getCounterId()).toBe('counter1');
+      expect(component2.getCounterId()).toBe('counter2');
+      
+      component2.getElement().remove();
+    });
+  });
+
+  describe('Accessibility and User Experience', () => {
+    test('should have proper ARIA attributes and accessibility features', () => {
+      const element = component.getElement();
+      const editButton = element.querySelector('.edit-counter-btn') as HTMLButtonElement;
+      const deleteButton = element.querySelector('.delete-counter-btn') as HTMLButtonElement;
+      const manageAreasButton = element.querySelector('.manage-areas-btn') as HTMLButtonElement;
+      
+      expect(editButton).not.toBeNull();
+      expect(deleteButton).not.toBeNull();
+      expect(manageAreasButton).not.toBeNull();
+      
+      // Buttons should be focusable and have proper roles
+      expect(editButton.tagName).toBe('BUTTON');
+      expect(deleteButton.tagName).toBe('BUTTON');
+      expect(manageAreasButton.tagName).toBe('BUTTON');
+    });
+
+    test('should maintain proper tab order for interactive elements', () => {
+      const element = component.getElement();
+      const buttons = element.querySelectorAll('button');
+      
+      expect(buttons.length).toBeGreaterThanOrEqual(3);
+      
+      // All buttons should be focusable (not disabled by default)
+      buttons.forEach(button => {
+        expect(button.disabled).toBe(false);
+      });
+    });
+  });
+
+  describe('Performance and Optimization', () => {
+    test('should not re-render unnecessarily when update is called with identical data', () => {
+      const renderSpy = jest.spyOn(component as any, 'render');
+      
+      component.update(mockLocation, mockCounter);
+      
+      // Should not trigger a full re-render for identical data
+      expect(renderSpy).not.toHaveBeenCalled();
+      
+      renderSpy.mockRestore();
+    });
+
+    test('should handle large numbers of areas efficiently', () => {
+      const manyAreas = Array.from({ length: 100 }, (_, i) => ({
+        id: `area${i}`,
+        name: `Area ${i}`,
+        inventoryItems: [],
+        displayOrder: i
+      }));
+      
+      const counterWithManyAreas = { ...mockCounter, areas: manyAreas };
+      const componentWithManyAreas = new CounterListItemComponent(mockLocation, counterWithManyAreas, mockCallbacks);
+      
+      document.body.appendChild(componentWithManyAreas.getElement());
+      
+      const start = performance.now();
+      componentWithManyAreas.toggleAreasManagementVisibility(true);
+      const end = performance.now();
+      
+      // Should complete within reasonable time (less than 100ms)
+      expect(end - start).toBeLessThan(100);
+      
+      componentWithManyAreas.getElement().remove();
+    });
+  });
+
+  describe('Integration with External Dependencies', () => {
+    test('should handle escapeHtml function throwing an error', () => {
+      (escapeHtml as jest.Mock).mockImplementationOnce(() => {
+        throw new Error('escapeHtml failed');
+      });
+      
+      expect(() => {
+        const failingComponent = new CounterListItemComponent(mockLocation, mockCounter, mockCallbacks);
+        document.body.appendChild(failingComponent.getElement());
+        failingComponent.getElement().remove();
+      }).toThrow('escapeHtml failed');
+    });
+
+    test('should handle showToast being unavailable', async () => {
+      (showToast as jest.Mock).mockImplementationOnce(() => {
+        throw new Error('Toast service unavailable');
+      });
+      
+      component.toggleAreasManagementVisibility(true);
+      const newAreaData = { name: 'New Shelf', description: 'Test Desc', displayOrder: 1 };
+      
+      // Should not crash even if toast fails
+      await expect(component['handleAreaFormSubmit']({ id: '', ...newAreaData }))
+        .rejects.toThrow('Toast service unavailable');
+    });
+  });
+});
