@@ -1,5 +1,5 @@
-import { Application } from '../app';
-import { initializeApp } from '../ui/ui-manager';
+import { Application } from '../src/app';
+import { initializeApp } from '../src/ui/ui-manager';
 
 // Mock the ui-manager module
 jest.mock('../ui/ui-manager', () => ({
