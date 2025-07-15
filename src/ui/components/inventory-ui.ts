@@ -54,7 +54,10 @@ export class InventoryUI {
         quantity: Number(formData.get('quantity')),
         unit: formData.get('unit') as string,
         minThreshold: Number(formData.get('minThreshold')),
-        cost: Number(formData.get('cost')) || undefined,
+        cost: (() => {
+          const costValue = formData.get('cost');
+          return costValue === '' || isNaN(Number(costValue)) ? undefined : Number(costValue);
+        })(),
       });
 
       form.reset();
