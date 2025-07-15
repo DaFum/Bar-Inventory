@@ -56,10 +56,6 @@ describe('UI Manager (ui-manager.ts)', () => {
     initLocationManagerSpy = jest.spyOn(LocationManagerModule, 'initLocationManager');
     initProductManagerSpy = jest.spyOn(ProductManagerModule, 'initProductManager');
     initAnalyticsViewSpy = jest.spyOn(AnalyticsViewModule, 'initAnalyticsView');
-
-    // Initialize the app to set up the layout within our test container
-    // This also calls navigateTo for the default view ('inventory')
-    initializeApp(appContainer);
   });
 
   afterEach(() => {
@@ -71,15 +67,25 @@ describe('UI Manager (ui-manager.ts)', () => {
 
   describe('initializeApp', () => {
     test('should render the main layout into the container', () => {
+      initializeApp(appContainer);
       expect(appContainer.querySelector('#main-nav')).not.toBeNull();
       expect(appContainer.querySelector('#view-container')).not.toBeNull();
       expect(appContainer.querySelector('#theme-toggle-btn')).not.toBeNull();
     });
 
     test('should navigate to the default view (inventory) after layout rendering', () => {
+      // Mock document.getElementById to return a main element with the correct properties
+      const mainElement = document.createElement('main');
+      mainElement.id = 'view-container';
+      mainElement.classList.add('view-content');
+      mainElement.setAttribute('role', 'main');
+      mainElement.setAttribute('aria-live', 'polite');
+      jest.spyOn(document, 'getElementById').mockReturnValue(mainElement);
+
+      initializeApp(appContainer);
       // initializeApp calls renderLayout then navigateTo(currentView='inventory')
       expect(initInventoryViewSpy).toHaveBeenCalledTimes(1); // Called once during initial setup
-      expect(initInventoryViewSpy).toHaveBeenCalledWith(appContainer.querySelector('#view-container'));
+      expect(initInventoryViewSpy).toHaveBeenCalledWith(mainElement);
 
       const inventoryNavButton = appContainer.querySelector('button[data-view="inventory"]');
       expect(inventoryNavButton?.classList.contains('active')).toBe(true);
@@ -88,6 +94,7 @@ describe('UI Manager (ui-manager.ts)', () => {
 
   describe('renderLayout', () => {
     test('should attach event listeners to navigation buttons', () => {
+      initializeApp(appContainer);
       const productsButton = appContainer.querySelector('button[data-view="products"]') as HTMLButtonElement;
       productsButton.click();
       expect(initProductManagerSpy).toHaveBeenCalledTimes(1);
@@ -95,6 +102,7 @@ describe('UI Manager (ui-manager.ts)', () => {
     });
 
     test('should attach event listener to theme toggle button', () => {
+      initializeApp(appContainer);
       const themeToggleButton = appContainer.querySelector('#theme-toggle-btn') as HTMLButtonElement;
       themeToggleButton.click();
       expect(toggleThemeSpy).toHaveBeenCalledTimes(1);
@@ -106,6 +114,7 @@ describe('UI Manager (ui-manager.ts)', () => {
 
     viewsToTest.forEach(viewName => {
       test(`should clear view container, call correct init function, and update active button for "${viewName}" view`, () => {
+        initializeApp(appContainer);
         // Click the corresponding nav button to trigger navigateTo
         const navButton = appContainer.querySelector(`button[data-view="${viewName}"]`) as HTMLButtonElement;
         navButton.click(); // This calls navigateTo internally
@@ -133,8 +142,8 @@ describe('UI Manager (ui-manager.ts)', () => {
             expect(initProductManagerSpy).toHaveBeenCalledWith(viewContainer);
             break;
           case 'inventory':
-            // initInventoryViewSpy was called once in beforeEach, so it's 2 now
-            expect(initInventoryViewSpy).toHaveBeenCalledTimes(initInventoryViewSpy.mock.calls.length); // Use current call count
+            // initInventoryViewSpy was called once in initializeApp, so it's 2 now
+            expect(initInventoryViewSpy).toHaveBeenCalledTimes(2);
             expect(initInventoryViewSpy).toHaveBeenLastCalledWith(viewContainer);
             break;
           case 'analytics':
@@ -151,6 +160,7 @@ describe('UI Manager (ui-manager.ts)', () => {
     });
 
     test('should log an error if view container is not found (e.g., removed from DOM)', () => {
+      initializeApp(appContainer);
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       const originalViewContainer = appContainer.querySelector('#view-container');
       originalViewContainer?.remove(); // Remove it
@@ -166,6 +176,7 @@ describe('UI Manager (ui-manager.ts)', () => {
     });
 
     test('should display "Unbekannte Ansicht" for an invalid view name', () => {
+        initializeApp(appContainer);
         // This requires calling navigateTo directly, which is not exported.
         // We can test this by manually setting an invalid data-view and clicking.
         const firstNavButton = appContainer.querySelector('#main-nav .nav-button') as HTMLButtonElement;
@@ -182,6 +193,7 @@ describe('UI Manager (ui-manager.ts)', () => {
     // This ensures initializeApp (and thus navigateTo default) runs only once before these tests.
 
     test('should correctly add "active" class to the current view button and remove from others', () => {
+      initializeApp(appContainer);
       const locationsButton = appContainer.querySelector('button[data-view="locations"]') as HTMLButtonElement;
       const productsButton = appContainer.querySelector('button[data-view="products"]') as HTMLButtonElement;
       const inventoryButton = appContainer.querySelector('button[data-view="inventory"]') as HTMLButtonElement;

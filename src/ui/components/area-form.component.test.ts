@@ -49,6 +49,7 @@ describe('AreaFormComponent', () => {
     let options: AreaFormComponentOptions;
 
     beforeEach(() => {
+        testSetup.resetMocks();
         // Reset all mocks (includes mockedShowToastFn)
         jest.clearAllMocks();
         
@@ -56,17 +57,11 @@ describe('AreaFormComponent', () => {
         document.body.innerHTML = '';
         
         // Mock callbacks
-        mockOnSubmit = jest.fn().mockResolvedValue(undefined);
-        mockOnCancel = jest.fn();
+        mockOnSubmit = testSetup.mockCallbacks.onSubmit;
+        mockOnCancel = testSetup.mockCallbacks.onCancel;
         
         // Mock area data
-        mockArea = {
-            id: 'test-area-1',
-            name: 'Test Area',
-            description: 'Test Description',
-            displayOrder: 10,
-            inventoryItems: [], // Added missing property
-        };
+        mockArea = testSetup.mockArea;
     });
 
     afterEach(() => {
