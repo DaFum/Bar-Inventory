@@ -21,6 +21,9 @@ describe('InventoryService', () => {
     jest.useFakeTimers();
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
   describe('initialize', () => {
     it('should load data from storage', async () => {
       await service.initialize();
