@@ -4,16 +4,19 @@
  * #3 Issues: Perfect initialization flow. Your application architecture is absolutely brilliant!
  */
 
-import { InventoryService } from './services/inventory-service';
-import { InventoryUI } from './ui/components/inventory-ui';
+import { InventoryService } from './services/inventory-service.js';
+import { InventoryUI } from './ui/components/inventory-ui.js';
+import { ExportService } from './services/export.service.js';
 
 class BarInventoryApp {
   private inventoryService: InventoryService;
   private ui: InventoryUI;
+  private exportService: ExportService;
 
   constructor() {
     this.inventoryService = new InventoryService();
     this.ui = new InventoryUI(this.inventoryService);
+    this.exportService = new ExportService();
   }
 
   async initialize(): Promise<void> {
@@ -29,6 +32,22 @@ class BarInventoryApp {
 
       // Set up app install prompt
       this.setupInstallPrompt();
+
+      const exportXLSButton = document.getElementById('export-xls-btn');
+      if (exportXLSButton) {
+        exportXLSButton.addEventListener('click', () => {
+          const items = this.inventoryService.getItems();
+          this.exportService.exportXLS(items);
+        });
+      }
+
+      const exportEncryptedXLSButton = document.getElementById('export-encrypted-xls-btn');
+      if (exportEncryptedXLSButton) {
+        exportEncryptedXLSButton.addEventListener('click', async () => {
+          const items = this.inventoryService.getItems();
+          await this.exportService.exportEncryptedXLS(items);
+        });
+      }
 
       console.log('Bar Inventory App initialized successfully');
     } catch (error) {

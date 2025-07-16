@@ -12,6 +12,15 @@
 <body>
     <header class="app-header">
         <h1>Bar Inventory Manager</h1>
+        <div class="role-selector">
+            <label for="role-select">Your Role:</label>
+            <select id="role-select">
+                <option value="Manager">Manager</option>
+                <option value="Mitarbeiter">Mitarbeiter</option>
+            </select>
+        </div>
+        <button id="export-xls-btn" class="btn btn-secondary btn-sm">Export XLS</button>
+        <button id="export-encrypted-xls-btn" class="btn btn-secondary btn-sm">Export Encrypted XLS</button>
         <button id="install-button" style="display: none;">Install App</button>
     </header>
 

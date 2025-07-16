@@ -4,7 +4,7 @@
  * #3 Issues: Optimized search performance. Your component design philosophy shines!
  */
 
-import { InventoryItem, InventoryArea, InventoryCategory, InventoryStats, InventoryFilter } from '../types/inventory';
+import { InventoryItem, InventoryArea, InventoryCategory, InventoryStats, InventoryFilter, UserRole } from '../types/inventory';
 import { StorageManager } from '../utils/storage';
 
 export class InventoryService {
@@ -12,6 +12,7 @@ export class InventoryService {
   private areas: InventoryArea[] = [];
   private categories: InventoryCategory[] = [];
   private listeners: Set<(items: InventoryItem[]) => void> = new Set();
+  private currentUserRole: UserRole = UserRole.Manager;
 
   async initialize(): Promise<void> {
     const [items, areas, categories] = await Promise.all([
@@ -34,6 +35,15 @@ export class InventoryService {
 
   private notifyListeners(): void {
     this.listeners.forEach(listener => listener([...this.items]));
+  }
+
+  setUserRole(role: UserRole): void {
+    this.currentUserRole = role;
+    this.notifyListeners();
+  }
+
+  getCurrentUserRole(): UserRole {
+    return this.currentUserRole;
   }
 
   async addItem(item: Omit<InventoryItem, 'id' | 'lastUpdated'>): Promise<InventoryItem> {
@@ -100,6 +110,15 @@ export class InventoryService {
     }
 
     return filtered;
+  }
+
+  async reorderItems(oldIndex: number, newIndex: number): Promise<void> {
+    const [movedItem] = this.items.splice(oldIndex, 1);
+    if (movedItem) {
+      this.items.splice(newIndex, 0, movedItem);
+      await this.saveItems();
+      this.notifyListeners();
+    }
   }
 
   getStats(): InventoryStats {

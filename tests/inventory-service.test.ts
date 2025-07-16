@@ -18,8 +18,12 @@ describe('InventoryService', () => {
     service = new InventoryService();
     jest.clearAllMocks();
     mockStorageManager.load.mockResolvedValue(null);
+    jest.useFakeTimers();
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
   describe('initialize', () => {
     it('should load data from storage', async () => {
       await service.initialize();
@@ -70,6 +74,7 @@ describe('InventoryService', () => {
       if (!firstItem) {
         throw new Error('No items to test');
       }
+      jest.advanceTimersByTime(1);
       const updated = await service.updateItem(firstItem.id, { quantity: 99 });
 
       expect(updated?.quantity).toBe(99);

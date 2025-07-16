@@ -43,5 +43,10 @@ export type InventoryFilter = {
   category?: string;
   area?: string;
   lowStock?: boolean;
-  search?: string;
+  search?:string;
 };
+
+export enum UserRole {
+  Manager = 'Manager',
+  Mitarbeiter = 'Mitarbeiter',
+}

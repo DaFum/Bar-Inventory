@@ -1,6 +1,8 @@
-import { Location, Product, Area } from '../models';
+import { Location, Product, Area, InventoryItem } from '../models';
 import { CalculatedConsumption, calculateAreaConsumption } from './calculation.service';
 import { showToast } from '../ui/components/toast-notifications';
+import * as XLSX from 'xlsx';
+import { encryptData } from '../utils/security';
 
 interface AreaInventoryRow {
   productId: string;
@@ -223,9 +225,34 @@ export class ExportService {
     triggerDownload(jsonContent, fileName, 'application/json;charset=utf-8;');
   }
 
-  // XLS export is more complex and usually requires a library like SheetJS (xlsx).
-  // For now, focusing on CSV and JSON.
-  // public exportToXls(data: any[], sheetName: string, fileName: string): void { ... }
+  public exportXLS(items: InventoryItem[]): void {
+    if (!items || items.length === 0) {
+      showToast('Keine Daten für den XLS-Export vorhanden.', 'info');
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(items);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventar');
+
+    XLSX.writeFile(workbook, 'inventar.xlsx');
+  }
+
+  public async exportEncryptedXLS(items: InventoryItem[]): Promise<void> {
+    if (!items || items.length === 0) {
+        showToast('Keine Daten für den verschlüsselten XLS-Export vorhanden.', 'info');
+        return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(items);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventar');
+
+    const xlsxData = XLSX.write(workbook, { bookType: 'xlsx', type: 'binary' });
+    const encryptedData = await encryptData(xlsxData);
+
+    triggerDownload(encryptedData, 'inventar.encrypted.xlsx', 'application/octet-stream');
+  }
 }
 
 export const exportService = new ExportService();
