@@ -47,8 +47,8 @@ export class CounterFormComponent extends BaseComponent<HTMLDivElement> {
 
   render(): void {
     const isEditing = !!this.currentEditingCounter;
-    const title = isEditing ? 'Tresen bearbeiten' : 'Neuen Tresen erstellen';
-    const buttonText = isEditing ? 'Änderungen speichern' : 'Tresen erstellen';
+    const title = isEditing ? 'Edit Counter' : 'Create New Counter';
+    const buttonText = isEditing ? 'Save Changes' : 'Create Counter';
     const name = this.currentEditingCounter?.name || '';
     const description = this.currentEditingCounter?.description || '';
 
@@ -61,11 +61,11 @@ export class CounterFormComponent extends BaseComponent<HTMLDivElement> {
             <input type="text" id="counter-name-form-comp" class="form-control" value="${escapeHtml(name)}" required>
           </div>
           <div class="form-group">
-            <label for="counter-description-form-comp">Beschreibung</label>
+            <label for="counter-description-form-comp">Description</label>
             <input type="text" id="counter-description-form-comp" class="form-control" value="${escapeHtml(description)}">
           </div>
           <button type="submit" class="btn btn-primary">${buttonText}</button>
-          <button type="button" class="btn btn-secondary cancel-btn">Abbrechen</button>
+          <button type="button" class="btn btn-secondary cancel-btn">Cancel</button>
         </form>
       </div>
     `;

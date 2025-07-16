@@ -44,22 +44,22 @@ export class AreaFormComponent extends BaseComponent<HTMLDivElement> {
     render(): void {
         const area = this.currentEditingArea;
         this.element.innerHTML = `
-            <h6 id="${this.formTitleId}">${area ? 'Bereich bearbeiten' : 'Neuen Bereich erstellen'}</h6>
+            <h6 id="${this.formTitleId}">${area ? 'Edit Area' : 'Create New Area'}</h6>
             <form id="area-form-actual" aria-labelledby="${this.formTitleId}">
                 <div class="form-group">
-                    <label for="area-name-form-comp">Name des Bereichs:</label>
+                    <label for="area-name-form-comp">Area Name:</label>
                     <input type="text" id="area-name-form-comp" value="${escapeHtml(area?.name || '')}" required class="form-control form-control-sm" aria-required="true">
                 </div>
                 <div class="form-group">
-                    <label for="area-description-form-comp">Beschreibung (optional):</label>
+                    <label for="area-description-form-comp">Description (optional):</label>
                     <input type="text" id="area-description-form-comp" value="${escapeHtml(area?.description || '')}" class="form-control form-control-sm">
                 </div>
                 <div class="form-group">
-                    <label for="area-display-order-form-comp">Anzeigereihenfolge (optional):</label>
+                    <label for="area-display-order-form-comp">Display Order (optional):</label>
                     <input type="number" id="area-display-order-form-comp" value="${area?.displayOrder || ''}" class="form-control form-control-sm">
                 </div>
-                <button type="submit" class="btn btn-success btn-xs">${area ? 'Änderungen speichern' : 'Bereich erstellen'}</button>
-                <button type="button" id="cancel-area-edit-form-comp" class="btn btn-secondary btn-xs">Abbrechen</button>
+                <button type="submit" class="btn btn-success btn-xs">${area ? 'Save Changes' : 'Create Area'}</button>
+                <button type="button" id="cancel-area-edit-form-comp" class="btn btn-secondary btn-xs">Cancel</button>
             </form>
         `;
         this.bindElements();

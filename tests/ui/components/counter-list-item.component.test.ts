@@ -64,7 +64,7 @@ describe('CounterListItemComponent', () => {
       id: 'counter1',
       name: 'Main Counter',
       description: 'Primary service counter',
-      areas: [{ id: 'area1', name: 'Shelf A', inventoryItems: [], displayOrder: 1 }]
+      areas: [{ id: 'area1', name: 'Shelf A', inventoryRecords: [], displayOrder: 1 }]
     };
     mockLocation.counters.push(mockCounter);
 
@@ -74,7 +74,7 @@ describe('CounterListItemComponent', () => {
     };
 
     (locationStore.getLocationById as jest.Mock).mockReturnValue(mockLocation);
-    (locationStore.addArea as jest.Mock).mockImplementation(async (locId, countId, areaData) => ({ ...areaData, id: 'new-area-id', inventoryItems: [] }));
+    (locationStore.addArea as jest.Mock).mockImplementation(async (locId, countId, areaData) => ({ ...areaData, id: 'new-area-id', inventoryRecords: [] }));
     (locationStore.updateArea as jest.Mock).mockResolvedValue(undefined);
     (locationStore.deleteArea as jest.Mock).mockResolvedValue(undefined);
 
@@ -148,7 +148,7 @@ describe('CounterListItemComponent', () => {
         await component['handleAreaFormSubmit']({ id: '', ...newAreaData });
 
         expect(locationStore.addArea).toHaveBeenCalledWith(mockLocation.id, mockCounter.id, newAreaData);
-        expect(showToast).toHaveBeenCalledWith('Bereich "New Shelf" hinzugefügt.', 'success');
+        expect(showToast).toHaveBeenCalledWith('Area "New Shelf" added.', 'success');
         expect(mockAreaFormComponentInstance.hide).toHaveBeenCalled();
         expect(mockAreaListComponentInstance.setAreas).toHaveBeenCalled();
     });
@@ -172,7 +172,7 @@ describe('CounterListItemComponent', () => {
         await component['handleAreaFormSubmit'](updatedAreaData);
 
         expect(locationStore.updateArea).toHaveBeenCalledWith(mockLocation.id, mockCounter.id, updatedAreaData);
-        expect(showToast).toHaveBeenCalledWith('Bereich "Updated Shelf A" aktualisiert.', 'success');
+        expect(showToast).toHaveBeenCalledWith('Area "Updated Shelf A" updated.', 'success');
         expect(mockAreaFormComponentInstance.hide).toHaveBeenCalled();
         expect(mockAreaListComponentInstance.setAreas).toHaveBeenCalledWith([updatedAreaData]);
     });
@@ -195,9 +195,9 @@ describe('CounterListItemComponent', () => {
         if (areaToDelete) {
             await component['handleDeleteArea'](areaToDelete.id, areaToDelete.name);
 
-            expect(window.confirm).toHaveBeenCalledWith(`Bereich "${areaToDelete.name}" wirklich löschen?`);
+            expect(window.confirm).toHaveBeenCalledWith(`Are you sure you want to delete area "${areaToDelete.name}"?`);
             expect(locationStore.deleteArea).toHaveBeenCalledWith(mockLocation.id, mockCounter.id, areaToDelete.id);
-            expect(showToast).toHaveBeenCalledWith(`Bereich "${areaToDelete.name}" gelöscht.`, 'success');
+            expect(showToast).toHaveBeenCalledWith(`Area "${areaToDelete.name}" deleted.`, 'success');
             expect(mockAreaListComponentInstance.setAreas).toHaveBeenCalled();
         } else {
             throw new Error("mockCounter.areas[0] is undefined, cannot run test");
@@ -223,7 +223,7 @@ describe('CounterListItemComponent', () => {
     const updatedCounterData: Counter = {
       ...mockCounter,
       name: 'Renamed Counter',
-      areas: [...mockCounter.areas, { id: 'area2', name: 'Shelf B', inventoryItems: [], displayOrder: 2 }],
+      areas: [...mockCounter.areas, { id: 'area2', name: 'Shelf B', inventoryRecords: [], displayOrder: 2 }],
     };
     component.update(mockLocation, updatedCounterData);
 
@@ -235,7 +235,7 @@ describe('CounterListItemComponent', () => {
     component.toggleAreasManagementVisibility(true);
     const firstArea = mockCounter.areas[0];
     if (!firstArea) throw new Error("mockCounter.areas[0] is undefined for test setup");
-    const sameAreasRefDifferentContent: Area[] = [{...firstArea, name: "Changed Area Name", inventoryItems: [] }];
+    const sameAreasRefDifferentContent: Area[] = [{...firstArea, name: "Changed Area Name", inventoryRecords: [] }];
     const updatedCounterData: Counter = {
         ...mockCounter,
         areas: sameAreasRefDifferentContent,
@@ -317,7 +317,7 @@ describe('CounterListItemComponent', () => {
       
       await component['handleAreaFormSubmit']({ id: '', ...newAreaData });
       
-      expect(showToast).toHaveBeenCalledWith('Fehler beim Hinzufügen des Bereichs.', 'error');
+      expect(showToast).toHaveBeenCalledWith('Error adding area.', 'error');
       expect(mockAreaFormComponentInstance.hide).toHaveBeenCalled();
     });
 
@@ -332,7 +332,7 @@ describe('CounterListItemComponent', () => {
       
       await component['handleAreaFormSubmit'](updatedAreaData);
       
-      expect(showToast).toHaveBeenCalledWith('Fehler beim Aktualisieren des Bereichs.', 'error');
+      expect(showToast).toHaveBeenCalledWith('Error updating area.', 'error');
       expect(mockAreaFormComponentInstance.hide).toHaveBeenCalled();
     });
 
@@ -347,14 +347,14 @@ describe('CounterListItemComponent', () => {
       
       await component['handleDeleteArea'](areaToDelete.id, areaToDelete.name);
       
-      expect(showToast).toHaveBeenCalledWith('Fehler beim Löschen des Bereichs.', 'error');
+      expect(showToast).toHaveBeenCalledWith('Error deleting area.', 'error');
     });
 
     test('should handle locationStore.getLocationById returning null', () => {
       (locationStore.getLocationById as jest.Mock).mockReturnValue(null);
       
       component.toggleAreasManagementVisibility(true);
-      const updatedAreaData = { id: 'area1', name: 'Updated Area', inventoryItems: [], displayOrder: 1 };
+      const updatedAreaData = { id: 'area1', name: 'Updated Area', inventoryRecords: [], displayOrder: 1 };
       
       expect(() => component['handleAreaFormSubmit'](updatedAreaData)).not.toThrow();
     });
@@ -424,12 +424,12 @@ describe('CounterListItemComponent', () => {
 
     test('should handle area form submission with empty name', async () => {
       component.toggleAreasManagementVisibility(true);
-      const emptyAreaData = { name: '', description: 'Test Desc', displayOrder: 1 };
+      const newAreaData = { name: '', description: 'Test Desc', displayOrder: 1 };
       
-      await component['handleAreaFormSubmit']({ id: '', ...emptyAreaData });
+      await component['handleAreaFormSubmit']({ id: '', ...newAreaData });
       
       // Should still attempt to add the area (validation might be handled elsewhere)
-      expect(locationStore.addArea).toHaveBeenCalledWith(mockLocation.id, mockCounter.id, emptyAreaData);
+      expect(locationStore.addArea).toHaveBeenCalledWith(mockLocation.id, mockCounter.id, newAreaData);
     });
 
     test('should handle area form submission with very high display order', async () => {
@@ -458,8 +458,8 @@ describe('CounterListItemComponent', () => {
     });
 
     test('should handle counter with duplicate area IDs', () => {
-      const duplicateArea1 = { id: 'duplicate', name: 'Area 1', inventoryItems: [], displayOrder: 1 };
-      const duplicateArea2 = { id: 'duplicate', name: 'Area 2', inventoryItems: [], displayOrder: 2 };
+      const duplicateArea1 = { id: 'duplicate', name: 'Area 1', inventoryRecords: [], displayOrder: 1 };
+      const duplicateArea2 = { id: 'duplicate', name: 'Area 2', inventoryRecords: [], displayOrder: 2 };
       const counterWithDuplicates = { 
         ...mockCounter, 
         areas: [duplicateArea1, duplicateArea2] 
@@ -561,7 +561,7 @@ describe('CounterListItemComponent', () => {
       const manyAreas = Array.from({ length: 100 }, (_, i) => ({
         id: `area${i}`,
         name: `Area ${i}`,
-        inventoryItems: [],
+        inventoryRecords: [],
         displayOrder: i
       }));
       

@@ -33,7 +33,7 @@ describe('LocationStore', () => {
       address: '123 Bar Street',
       counters: [
         { id: 'ctr1', name: 'Front Counter', description: 'Main service', areas: [
-          { id: 'area1', name: 'Top Shelf', displayOrder: 1, inventoryItems: [] }
+          { id: 'area1', name: 'Top Shelf', displayOrder: 1, inventoryRecords: [] }
         ]}
       ],
     };
@@ -217,13 +217,13 @@ describe('LocationStore', () => {
             id: areaToUpdate.id, // Be explicit
             name: 'Top Shelf Deluxe',
             displayOrder: 0,
-            inventoryItems: areaToUpdate.inventoryItems, // Be explicit
+            inventoryRecords: areaToUpdate.inventoryRecords, // Be explicit
         };
         await locationStore.updateArea(locId, counterId, updatedAreaData);
 
         const location = locationStore.getLocationById(locId);
-        const counter = location?.counters.find(c => c.id === counterId);
-        expect(counter?.areas.find(a => a.id === areaToUpdate.id)?.name).toBe('Top Shelf Deluxe');
+        const counter = location?.counters.find((c: Counter) => c.id === counterId);
+        expect(counter?.areas.find((a: Area) => a.id === areaToUpdate.id)?.name).toBe('Top Shelf Deluxe');
         expect(dbService.saveLocation).toHaveBeenCalledWith(location);
         // Check sort order (updatedArea now has order 0)
         expect(counter?.areas[0]!.name).toBe('Top Shelf Deluxe');
@@ -234,8 +234,8 @@ describe('LocationStore', () => {
         await locationStore.deleteArea(locId, counterId, areaIdToDelete);
 
         const location = locationStore.getLocationById(locId);
-        const counter = location?.counters.find(c => c.id === counterId);
-        expect(counter?.areas.find(a => a.id === areaIdToDelete)).toBeUndefined();
+        const counter = location?.counters.find((c: Counter) => c.id === counterId);
+        expect(counter?.areas.find((a: Area) => a.id === areaIdToDelete)).toBeUndefined();
         expect(dbService.saveLocation).toHaveBeenCalledWith(location);
     });
   });
@@ -371,7 +371,7 @@ describe('LocationStore', () => {
         id: 'non-existent-area',
         name: 'Non-existent Area',
         displayOrder: 1,
-        inventoryItems: []
+        inventoryRecords: []
       };
       
       await expect(locationStore.updateArea(mockLocation1.id, counterId, nonExistentArea)).rejects.toThrow();
@@ -461,7 +461,7 @@ describe('LocationStore', () => {
       const area = counter.areas.find(a => a.id === areaId)!;
       
       // For this test, we will ensure the inventory item has a productId, not a name directly
-      area.inventoryItems.push({ productId: 'prod-xyz', startCrates: 1 } as InventoryEntry); // Corrected to use productId
+      area.inventoryRecords.push({ date: new Date(), entries: [{ productId: 'prod-xyz', startCrates: 1 }] }); // Corrected to use productId
       await locationStore.updateLocation(location);
       
       // Update area name
@@ -472,12 +472,12 @@ describe('LocationStore', () => {
       await locationStore.updateArea(locId, counterId, updatedArea);
       
       const updatedLocation = locationStore.getLocationById(locId);
-      const updatedCounter = updatedLocation?.counters.find(c => c.id === counterId);
-      const finalArea = updatedCounter?.areas.find(a => a.id === areaId);
+      const updatedCounter = updatedLocation?.counters.find((c: Counter) => c.id === counterId);
+      const finalArea = updatedCounter?.areas.find((a: Area) => a.id === areaId);
       
-      expect(finalArea?.inventoryItems).toHaveLength(1);
+      expect(finalArea?.inventoryRecords[0]?.entries).toHaveLength(1);
       // Check productId instead of name, as name is not a property of InventoryEntry
-      expect(finalArea?.inventoryItems[0]?.productId).toBe('prod-xyz');
+      expect(finalArea?.inventoryRecords[0]?.entries[0]?.productId).toBe('prod-xyz');
     });
   });
 
@@ -710,19 +710,22 @@ describe('LocationStore', () => {
       const area = location.counters[0]!.areas[0]!;
       
       // Add multiple inventory items
-      area.inventoryItems = [
-        { productId: 'prod-1', quantity: 10 } as InventoryEntry,
-        { productId: 'prod-2', quantity: 5 } as InventoryEntry,
-        { productId: 'prod-3', quantity: 15 } as InventoryEntry
-      ];
+      area.inventoryRecords.push({
+        date: new Date(),
+        entries: [
+          { productId: 'prod-1', startCrates: 10 },
+          { productId: 'prod-2', startCrates: 5 },
+          { productId: 'prod-3', startCrates: 15 }
+        ]
+      });
       
       await locationStore.updateLocation(location);
       
       const updatedLocation = locationStore.getLocationById(locationId);
       const updatedArea = updatedLocation?.counters[0]?.areas[0];
       
-      expect(updatedArea?.inventoryItems).toHaveLength(3);
-      expect(updatedArea?.inventoryItems.map(item => item.productId))
+      expect(updatedArea?.inventoryRecords[0]?.entries).toHaveLength(3);
+      expect(updatedArea?.inventoryRecords[0]?.entries.map(item => item.productId))
         .toEqual(['prod-1', 'prod-2', 'prod-3']);
     });
 
@@ -730,19 +733,22 @@ describe('LocationStore', () => {
       const location = locationStore.getLocationById(locationId)!;
       const area = location.counters[0]!.areas[0]!;
       
-      area.inventoryItems = [
-        { productId: 'prod-1', startCrates: 0 } as InventoryEntry, // Zero quantity
-        { productId: '', startCrates: 10 } as InventoryEntry, // Empty product ID
-        { productId: 'prod-with-special-chars-@#$%', startCrates: 999999 } as InventoryEntry // Large quantity and special chars
-      ];
+      area.inventoryRecords.push({
+        date: new Date(),
+        entries: [
+            { productId: 'prod-1', startCrates: 0 }, // Zero quantity
+            { productId: '', startCrates: 10 }, // Empty product ID
+            { productId: 'prod-with-special-chars-@#$%', startCrates: 999999 } // Large quantity and special chars
+        ]
+      });
       
       await locationStore.updateLocation(location);
       
       const updatedLocation = locationStore.getLocationById(locationId);
       const updatedArea = updatedLocation?.counters[0]?.areas[0];
       
-      expect(updatedArea?.inventoryItems).toHaveLength(3);
-      expect(updatedArea?.inventoryItems[2]?.startCrates).toBe(999999);
+      expect(updatedArea?.inventoryRecords[0]?.entries).toHaveLength(3);
+      expect(updatedArea?.inventoryRecords[0]?.entries[2]?.startCrates).toBe(999999);
     });
   });
 
@@ -953,7 +959,7 @@ describe('LocationStore', () => {
             areas: [
               {
                 // Missing required fields
-                inventoryItems: 'not an array' // Wrong type
+                inventoryRecords: 'not an array' // Wrong type
               }
             ]
           }
@@ -1538,11 +1544,13 @@ describe('LocationStore', () => {
       const area = location.counters[0]!.areas[0]!;
       
       // Add 1000 inventory items (realistic for a large bar/restaurant)
-      area.inventoryItems = Array.from({ length: 1000 }, (_, i) => ({
-        productId: `product-${i}`,
-        startCrates: Math.floor(Math.random() * 10),
-        quantity: Math.floor(Math.random() * 100)
-      } as InventoryEntry));
+      area.inventoryRecords.push({
+          date: new Date(),
+          entries: Array.from({ length: 1000 }, (_, i) => ({
+            productId: `product-${i}`,
+            startCrates: Math.floor(Math.random() * 10),
+          } as InventoryEntry))
+      });
       
       const startTime = Date.now();
       await locationStore.updateLocation(location);
@@ -1551,7 +1559,7 @@ describe('LocationStore', () => {
       const updatedLocation = locationStore.getLocationById(locationId);
       const updatedArea = updatedLocation?.counters[0]?.areas[0];
       
-      expect(updatedArea?.inventoryItems).toHaveLength(1000);
+      expect(updatedArea?.inventoryRecords[0]?.entries).toHaveLength(1000);
       expect(endTime - startTime).toBeLessThan(2000); // Should complete within 2 seconds
     });
 

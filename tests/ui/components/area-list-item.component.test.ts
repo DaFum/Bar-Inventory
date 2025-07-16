@@ -13,7 +13,7 @@ describe('AreaListItemComponent', () => {
   let component: AreaListItemComponent;
 
   beforeEach(() => {
-    area = { id: 'area1', name: 'Test Area', displayOrder: 1, inventoryItems: [] };
+    area = { id: 'area1', name: 'Test Area', displayOrder: 1, inventoryRecords: [] };
     mockCallbacks = {
       onEdit: jest.fn(),
       onDelete: jest.fn(),
@@ -47,7 +47,7 @@ describe('AreaListItemComponent', () => {
       id: 'area2',
       name: 'Area No Order',
       // displayOrder is omitted, meaning it's undefined
-      inventoryItems: []
+      inventoryRecords: []
     };
     component.update(areaWithoutOrder); // Re-render with new data
     const element = component.getElement();
@@ -85,7 +85,7 @@ describe('AreaListItemComponent', () => {
   });
 
   test('update method should re-render the component with new area data', () => {
-    const newArea: Area = { id: 'area1', name: 'Updated Area Name', displayOrder: 5, inventoryItems: [] };
+    const newArea: Area = { id: 'area1', name: 'Updated Area Name', displayOrder: 5, inventoryRecords: [] };
     component.update(newArea);
 
     const element = component.getElement();
@@ -101,7 +101,7 @@ describe('AreaListItemComponent', () => {
 
   test('getAreaId should return the correct area ID', () => {
     expect(component.getAreaId()).toBe(area.id);
-    const newArea: Area = { id: 'area2', name: 'Another Area', displayOrder: 1, inventoryItems: [] };
+    const newArea: Area = { id: 'area2', name: 'Another Area', displayOrder: 1, inventoryRecords: [] };
     component.update(newArea);
     expect(component.getAreaId()).toBe('area2');
   });

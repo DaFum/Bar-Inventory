@@ -58,9 +58,9 @@ describe('ProductListComponent', () => {
       onDelete: jest.fn(),
     };
     initialProducts = [
-      { id: 'prodB', name: 'Product Bravo', category: 'Category X', volume: 750, pricePerBottle: 20 },
-      { id: 'prodA', name: 'Product Alpha', category: 'Category Y', volume: 500, pricePerBottle: 15 },
-      { id: 'prodC', name: 'Product Charlie', category: 'Category X', volume: 1000, pricePerBottle: 25 },
+      { id: 'prodB', name: 'Product Bravo', category: 'Category X', volume: 750, pricePerBottle: 20, lastUpdated: new Date() },
+      { id: 'prodA', name: 'Product Alpha', category: 'Category Y', volume: 500, pricePerBottle: 15, lastUpdated: new Date() },
+      { id: 'prodC', name: 'Product Charlie', category: 'Category X', volume: 1000, pricePerBottle: 25, lastUpdated: new Date() },
     ];
 
     (ProductListItemComponent as jest.Mock).mockClear();
@@ -91,8 +91,8 @@ describe('ProductListComponent', () => {
 
   test('setProducts should re-render the list with new sorted products', () => {
     const newProducts: Product[] = [
-      { id: 'prodZ', name: 'Product Zulu', category: 'Category A', volume: 1, pricePerBottle: 1 },
-      { id: 'prodY', name: 'Product Yankee', category: 'Category B', volume: 1, pricePerBottle: 1 },
+      { id: 'prodZ', name: 'Product Zulu', category: 'Category A', volume: 1, pricePerBottle: 1, lastUpdated: new Date() },
+      { id: 'prodY', name: 'Product Yankee', category: 'Category B', volume: 1, pricePerBottle: 1, lastUpdated: new Date() },
     ];
     productListComponent.setProducts(newProducts);
     expect(ProductListItemComponent).toHaveBeenCalledTimes(initialProducts.length + newProducts.length);
@@ -111,7 +111,7 @@ describe('ProductListComponent', () => {
   });
 
   test('addProduct should add a product and insert it sorted into the DOM', () => {
-    const newProduct: Product = { id: 'prodD', name: 'Product Delta', category: 'Category Z', volume: 1, pricePerBottle: 1 };
+    const newProduct: Product = { id: 'prodD', name: 'Product Delta', category: 'Category Z', volume: 1, pricePerBottle: 1, lastUpdated: new Date() };
     productListComponent.addProduct(newProduct);
 
     const tbodyElement = productListComponent.getElement().querySelector('tbody');
@@ -122,7 +122,7 @@ describe('ProductListComponent', () => {
     expect(getProductCellText(items[3]!,0)).toBe('Product Delta');
     expect(ProductListItemComponent).toHaveBeenCalledTimes(initialProducts.length + 1);
 
-    const newerProduct: Product = { id: 'prod0', name: 'AAA Product', category: 'Category A', volume:1, pricePerBottle:1 };
+    const newerProduct: Product = { id: 'prod0', name: 'AAA Product', category: 'Category A', volume:1, pricePerBottle:1, lastUpdated: new Date() };
     productListComponent.addProduct(newerProduct);
     expect(getProductCellText(items[0]!,0)).toBe('AAA Product');
   });

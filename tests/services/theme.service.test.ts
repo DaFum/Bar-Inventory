@@ -315,26 +315,30 @@ describe('ThemeService', () => {
 
   describe('Edge Cases', () => {
     test('should handle missing document.body gracefully', () => {
-      delete (document as any).body;
-      Object.defineProperty(document, 'body', { value: null, configurable: true, writable: true });
-      
+      Object.defineProperty(document, 'body', {
+        value: null,
+        configurable: true,
+      });
       expect(() => {
         new ThemeService();
       }).not.toThrow();
     });
 
     test('should handle missing documentElement gracefully', () => {
-      delete (document as any).documentElement;
-      Object.defineProperty(document, 'documentElement', { value: null, configurable: true, writable: true });
-      
+      Object.defineProperty(document, 'documentElement', {
+        value: null,
+        configurable: true,
+      });
       expect(() => {
         new ThemeService();
       }).not.toThrow();
     });
 
     test('should handle missing window.matchMedia', () => {
-      delete (window as any).matchMedia;
-      
+      Object.defineProperty(window, 'matchMedia', {
+        value: undefined,
+        configurable: true,
+      });
       expect(() => {
         new ThemeService();
       }).not.toThrow();

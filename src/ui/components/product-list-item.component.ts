@@ -30,11 +30,13 @@ export class ProductListItemComponent extends BaseComponent<HTMLTableRowElement>
     }
 
     render(): void {
+        const lastUpdated = this.product.lastUpdated ? new Date(this.product.lastUpdated).toLocaleString() : 'N/A';
         this.element.innerHTML = `
             <td class="px-4 py-2">${escapeHtml(this.product.name)}</td>
             <td class="px-4 py-2">${escapeHtml(this.product.category)}</td>
             <td class="px-4 py-2 text-right">${this.product.volume}</td>
             <td class="px-4 py-2 text-right">${this.product.pricePerBottle.toFixed(2)}</td>
+            <td class="px-4 py-2">${lastUpdated}</td>
             <td class="px-4 py-2">
                 <button class="btn btn-sm btn-secondary edit-product-btn" aria-label="Produkt ${escapeHtml(this.product.name)} bearbeiten">Bearbeiten</button>
                 <button class="btn btn-sm btn-danger delete-product-btn" aria-label="Produkt ${escapeHtml(this.product.name)} löschen">Löschen</button>

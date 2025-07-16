@@ -148,8 +148,8 @@ describe('Product Manager (initProductManager)', () => {
     });
 
     // Initialize mock data after dynamic imports
-    mockProduct1 = { id: 'p1', name: 'Vodka', category: 'Spirits', volume: 700, pricePerBottle: 20 };
-    mockProduct2 = { id: 'p2', name: 'Gin', category: 'Spirits', volume: 750, pricePerBottle: 22 };
+    mockProduct1 = { id: 'p1', name: 'Vodka', category: 'Spirits', volume: 700, pricePerBottle: 20, lastUpdated: new Date() };
+    mockProduct2 = { id: 'p2', name: 'Gin', category: 'Spirits', volume: 750, pricePerBottle: 22, lastUpdated: new Date() };
 
     container = document.createElement('div');
     document.body.appendChild(container);
@@ -189,7 +189,7 @@ describe('Product Manager (initProductManager)', () => {
     const exportBtn = container.querySelector('#export-products-csv-btn') as HTMLButtonElement;
     exportBtn.click();
     expect(currentExportService.exportProductsToCsv).toHaveBeenCalledWith([mockProduct1, mockProduct2]);
-    expect(currentShowToast).toHaveBeenCalledWith(expect.stringContaining('erfolgreich als CSV exportiert'), 'success');
+    expect(currentShowToast).toHaveBeenCalledWith(expect.stringContaining('successfully exported to CSV'), 'success');
   });
 
   test('should show info toast when exporting empty product catalog', () => {
@@ -205,7 +205,7 @@ describe('Product Manager (initProductManager)', () => {
 
     // Verify toast is shown with the correct message and type
     expect(currentShowToast).toHaveBeenCalledWith(
-      "Keine Produkte zum Exportieren vorhanden.",
+      "No products available to export.",
       "info"
     );
     // Also ensure that exportProductsToCsv was NOT called
@@ -234,9 +234,9 @@ describe('Product Manager (initProductManager)', () => {
 
         await deleteCallback('p1', 'Vodka');
 
-        expect(window.confirm).toHaveBeenCalledWith('Produkt "Vodka" wirklich löschen?');
+        expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete product "Vodka"?');
         expect(currentProductStore.deleteProduct).toHaveBeenCalledWith('p1');
-        expect(currentShowToast).toHaveBeenCalledWith('Produkt "Vodka" gelöscht.', 'success');
+        expect(currentShowToast).toHaveBeenCalledWith('Product "Vodka" deleted.', 'success');
         expect(mockProductFormComponentInstance.hide).toHaveBeenCalled();
     });
 
@@ -256,7 +256,7 @@ describe('Product Manager (initProductManager)', () => {
     });
 
     it('should call productStore.addProduct for new product', async () => {
-        const newProductData = { name: 'Rum', category: 'Spirits', volume: 700, pricePerBottle: 18 };
+        const newProductData = { name: 'Rum', category: 'Spirits', volume: 700, pricePerBottle: 18, lastUpdated: new Date() };
         const newProductWithId = {id: 'form-gen-id', ...newProductData };
         (currentProductStore.getProducts as jest.Mock).mockReturnValue([]);
         (currentProductStore.addProduct as jest.Mock).mockResolvedValue(newProductWithId);
@@ -264,7 +264,7 @@ describe('Product Manager (initProductManager)', () => {
         await submitCallback(newProductWithId);
 
         expect(currentProductStore.addProduct).toHaveBeenCalledWith(newProductWithId);
-        expect(currentShowToast).toHaveBeenCalledWith(expect.stringContaining('erfolgreich erstellt'), 'success');
+        expect(currentShowToast).toHaveBeenCalledWith(expect.stringContaining('successfully created'), 'success');
         expect(mockProductFormComponentInstance.hide).toHaveBeenCalled();
     });
 
@@ -276,7 +276,7 @@ describe('Product Manager (initProductManager)', () => {
         await submitCallback(updatedProductData);
 
         expect(currentProductStore.updateProduct).toHaveBeenCalledWith(updatedProductData);
-        expect(currentShowToast).toHaveBeenCalledWith(expect.stringContaining('erfolgreich aktualisiert'), 'success');
+        expect(currentShowToast).toHaveBeenCalledWith(expect.stringContaining('successfully updated'), 'success');
         expect(mockProductFormComponentInstance.hide).toHaveBeenCalled();
     });
 
@@ -286,7 +286,7 @@ describe('Product Manager (initProductManager)', () => {
         (currentProductStore.getProducts as jest.Mock).mockReturnValue([mockProduct1]);
 
         await expect(submitCallback(productData)).rejects.toThrow("Store failed");
-        expect(currentShowToast).toHaveBeenCalledWith(expect.stringContaining('Fehler beim Speichern'), "error");
+        expect(currentShowToast).toHaveBeenCalledWith(expect.stringContaining('Error saving'), "error");
     });
   });
 

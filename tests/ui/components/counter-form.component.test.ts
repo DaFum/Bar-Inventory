@@ -64,8 +64,8 @@ describe('CounterFormComponent', () => {
       const titleElement = formElement.querySelector('h5');
       const submitButton = formElement.querySelector('button[type="submit"]');
 
-      expect(titleElement?.textContent).toBe('Neuen Tresen erstellen');
-      expect(submitButton?.textContent).toBe('Tresen erstellen');
+      expect(titleElement?.textContent).toBe('Create New Counter');
+      expect(submitButton?.textContent).toBe('Create Counter');
     });
 
     it('should have the correct title and submit button text for editing a counter', () => {
@@ -74,8 +74,8 @@ describe('CounterFormComponent', () => {
       const titleElement = formElement.querySelector('h5');
       const submitButton = formElement.querySelector('button[type="submit"]');
 
-      expect(titleElement?.textContent).toBe('Tresen bearbeiten');
-      expect(submitButton?.textContent).toBe('Änderungen speichern');
+      expect(titleElement?.textContent).toBe('Edit Counter');
+      expect(submitButton?.textContent).toBe('Save Changes');
     });
   });
 

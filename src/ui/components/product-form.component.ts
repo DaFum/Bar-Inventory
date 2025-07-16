@@ -53,14 +53,14 @@ export class ProductFormComponent extends BaseComponent<HTMLDivElement> {
     render(): void {
         const product = this.currentEditingProduct;
         this.element.innerHTML = `
-            <h3 id="${this.formTitleId}" class="panel-subtitle">${product ? 'Produkt bearbeiten' : 'Neues Produkt erstellen'}</h3>
+            <h3 id="${this.formTitleId}" class="panel-subtitle">${product ? 'Edit Product' : 'Create New Product'}</h3>
             <form id="product-form-actual" aria-labelledby="${this.formTitleId}">
                 <div class="form-group">
                     <label for="pfc-product-name">Name:</label>
                     <input type="text" id="pfc-product-name" value="${escapeHtml(product?.name || '')}" required class="form-control" aria-required="true">
                 </div>
                 <div class="form-group">
-                    <label for="pfc-product-category">Kategorie:</label>
+                    <label for="pfc-product-category">Category:</label>
                     <select id="pfc-product-category" required class="form-control" aria-required="true">
                         ${PREDEFINED_CATEGORIES.map(cat =>
                             `<option value="${escapeHtml(cat)}" ${product?.category === cat ? 'selected' : ''}>${escapeHtml(cat)}</option>`
@@ -68,35 +68,35 @@ export class ProductFormComponent extends BaseComponent<HTMLDivElement> {
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="pfc-product-volume">Volumen (ml pro Flasche/Einheit):</label>
+                    <label for="pfc-product-volume">Volume (ml per bottle/unit):</label>
                     <input type="number" id="pfc-product-volume" value="${product?.volume || ''}" required min="0" class="form-control" aria-required="true">
                 </div>
                 <div class="form-group">
-                    <label for="pfc-product-pricePerBottle">Preis pro Flasche/Einheit (€):</label>
+                    <label for="pfc-product-pricePerBottle">Price per bottle/unit (€):</label>
                     <input type="number" id="pfc-product-pricePerBottle" value="${product?.pricePerBottle || ''}" required min="0" step="0.01" class="form-control" aria-required="true">
                 </div>
                 <div class="form-group">
-                    <label for="pfc-product-itemsPerCrate">Flaschen/Einheiten pro Kasten (optional):</label>
+                    <label for="pfc-product-itemsPerCrate">Bottles/units per crate (optional):</label>
                     <input type="number" id="pfc-product-itemsPerCrate" value="${product?.itemsPerCrate || ''}" min="0" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label for="pfc-product-pricePer100ml">Preis pro 100ml (optional, für offene Posten):</label>
+                    <label for="pfc-product-pricePer100ml">Price per 100ml (optional, for open items):</label>
                     <input type="number" id="pfc-product-pricePer100ml" value="${product?.pricePer100ml || ''}" min="0" step="0.01" class="form-control">
                 </div>
                  <div class="form-group">
-                    <label for="pfc-product-supplier">Lieferant (optional):</label>
+                    <label for="pfc-product-supplier">Supplier (optional):</label>
                     <input type="text" id="pfc-product-supplier" value="${escapeHtml(product?.supplier || '')}" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label for="pfc-product-imageUrl">Bild-URL (optional):</label>
+                    <label for="pfc-product-imageUrl">Image URL (optional):</label>
                     <input type="url" id="pfc-product-imageUrl" value="${escapeHtml(product?.imageUrl || '')}" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label for="pfc-product-notes">Notizen (optional):</label>
-                    <textarea id="pfc-product-notes" class="form-control" aria-label="Notizen zum Produkt">${escapeHtml(product?.notes || '')}</textarea>
+                    <label for="pfc-product-notes">Notes (optional):</label>
+                    <textarea id="pfc-product-notes" class="form-control" aria-label="Product Notes">${escapeHtml(product?.notes || '')}</textarea>
                 </div>
-                <button type="submit" class="btn btn-success">${product ? 'Änderungen speichern' : 'Produkt erstellen'}</button>
-                <button type="button" id="pfc-cancel-product-edit" class="btn btn-secondary">Abbrechen</button>
+                <button type="submit" class="btn btn-success">${product ? 'Save Changes' : 'Create Product'}</button>
+                <button type="button" id="pfc-cancel-product-edit" class="btn btn-secondary">Cancel</button>
             </form>
         `;
         this.bindElements();

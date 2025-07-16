@@ -42,10 +42,11 @@ export class ProductListComponent extends BaseComponent<HTMLDivElement> {
             this.tableElement.innerHTML = `
                 <thead>
                     <tr>
-                        <th scope="col" class="w-1/4 px-4 py-2">Name</th>
-                        <th scope="col" class="w-1/4 px-4 py-2">Kategorie</th>
+                        <th scope="col" class="w-1/5 px-4 py-2">Name</th>
+                        <th scope="col" class="w-1/5 px-4 py-2">Kategorie</th>
                         <th scope="col" class="w-1/6 px-4 py-2">Volumen (ml)</th>
                         <th scope="col" class="w-1/6 px-4 py-2">Preis/Flasche (€)</th>
+                        <th scope="col" class="w-1/5 px-4 py-2">Zuletzt geändert</th>
                         <th scope="col" class="w-1/4 px-4 py-2">Aktionen</th>
                     </tr>
                 </thead>

@@ -64,18 +64,18 @@ describe('LocationFormComponent', () => {
     test('should create component for new location by default', () => {
       expect(component).toBeTruthy();
       expect(component.currentEditingLocation).toBeNull();
-      expect(component.getElement().querySelector('#location-form-title-comp')?.textContent).toBe('Neuen Standort erstellen');
-      expect(component.getElement().querySelector<HTMLButtonElement>('button[type="submit"]')?.textContent).toBe('Standort erstellen');
+      expect(component.getElement().querySelector('#location-form-title-comp')?.textContent).toBe('Create New Location');
+      expect(component.getElement().querySelector<HTMLButtonElement>('button[type="submit"]')?.textContent).toBe('Create Location');
     });
 
     test('should create component with location for editing if provided', () => {
       const editOptions = { ...options, location: mockLocation };
       const editComponent = new LocationFormComponent(editOptions);
       expect(editComponent.currentEditingLocation).toEqual(mockLocation);
-      expect(editComponent.getElement().querySelector('#location-form-title-comp')?.textContent).toBe('Standort bearbeiten');
+      expect(editComponent.getElement().querySelector('#location-form-title-comp')?.textContent).toBe('Edit Location');
       expect(editComponent.getElement().querySelector<HTMLInputElement>('#location-name-form-comp')?.value).toBe(mockLocation.name);
       expect(editComponent.getElement().querySelector<HTMLInputElement>('#location-address-form-comp')?.value).toBe(mockLocation.address);
-      expect(editComponent.getElement().querySelector<HTMLButtonElement>('button[type="submit"]')?.textContent).toBe('Änderungen speichern');
+      expect(editComponent.getElement().querySelector<HTMLButtonElement>('button[type="submit"]')?.textContent).toBe('Save Changes');
     });
 
     test('should call escapeHtml for existing location values during render', () => {
