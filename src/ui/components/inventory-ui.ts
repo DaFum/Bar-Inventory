@@ -166,7 +166,7 @@ export class InventoryUI {
     const isManager = role === UserRole.Manager;
 
     container.innerHTML = items.map(item => `
-      <div class="inventory-item ${item.quantity <= item.minThreshold ? 'low-stock' : ''}" data-id="${item.id}">
+      <div class="inventory-item ${item.quantity <= item.minThreshold ? 'low-stock' : ''}" data-item-id="${item.id}">
         <div class="item-info">
           <h3>${item.name}</h3>
           <p class="item-meta">${item.category} • ${item.area}</p>
