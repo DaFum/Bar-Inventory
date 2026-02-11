@@ -84,15 +84,35 @@ state.selectedLocation.counters.forEach(counter => {
         });
     }
 
-    // Date selector
-    const today = new Date().toISOString().split('T')[0];
-    const dateSelectorHTML = `
-        <div>
-            <label for="inventory-date-select">Datum:</label>
-            <input type="date" id="inventory-date-select" class="form-control form-control-sm" value="${today}">
-        </div>
-    `;
+// File: src/ui/components/inventory-view.ts
 
+class InventoryViewState {
+    container: HTMLElement | null = null;
+    loadedLocations: Location[] = [];
+    loadedProducts: Product[] = [];
+    selectedLocation: Location | null = null;
+    selectedCounter: Counter | null = null;
+    selectedArea: Area | null = null;
+    currentPhase: InventoryPhase = 'start';
+    // store the user’s selected date (defaults to today)
+    selectedDate: string = new Date().toISOString().split('T')[0];
+}
+
+…
+
+// Date selector
+const selectedDate = state.selectedDate ?? new Date().toISOString().split('T')[0];
+const dateSelectorHTML = `
+    <div>
+        <label for="inventory-date-select">Datum:</label>
+        <input
+            type="date"
+            id="inventory-date-select"
+            class="form-control form-control-sm"
+            value="${selectedDate}"
+        >
+    </div>
+`;
     // Phase Toggle
     const phaseToggleHTML = `
         <div class="flex items-center" role="group" aria-label="Inventurphase auswählen">
