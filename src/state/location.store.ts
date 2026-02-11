@@ -302,14 +302,13 @@ class LocationStore {
     try {
         for (const location of locations) {
             // Validate required fields
--            if (!location.name || !location.address || !Array.isArray(location.counters)) {
-+            if (!location.name?.trim() || !Array.isArray(location.counters)) {
+            if (!location.name?.trim() || !Array.isArray(location.counters)) {
                 throw new Error(`Invalid location data: missing required fields`);
             }
-+            // address ist optional, sollte aber wenn vorhanden validiert werden
-+            if (location.address !== undefined && typeof location.address !== 'string') {
-+                throw new Error(`Invalid location data: address must be a string`);
-+            }
+            // address ist optional, sollte aber wenn vorhanden validiert werden
+            if (location.address !== undefined && typeof location.address !== 'string') {
+                throw new Error(`Invalid location data: address must be a string`);
+            }
           
             const newLocation: Location = {
                 id: generateId('loc'),

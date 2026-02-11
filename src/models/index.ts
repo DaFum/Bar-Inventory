@@ -38,6 +38,7 @@ export interface Area {
   description?: string; // Optional description
   inventoryRecords: InventoryRecord[]; // List of products inventoried in this area
   displayOrder?: number; // Optional: for ordering areas in UI
+  inventoryItems?: InventoryEntry[]; // Runtime simplified view for current session
 }
 
 // Represents a physical counter or bar station
