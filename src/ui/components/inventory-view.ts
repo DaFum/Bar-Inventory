@@ -84,6 +84,35 @@ state.selectedLocation.counters.forEach(counter => {
         });
     }
 
+// File: src/ui/components/inventory-view.ts
+
+class InventoryViewState {
+    container: HTMLElement | null = null;
+    loadedLocations: Location[] = [];
+    loadedProducts: Product[] = [];
+    selectedLocation: Location | null = null;
+    selectedCounter: Counter | null = null;
+    selectedArea: Area | null = null;
+    currentPhase: InventoryPhase = 'start';
+    // store the user’s selected date (defaults to today)
+    selectedDate: string = new Date().toISOString().split('T')[0];
+}
+
+…
+
+// Date selector
+const selectedDate = state.selectedDate ?? new Date().toISOString().split('T')[0];
+const dateSelectorHTML = `
+    <div>
+        <label for="inventory-date-select">Datum:</label>
+        <input
+            type="date"
+            id="inventory-date-select"
+            class="form-control form-control-sm"
+            value="${selectedDate}"
+        >
+    </div>
+`;
     // Phase Toggle
     const phaseToggleHTML = `
         <div class="flex items-center" role="group" aria-label="Inventurphase auswählen">
@@ -107,9 +136,11 @@ state.selectedLocation.counters.forEach(counter => {
             <label for="area-select-inv">Bereich:</label>
             <select id="area-select-inv" class="form-control form-control-sm" ${!state.selectedCounter ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'}>${areaOptions}</select>
         </div>
+        ${dateSelectorHTML}
         ${phaseToggleHTML}
     `;
 
+    document.getElementById('inventory-date-select')?.addEventListener('change', handleDateChange);
     document.getElementById('location-select-inv')?.addEventListener('change', handleLocationChange);
     document.getElementById('counter-select-inv')?.addEventListener('change', handleCounterChange);
     document.getElementById('area-select-inv')?.addEventListener('change', handleAreaChange);
@@ -149,6 +180,15 @@ function switchInventoryPhase(phase: InventoryPhase): void {
  *
  * Aktualisiert die ausgewählte Location entsprechend der Benutzerauswahl, setzt Tresen und Bereich auf null, rendert die Auswahlleiste neu und leert die Inventartabelle sowie die Aktionsleiste.
  */
+async function handleDateChange(event: Event): Promise<void> {
+    const value = (event.target as HTMLInputElement).value;
+    state.selectedDate = value;
+    if (state.selectedArea) {
+        renderInventoryTable();
+        renderInventoryActions();
+    }
+}
+
 async function handleLocationChange(event: Event): Promise<void> {
     const locationId = (event.target as HTMLSelectElement).value;
     state.selectedLocation = state.loadedLocations.find(loc => loc.id === locationId) || null;
@@ -208,12 +248,12 @@ function renderInventoryTable(): void {
     }
 
     // Ensure all products in the catalog are represented in the current area's inventory list
-    prepareInventoryItemsForArea();
+    const inventoryEntries = prepareInventoryRecordForArea();
 
     if (state.currentPhase === 'consumption') {
-        renderConsumptionView(tableContainer, state.selectedArea);
+        renderConsumptionView(tableContainer, state.selectedArea, inventoryEntries);
     } else {
-        renderEditableInventoryTable(tableContainer, state.selectedArea);
+        renderEditableInventoryTable(tableContainer, state.selectedArea, inventoryEntries);
     }
 }
 
@@ -222,19 +262,34 @@ function renderInventoryTable(): void {
  *
  * Für jedes geladene Produkt wird ein Inventareintrag im aktuellen Bereich angelegt, falls dieser noch nicht existiert. Fehlende Einträge werden mit Nullwerten initialisiert. Anschließend werden alle Inventarpositionen nach Kategorie und Name sortiert.
  */
-function prepareInventoryItemsForArea(): void {
-    if (!state.selectedArea || !state.loadedProducts) return;
+function prepareInventoryRecordForArea(): InventoryEntry[] {
+    if (!state.selectedArea || !state.loadedProducts) return [];
+
+    const datePicker = document.getElementById('inventory-date-select') as HTMLInputElement;
+    const selectedDate = datePicker ? new Date(datePicker.value) : new Date();
+    selectedDate.setHours(0, 0, 0, 0);
+
+    let record = state.selectedArea.inventoryRecords.find(r => {
+        const recordDate = new Date(r.date);
+        recordDate.setHours(0, 0, 0, 0);
+        return recordDate.getTime() === selectedDate.getTime();
+    });
+
+    if (!record) {
+        record = { date: selectedDate, entries: [] };
+        state.selectedArea.inventoryRecords.push(record);
+    }
 
     state.loadedProducts.forEach(product => {
-        if (!state.selectedArea!.inventoryItems.find(item => item.productId === product.id)) {
-            state.selectedArea!.inventoryItems.push({
+        if (!record!.entries.find(item => item.productId === product.id)) {
+            record!.entries.push({
                 productId: product.id,
                 startCrates: 0, startBottles: 0, startOpenVolumeMl: 0,
                 endCrates: 0, endBottles: 0, endOpenVolumeMl: 0,
             });
         }
     });
-    state.selectedArea.inventoryItems.sort((a, b) => {
+    record.entries.sort((a, b) => {
         const productA = state.loadedProducts.find(p => p.id === a.productId);
         const productB = state.loadedProducts.find(p => p.id === b.productId);
         if (!productA || !productB) return 0;
@@ -242,6 +297,8 @@ function prepareInventoryItemsForArea(): void {
         if (productA.category.toLowerCase() > productB.category.toLowerCase()) return 1;
         return productA.name.toLowerCase() < productB.name.toLowerCase() ? -1 : 1;
     });
+
+    return record.entries;
 }
 
 /**
@@ -252,7 +309,7 @@ function prepareInventoryItemsForArea(): void {
      * @param tableContainer - Das HTML-Element, in dem die Tabelle angezeigt wird
      * @param area - Der aktuell ausgewählte Bereich, dessen Inventurdaten bearbeitet werden
      */
-    function renderEditableInventoryTable(tableContainer: HTMLElement, area: Area): void {
+    function renderEditableInventoryTable(tableContainer: HTMLElement, area: Area, inventoryEntries: InventoryEntry[]): void {
     const phaseName = state.currentPhase === 'start' ? 'Schichtanfang' : 'Schichtende';
     const tableId = `inventory-table-${area.id.replace(/[^a-zA-Z0-9]/g, '')}`; // Create a unique ID for the table
     let tableHTML = `
@@ -270,7 +327,7 @@ function prepareInventoryItemsForArea(): void {
             <tbody id="inventory-list-body-${area.id.replace(/[^a-zA-Z0-9]/g, '')}">
     `;
 
-    area.inventoryItems.forEach((item, index) => {
+    inventoryEntries.forEach((item, index) => {
         const product = state.loadedProducts.find(p => p.id === item.productId);
         if (!product) return;
 
@@ -319,28 +376,29 @@ function prepareInventoryItemsForArea(): void {
         const productId = el.getAttribute('data-product-id');
         if (!productId || !state.selectedArea) return;
 
+        const inventoryEntries = prepareInventoryRecordForArea();
+
         const newIndex = Array.from(target.children).indexOf(el);
-        const item = state.selectedArea.inventoryItems.find(i => i.productId === productId);
+        const item = inventoryEntries.find(i => i.productId === productId);
         if (!item) return;
 
-        const oldIndex = state.selectedArea.inventoryItems.indexOf(item);
+        const oldIndex = inventoryEntries.indexOf(item);
         if (oldIndex !== -1) {
-            state.selectedArea.inventoryItems.splice(oldIndex, 1);
+            inventoryEntries.splice(oldIndex, 1);
         }
 
-        state.selectedArea.inventoryItems.splice(newIndex, 0, item);
--       saveCurrentInventory();
-+       saveCurrentInventory().catch(error => {
-+           console.error('Fehler beim Speichern der Reihenfolge:', error);
-+           showToast('Fehler beim Speichern der neuen Reihenfolge.', 'error');
-+           // Optional: Reihenfolge zurücksetzen
-+           renderInventoryTable();
-+       });
+        inventoryEntries.splice(newIndex, 0, item);
+       saveCurrentInventory().catch(error => {
+           console.error('Fehler beim Speichern der Reihenfolge:', error);
+           showToast('Fehler beim Speichern der neuen Reihenfolge.', 'error');
+           // Optional: Reihenfolge zurücksetzen
+           renderInventoryTable();
+       });
     });
 }
 
-function renderConsumptionView(tableContainer: HTMLElement, area: Area): void {
-    const consumptionData = calculateAreaConsumption(area.inventoryItems, state.loadedProducts);
+function renderConsumptionView(tableContainer: HTMLElement, area: Area, inventoryEntries: InventoryEntry[]): void {
+    const consumptionData = calculateAreaConsumption(inventoryEntries, state.loadedProducts);
     let totalCost = 0;
 
     let tableHTML = `
@@ -458,13 +516,15 @@ function handleExportConsumptionCsv(): void {
         showToast("Kein Bereich ausgewählt für den Export.", "warning");
         return;
     }
-    if (state.selectedArea.inventoryItems.length === 0) {
+    const inventoryEntries = prepareInventoryRecordForArea();
+    if (inventoryEntries.length === 0) {
         showToast("Keine Inventurdaten in diesem Bereich zum Exportieren.", "info");
         return;
     }
     try {
+        const areaForExport = { ...state.selectedArea, inventoryItems: inventoryEntries };
         exportService.exportAreaInventoryToCsv(
-            state.selectedArea,
+            areaForExport,
             state.selectedLocation.name,
             state.selectedCounter.name,
             state.loadedProducts,
@@ -482,13 +542,15 @@ function handleExportInventoryCsv(): void {
         showToast("Kein Bereich ausgewählt für den Export.", "warning");
         return;
     }
-    if (state.selectedArea.inventoryItems.length === 0) {
+    const inventoryEntries = prepareInventoryRecordForArea();
+    if (inventoryEntries.length === 0) {
         showToast("Keine Inventurdaten in diesem Bereich zum Exportieren.", "info");
         return;
     }
     try {
+        const areaForExport = { ...state.selectedArea, inventoryItems: inventoryEntries };
         exportService.exportAreaInventoryToCsv(
-            state.selectedArea,
+            areaForExport,
             state.selectedLocation.name,
             state.selectedCounter.name,
             state.loadedProducts,
@@ -512,7 +574,8 @@ function fillDefaultValues(): void {
         return;
     }
 
-    state.selectedArea.inventoryItems.forEach(item => {
+    const inventoryEntries = prepareInventoryRecordForArea();
+    inventoryEntries.forEach(item => {
         const product = state.loadedProducts.find(p => p.id === item.productId);
         if (!product) return;
 
@@ -554,7 +617,8 @@ function handleInventoryInputChange(event: Event): void {
 
     if (!state.selectedArea || !productId || !field) return;
 
-    const inventoryItem = state.selectedArea.inventoryItems.find(item => item.productId === productId);
+    const inventoryEntries = prepareInventoryRecordForArea();
+    const inventoryItem = inventoryEntries.find(item => item.productId === productId);
     if (inventoryItem) {
         // Ensure field is a numeric field before assignment
         if (field in inventoryItem && typeof inventoryItem[field] === 'number') {

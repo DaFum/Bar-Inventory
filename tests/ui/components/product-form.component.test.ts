@@ -79,7 +79,7 @@ describe('ProductFormComponent', () => {
 
   describe('Initialization and Rendering', () => {
     test('should render for new product by default', () => {
-      expect(component.getElement().querySelector('#product-form-title-comp')?.textContent).toBe('Neues Produkt erstellen');
+      expect(component.getElement().querySelector('#product-form-title-comp')?.textContent).toBe('Create New Product');
       expect(getInputValue('#pfc-product-name')).toBe('');
       expect(component.getElement().style.display).toBe('none'); // Hidden by default for new
     });
@@ -90,7 +90,7 @@ describe('ProductFormComponent', () => {
       document.body.appendChild(editComponent.getElement());
       const editElement = editComponent.getElement();
 
-      expect(editElement.querySelector('#product-form-title-comp')?.textContent).toBe('Produkt bearbeiten');
+      expect(editElement.querySelector('#product-form-title-comp')?.textContent).toBe('Edit Product');
       expect(editElement.querySelector<HTMLInputElement>('#pfc-product-name')?.value).toBe(mockProduct.name);
       expect(editElement.querySelector<HTMLSelectElement>('#pfc-product-category')?.value).toBe(mockProduct.category);
       expect(editElement.querySelector<HTMLInputElement>('#pfc-product-volume')?.value).toBe(mockProduct.volume.toString());

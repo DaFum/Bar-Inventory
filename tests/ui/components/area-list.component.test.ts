@@ -42,9 +42,9 @@ describe('AreaListComponent', () => {
       onDelete: jest.fn(),
     };
     initialAreas = [
-      { id: 'area1', name: 'Area Alpha', displayOrder: 2, inventoryItems: [{ productId: 'p1', startBottles: 1}] },
-      { id: 'area2', name: 'Area Beta', displayOrder: 1, inventoryItems: [{ productId: 'p2', startCrates: 2}] },
-      { id: 'area3', name: 'Area Gamma', inventoryItems: [] },
+      { id: 'area1', name: 'Area Alpha', displayOrder: 2, inventoryRecords: [{ date: new Date(), entries: [{ productId: 'p1', startBottles: 1}] }] },
+      { id: 'area2', name: 'Area Beta', displayOrder: 1, inventoryRecords: [{ date: new Date(), entries: [{ productId: 'p2', startCrates: 2}] }] },
+      { id: 'area3', name: 'Area Gamma', inventoryRecords: [] },
     ];
     (AreaListItemComponent as jest.Mock).mockClear();
     areaListComponent = new AreaListComponent(initialAreas, mockCallbacks);
@@ -69,8 +69,8 @@ describe('AreaListComponent', () => {
 
   test('setAreas should re-render the list with new sorted areas', () => {
     const newAreas: Area[] = [
-      { id: 'area4', name: 'Area Delta', displayOrder: 1, inventoryItems: [] },
-      { id: 'area5', name: 'Area Epsilon', displayOrder: 0, inventoryItems: [] },
+      { id: 'area4', name: 'Area Delta', displayOrder: 1, inventoryRecords: [] },
+      { id: 'area5', name: 'Area Epsilon', displayOrder: 0, inventoryRecords: [] },
     ];
     areaListComponent.setAreas(newAreas);
     expect(AreaListItemComponent).toHaveBeenCalledTimes(initialAreas.length + newAreas.length);
@@ -90,7 +90,7 @@ describe('AreaListComponent', () => {
   });
 
   test('addArea should add an area and insert it sorted into the DOM', () => {
-    const newArea: Area = { id: 'area0', name: 'Area Zero', displayOrder: 0, inventoryItems: [] };
+    const newArea: Area = { id: 'area0', name: 'Area Zero', displayOrder: 0, inventoryRecords: [] };
     areaListComponent.addArea(newArea);
 
     const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
@@ -106,7 +106,7 @@ describe('AreaListComponent', () => {
     areaListComponent.setAreas([]);
     (AreaListItemComponent as jest.Mock).mockClear();
 
-    const newArea: Area = { id: 'areaNew', name: 'First Area', displayOrder: 1, inventoryItems: [] };
+    const newArea: Area = { id: 'areaNew', name: 'First Area', displayOrder: 1, inventoryRecords: [] };
     areaListComponent.addArea(newArea);
 
     expect(AreaListItemComponent).toHaveBeenCalledTimes(1);
@@ -121,7 +121,7 @@ describe('AreaListComponent', () => {
 
   test('updateArea should update the corresponding item and re-sort if needed', () => {
     if (!initialAreas[1]) throw new Error("Test assumption failed: initialAreas[1] is undefined for updateArea test");
-    const updatedArea: Area = { ...initialAreas[1], name: 'Area Beta Updated', displayOrder: 3, inventoryItems: [] };
+    const updatedArea: Area = { ...initialAreas[1], name: 'Area Beta Updated', displayOrder: 3, inventoryRecords: [] };
     areaListComponent.updateArea(updatedArea);
 
     const mockItemInstance = (AreaListItemComponent as jest.Mock).mock.results.find(
@@ -138,7 +138,7 @@ describe('AreaListComponent', () => {
   });
 
   test('updateArea for a non-existent area should add it', () => {
-    const newAreaToUpdate: Area = { id: 'areaNonExistent', name: 'New via Update', displayOrder: 0, inventoryItems: [] };
+    const newAreaToUpdate: Area = { id: 'areaNonExistent', name: 'New via Update', displayOrder: 0, inventoryRecords: [] };
     areaListComponent.updateArea(newAreaToUpdate);
 
     const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
@@ -175,7 +175,7 @@ describe('AreaListComponent', () => {
   });
 
   test('sorting logic should handle undefined displayOrder correctly', () => {
-    const areaOmega: Area = { id: 'areaOmega', name: 'Area Omega', inventoryItems: [] };
+    const areaOmega: Area = { id: 'areaOmega', name: 'Area Omega', inventoryRecords: [] };
     areaListComponent.addArea(areaOmega);
     const listHostDiv = areaListComponent.getElement().querySelector('#area-list');
     const items = listHostDiv!.children;

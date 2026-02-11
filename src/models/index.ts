@@ -11,6 +11,7 @@ export interface Product {
   imageUrl?: string; // Optional: Path or URL to a product image
   supplier?: string; // Optional: Supplier information
   notes?: string; // Optional: Any other notes
+  lastUpdated: Date;
 }
 
 export interface InventoryEntry {
@@ -25,12 +26,17 @@ export interface InventoryEntry {
   endOpenVolumeMl?: number;
 }
 
+export interface InventoryRecord {
+  date: Date;
+  entries: InventoryEntry[];
+}
+
 // Represents a specific section within a counter/bar area, e.g., "Top Shelf", "Speed Rail", "Fridge 1"
 export interface Area {
   id: string; // Unique identifier
   name: string;
   description?: string; // Optional description
-  inventoryItems: InventoryEntry[]; // List of products inventoried in this area
+  inventoryRecords: InventoryRecord[]; // List of products inventoried in this area
   displayOrder?: number; // Optional: for ordering areas in UI
 }
 

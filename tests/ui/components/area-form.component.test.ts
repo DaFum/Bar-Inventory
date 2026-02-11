@@ -64,7 +64,7 @@ describe('AreaFormComponent', () => {
             name: 'Test Area',
             description: 'Test Description',
             displayOrder: 10,
-            inventoryItems: [], // Added missing property
+            inventoryRecords: [], // Added missing property
         };
 
         const options: AreaFormComponentOptions = {
@@ -124,8 +124,8 @@ describe('AreaFormComponent', () => {
 
     describe('Render Method', () => {
         it('should render form for new area creation', () => {
-            expect(component.getElement().innerHTML).toContain('Neuen Bereich erstellen');
-            expect(component.getElement().innerHTML).toContain('Bereich erstellen');
+            expect(component.getElement().innerHTML).toContain('Create New Area');
+            expect(component.getElement().innerHTML).toContain('Create Area');
             expect(component.getElement().querySelector('#area-name-form-comp')).toBeTruthy();
             expect(component.getElement().querySelector('#area-description-form-comp')).toBeTruthy();
             expect(component.getElement().querySelector('#area-display-order-form-comp')).toBeTruthy();
@@ -135,8 +135,8 @@ describe('AreaFormComponent', () => {
             component.currentEditingArea = mockArea;
             component.render(); // render will re-attach event listeners if it rebuilds DOM
             
-            expect(component.getElement().innerHTML).toContain('Bereich bearbeiten');
-            expect(component.getElement().innerHTML).toContain('Änderungen speichern');
+            expect(component.getElement().innerHTML).toContain('Edit Area');
+            expect(component.getElement().innerHTML).toContain('Save Changes');
         });
 
         it('should escape HTML in area values', () => {
@@ -182,6 +182,7 @@ describe('AreaFormComponent', () => {
 
     describe('Element Binding', () => {
         it('should bind all required form elements', () => {
+            if (!component) throw new Error("Component not initialized");
             expect(component['formElement']).toBeTruthy();
             expect(component['nameInput']).toBeTruthy();
             expect(component['descriptionInput']).toBeTruthy();
@@ -189,6 +190,7 @@ describe('AreaFormComponent', () => {
         });
 
         it('should throw error if form element not found', () => {
+            if (!component) throw new Error("Component not initialized");
             // Remove form element
             const form = component.getElement().querySelector('#area-form-actual');
             form?.remove();
@@ -197,6 +199,7 @@ describe('AreaFormComponent', () => {
         });
 
         it('should throw error if name input not found', () => {
+            if (!component) throw new Error("Component not initialized");
             const nameInput = component.getElement().querySelector('#area-name-form-comp');
             nameInput?.remove();
             
@@ -204,6 +207,7 @@ describe('AreaFormComponent', () => {
         });
 
         it('should throw error if description input not found', () => {
+            if (!component) throw new Error("Component not initialized");
             const descInput = component.getElement().querySelector('#area-description-form-comp');
             descInput?.remove();
             
@@ -211,6 +215,7 @@ describe('AreaFormComponent', () => {
         });
 
         it('should throw error if display order input not found', () => {
+            if (!component) throw new Error("Component not initialized");
             const orderInput = component.getElement().querySelector('#area-display-order-form-comp');
             orderInput?.remove();
             
@@ -220,6 +225,7 @@ describe('AreaFormComponent', () => {
 
     describe('Form Validation and Submission', () => {
         it('should validate required name field', async () => {
+            if (!component) throw new Error("Component not initialized");
             const nameInput = component['nameInput'];
             nameInput.value = '';
             
@@ -231,6 +237,7 @@ describe('AreaFormComponent', () => {
         });
 
         it('should validate name field with only whitespace', async () => {
+            if (!component) throw new Error("Component not initialized");
             const nameInput = component['nameInput'];
             nameInput.value = '   ';
             
@@ -242,6 +249,7 @@ describe('AreaFormComponent', () => {
         });
 
         it.skip('should validate display order as valid number', async () => {
+            if (!component) throw new Error("Component not initialized");
             // TODO: This test is failing because mockedShowToastFn is not registering the call from the component.
             // Similar to the issue in product-form.component.test.ts.
             // Skipping for now.
@@ -259,6 +267,7 @@ describe('AreaFormComponent', () => {
         });
 
         it('should submit valid form data for new area', async () => {
+            if (!component) throw new Error("Component not initialized");
             const nameInput = component['nameInput'];
             const descInput = component['descriptionInput'];
             const displayOrderInput = component['displayOrderInput'];
@@ -274,11 +283,13 @@ describe('AreaFormComponent', () => {
                 id: '',
                 name: 'New Area',
                 description: 'New Description',
-                displayOrder: 5
+                displayOrder: 5,
+                inventoryRecords: []
             });
         });
 
         it('should submit valid form data for existing area', async () => {
+            if (!component) throw new Error("Component not initialized");
             component.currentEditingArea = mockArea;
             
             const nameInput = component['nameInput'];
@@ -296,11 +307,13 @@ describe('AreaFormComponent', () => {
                 id: 'test-area-1',
                 name: 'Updated Area',
                 description: 'Updated Description',
-                displayOrder: 15
+                displayOrder: 15,
+                inventoryRecords: []
             });
         });
 
         it('should handle empty description as undefined', async () => {
+            if (!component) throw new Error("Component not initialized");
             const nameInput = component['nameInput'];
             const descInput = component['descriptionInput'];
             
@@ -314,11 +327,13 @@ describe('AreaFormComponent', () => {
                 id: '',
                 name: 'Valid Name',
                 description: undefined,
-                displayOrder: undefined
+                displayOrder: undefined,
+                inventoryRecords: []
             });
         });
 
         it('should handle empty display order as undefined', async () => {
+            if (!component) throw new Error("Component not initialized");
             const nameInput = component['nameInput'];
             const displayOrderInput = component['displayOrderInput'];
             
@@ -332,7 +347,8 @@ describe('AreaFormComponent', () => {
                 id: '',
                 name: 'Valid Name',
                 description: undefined,
-                displayOrder: undefined
+                displayOrder: undefined,
+                inventoryRecords: []
             });
         });
 

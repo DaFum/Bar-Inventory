@@ -4,12 +4,15 @@ import { escapeHtml } from '../../utils/security';
 import { AreaListComponent } from './area-list.component';
 import { AreaListItemCallbacks } from './area-list-item.component';
 import { AreaFormComponent, AreaFormComponentOptions } from './area-form.component';
-import { locationStore } from '../../state/location.store';
 import { showToast } from './toast-notifications';
 
 export interface CounterListItemCallbacks {
     onEditCounter: (counter: Counter) => void;
     onDeleteCounter: (counterId: string, counterName: string) => void;
+    onAddArea: (locationId: string, counterId: string, areaData: Omit<Area, 'id' | 'inventoryRecords'>) => Promise<Area>;
+    onUpdateArea: (locationId: string, counterId: string, areaData: Area) => Promise<void>;
+    onDeleteArea: (locationId: string, counterId: string, areaId: string) => Promise<void>;
+    onToggleAreaManagement: (counterId: string) => void;
 }
 
 export class CounterListItemComponent extends BaseComponent<HTMLDivElement> {
@@ -23,8 +26,8 @@ export class CounterListItemComponent extends BaseComponent<HTMLDivElement> {
     private addNewAreaButton!: HTMLButtonElement;
     private isAreaManagementVisible = false;
 
-    constructor(location: LocationModel, counter: Counter, callbacks: CounterListItemCallbacks) {
-        super('div');
+    constructor(host: HTMLElement, location: LocationModel, counter: Counter, callbacks: CounterListItemCallbacks) {
+        super('div', host);
         this.location = location;
         this.counter = counter;
         this.callbacks = callbacks;
@@ -44,21 +47,21 @@ export class CounterListItemComponent extends BaseComponent<HTMLDivElement> {
 
         const editButton = document.createElement('button');
         editButton.className = 'btn btn-xs btn-secondary edit-counter-btn';
-        editButton.textContent = 'Bearbeiten';
+        editButton.textContent = 'Edit';
         editButton.addEventListener('click', () => {
             this.callbacks.onEditCounter(this.counter);
         });
 
         const manageAreasButton = document.createElement('button');
         manageAreasButton.className = 'btn btn-xs btn-info manage-areas-btn ml-2';
-        manageAreasButton.textContent = 'Bereiche';
+        manageAreasButton.textContent = 'Manage Areas';
         manageAreasButton.addEventListener('click', () => {
-            this.toggleAreasManagementVisibility();
+            this.callbacks.onToggleAreaManagement(this.counter.id);
         });
 
         const deleteButton = document.createElement('button');
         deleteButton.className = 'btn btn-xs btn-danger delete-counter-btn ml-2';
-        deleteButton.textContent = 'Löschen';
+        deleteButton.textContent = 'Delete';
         deleteButton.addEventListener('click', () => this.callbacks.onDeleteCounter(this.counter.id, this.counter.name));
 
         buttonDiv.appendChild(editButton);
@@ -76,9 +79,9 @@ export class CounterListItemComponent extends BaseComponent<HTMLDivElement> {
 
     private renderAreasManagementInternal(): void {
         this.areasManagementDiv.innerHTML = `
-            <h6>Bereiche für Tresen: ${escapeHtml(this.counter.name)}</h6>
+            <h6>Areas for Counter: ${escapeHtml(this.counter.name)}</h6>
             <div class="area-list-host"></div>
-            <button class="btn btn-info btn-xs mt-2 add-new-area-btn">Neuen Bereich hinzufügen</button>
+            <button class="btn btn-info btn-xs mt-2 add-new-area-btn">Add New Area</button>
             <div class="area-form-host mt-2" style="display: none;"></div>
         `;
 
@@ -114,24 +117,17 @@ export class CounterListItemComponent extends BaseComponent<HTMLDivElement> {
     private async handleAreaFormSubmit(areaData: Pick<Area, 'id' | 'name' | 'description' | 'displayOrder'>): Promise<void> {
         try {
             if (areaData.id) {
-                await locationStore.updateArea(this.location.id, this.counter.id, areaData as Area);
-                showToast(`Bereich "${areaData.name}" aktualisiert.`, 'success');
+                await this.callbacks.onUpdateArea(this.location.id, this.counter.id, areaData as Area);
+                showToast(`Area "${areaData.name}" updated.`, 'success');
             } else {
                 const { id, ...rest } = areaData;
-                const newArea = await locationStore.addArea(this.location.id, this.counter.id, rest);
-                showToast(`Bereich "${newArea.name}" hinzugefügt.`, 'success');
+                const newArea = await this.callbacks.onAddArea(this.location.id, this.counter.id, rest);
+                showToast(`Area "${newArea.name}" added.`, 'success');
             }
             this.areaFormComponent.hide();
-            const updatedLocation = locationStore.getLocationById(this.location.id);
-            const updatedCounter = updatedLocation?.counters.find(c => c.id === this.counter.id);
-            if (updatedCounter) {
-                 this.counter = updatedCounter;
-                 this.areaListComponent.setAreas(this.counter.areas || []);
-            }
-
         } catch (error) {
             console.error("Error saving area:", error);
-            showToast("Fehler beim Speichern des Bereichs.", "error");
+            showToast("Error saving area.", "error");
         }
     }
 
@@ -140,19 +136,13 @@ export class CounterListItemComponent extends BaseComponent<HTMLDivElement> {
     }
 
     private async handleDeleteArea(areaId: string, areaName: string): Promise<void> {
-        if (confirm(`Bereich "${areaName}" wirklich löschen?`)) {
+        if (confirm(`Are you sure you want to delete area "${areaName}"?`)) {
             try {
-                await locationStore.deleteArea(this.location.id, this.counter.id, areaId);
-                showToast(`Bereich "${areaName}" gelöscht.`, "success");
-                const updatedLocation = locationStore.getLocationById(this.location.id);
-                const updatedCounter = updatedLocation?.counters.find(c => c.id === this.counter.id);
-                if (updatedCounter) {
-                     this.counter = updatedCounter;
-                     this.areaListComponent.setAreas(this.counter.areas || []);
-                }
+                await this.callbacks.onDeleteArea(this.location.id, this.counter.id, areaId);
+                showToast(`Area "${areaName}" deleted.`, "success");
             } catch (error) {
                 console.error("Error deleting area:", error);
-                showToast("Fehler beim Löschen des Bereichs.", "error");
+                showToast("Error deleting area.", "error");
             }
         }
     }
@@ -182,12 +172,11 @@ export class CounterListItemComponent extends BaseComponent<HTMLDivElement> {
         this.location = location;
         this.counter = counter;
 
-// Re-render the component to update the counter name
-const currentVisibility = this.isAreaManagementVisible;
-this.render();
-if (currentVisibility) {
-    this.toggleAreasManagementVisibility(true);
-}
+        const currentVisibility = this.isAreaManagementVisible;
+        this.render();
+        if (currentVisibility) {
+            this.toggleAreasManagementVisibility(true);
+        }
 
         if (this.isAreaManagementVisible && this.areaListComponent && counterAreasPotentiallyChanged) {
             this.areaListComponent.setAreas(this.counter.areas || []);
