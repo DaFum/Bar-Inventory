@@ -52,7 +52,8 @@ export class IndexedDBService {
        * for each new version. Document migration steps carefully.
        * (AGENTS.md: "IndexedDB upgrades must be forward-compatible; document migration plans for future schema changes.")
        */
-      upgrade(db, oldVersion, newVersion) { // Removed _transaction
+      upgrade(db, oldVersion, newVersion) {
+        // Removed _transaction
         console.log(`Upgrading database from version ${oldVersion} to ${newVersion}`);
 
         // Object store for Products
@@ -107,7 +108,7 @@ export class IndexedDBService {
     storeName: StoreName
   ): Promise<BarInventoryDBSchema[StoreName]['value'][]> {
     const db = await this.dbPromise;
-    return db.getAll(storeName as any); // Cast to any or ensure type compatibility
+    return db.getAll(storeName);
   }
 
   async get<StoreName extends keyof BarInventoryDBSchema>(
@@ -115,7 +116,7 @@ export class IndexedDBService {
     key: BarInventoryDBSchema[StoreName]['key']
   ): Promise<BarInventoryDBSchema[StoreName]['value'] | undefined> {
     const db = await this.dbPromise;
-    return db.get(storeName as any, key as any); // Cast to any or ensure type compatibility
+    return db.get(storeName, key);
   }
 
   async put<StoreName extends keyof BarInventoryDBSchema>(
@@ -123,7 +124,7 @@ export class IndexedDBService {
     value: BarInventoryDBSchema[StoreName]['value']
   ): Promise<BarInventoryDBSchema[StoreName]['key']> {
     const db = await this.dbPromise;
-    return db.put(storeName as any, value); // Cast to any or ensure type compatibility
+    return db.put(storeName, value);
   }
 
   async add<StoreName extends keyof BarInventoryDBSchema>(
@@ -131,7 +132,7 @@ export class IndexedDBService {
     value: BarInventoryDBSchema[StoreName]['value']
   ): Promise<BarInventoryDBSchema[StoreName]['key']> {
     const db = await this.dbPromise;
-    return db.add(storeName as any, value); // Cast to any or ensure type compatibility
+    return db.add(storeName, value);
   }
 
   async delete<StoreName extends keyof BarInventoryDBSchema>(
@@ -139,12 +140,12 @@ export class IndexedDBService {
     key: BarInventoryDBSchema[StoreName]['key']
   ): Promise<void> {
     const db = await this.dbPromise;
-    return db.delete(storeName as any, key as any); // Cast to any or ensure type compatibility
+    return db.delete(storeName, key);
   }
 
   async clearStore(storeName: keyof BarInventoryDBSchema): Promise<void> {
     const db = await this.dbPromise;
-    return db.clear(storeName as any); // Cast to any or ensure type compatibility
+    return db.clear(storeName);
   }
 
   // Specific methods for `loadItems` and `saveItems` (as per dev/improve.md)

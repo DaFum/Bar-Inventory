@@ -2,13 +2,13 @@
   "name": "bar-inventory-pwa",
   "version": "2.0.0",
   "description": "Professional Bar Inventory Management PWA with TypeScript",
-  "main": "dist/app.js",
+  "main": "dist/main.js",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"tsc --watch\" \"live-server --host=localhost --port=8080 --watch=dist,css,*.html\"",
     "build": "tsc && npm run copy-assets",
-    "copy-assets": "cpx \"css/**/*\" dist/css && cpx \"*.html\" dist && cpx manifest.json dist",
-    "start": "npm run build && node dist/app.js",
+    "copy-assets": "cpx2 \"css/**/*\" dist/css && cpx2 \"*.html\" dist && cpx2 manifest.json dist",
+    "start": "npm run build && node dist/main.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -16,7 +16,8 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.ts",
     "serve": "live-server dist --host=localhost --port=8080",
-    "clean": "rimraf dist node_modules"
+    "clean": "rimraf dist node_modules",
+    "docs": "typedoc --out docs src"
   },
   "keywords": [
     "inventory",
@@ -27,24 +28,28 @@
   "author": "DaFum",
   "license": "MIT",
   "devDependencies": {
-    "@types/jest": "^29.5.12",
+    "@types/dragula": "^3.7.5",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^24.0.10",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "concurrently": "^8.2.2",
-    "cpx": "^1.5.0",
+    "cpx2": "^8.0.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "jest": "^29.7.0",
     "jest-canvas-mock": "^2.5.2",
     "jest-environment-jsdom": "^29.7.0",
-    "live-server": "^1.2.2",
+    "live-server": "^1.2.0",
     "prettier": "^3.2.5",
     "rimraf": "^6.0.1",
-    "ts-jest": "^29.1.2",
-    "typescript": "^5.8.3"
+    "ts-jest": "^29.4.0",
+    "typedoc": "^0.25.13",
+    "typescript": "^5.3.3"
   },
   "dependencies": {
     "chart.js": "^4.5.0",
+    "dragula": "^3.7.3",
     "idb": "^7.1.1"
   },
   "jest": {
@@ -61,6 +66,9 @@
     "collectCoverageFrom": [
       "src/**/*.ts",
       "!src/**/*.d.ts"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/jest.setup.ts"
     ]
   }
 }

@@ -23,16 +23,22 @@ export class AreaListComponent extends BaseComponent<HTMLDivElement> {
         this.setAreas(initialAreas);
     }
 
-    /** Sorts areas by displayOrder, then by name. */
-    private sortAreas(areas: Area[]): Area[] {
+    /** Sorts areas by displayOrder, then by name. Handles null/undefined input. */
+    private sortAreas(areas: Area[] | null | undefined): Area[] {
+        if (!Array.isArray(areas)) {
+            return [];
+        }
         return [...areas].sort((a, b) => {
-            if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
-                if (a.displayOrder !== b.displayOrder) {
-                    return a.displayOrder - b.displayOrder;
+            const aHasOrder = a.displayOrder !== undefined && a.displayOrder !== null;
+            const bHasOrder = b.displayOrder !== undefined && b.displayOrder !== null;
+
+            if (aHasOrder && bHasOrder) {
+                if (a.displayOrder! !== b.displayOrder!) {
+                    return a.displayOrder! - b.displayOrder!;
                 }
-            } else if (a.displayOrder !== undefined) {
+            } else if (aHasOrder) {
                 return -1; // a comes first
-            } else if (b.displayOrder !== undefined) {
+            } else if (bHasOrder) {
                 return 1;  // b comes first
             }
             // Fallback to name sorting if displayOrder is the same or not defined
@@ -111,10 +117,10 @@ export class AreaListComponent extends BaseComponent<HTMLDivElement> {
 
     /**
      * Sets the areas to be displayed and triggers a full re-render of the list.
-     * @param areas - An array of areas to display.
+     * @param areas - An array of areas to display. Handles null/undefined by treating as empty.
      */
-    setAreas(areas: Area[]): void {
-        this.areas = this.sortAreas(areas);
+    setAreas(areas: Area[] | null | undefined): void {
+        this.areas = this.sortAreas(areas || []); // Pass empty array if areas is null/undefined
         this.renderFullList();
     }
 
@@ -181,6 +187,10 @@ export class AreaListComponent extends BaseComponent<HTMLDivElement> {
         if (this.areas.length === 0) {
             this.renderFullList();
         }
+    }
+
+    destroy(): void {
+        this.remove();
     }
 }
 console.log("AreaListComponent loaded.");

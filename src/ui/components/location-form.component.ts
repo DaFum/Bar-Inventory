@@ -42,18 +42,18 @@ export class LocationFormComponent extends BaseComponent<HTMLDivElement> {
     render(): void {
         const location = this.currentEditingLocation;
         this.element.innerHTML = `
-            <h3 id="${this.formTitleId}" class="panel-subtitle">${location ? 'Standort bearbeiten' : 'Neuen Standort erstellen'}</h3>
+            <h3 id="${this.formTitleId}" class="panel-subtitle">${location ? 'Edit Location' : 'Create New Location'}</h3>
             <form id="location-form-actual" aria-labelledby="${this.formTitleId}">
                 <div class="form-group">
-                    <label for="location-name-form-comp">Name des Standorts:</label>
+                    <label for="location-name-form-comp">Location Name:</label>
                     <input type="text" id="location-name-form-comp" value="${escapeHtml(location?.name || '')}" required class="form-control" aria-required="true">
                 </div>
                 <div class="form-group">
-                    <label for="location-address-form-comp">Adresse (optional):</label>
+                    <label for="location-address-form-comp">Address (optional):</label>
                     <input type="text" id="location-address-form-comp" value="${escapeHtml(location?.address || '')}" class="form-control">
                 </div>
-                <button type="submit" class="btn btn-success">${location ? 'Änderungen speichern' : 'Standort erstellen'}</button>
-                <button type="button" id="cancel-location-edit-form-comp" class="btn btn-secondary">Abbrechen</button>
+                <button type="submit" class="btn btn-success">${location ? 'Save Changes' : 'Create Location'}</button>
+                <button type="button" id="cancel-location-edit-form-comp" class="btn btn-secondary">Cancel</button>
             </form>
         `;
         this.bindElements();

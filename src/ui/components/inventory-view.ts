@@ -1,3 +1,4 @@
+import dragula from 'dragula';
 import { dbService } from '../../services/indexeddb.service';
 import { Location, Product, InventoryEntry, Area, Counter } from '../../models';
 import { generateId, debounce } from '../../utils/helpers';
@@ -83,6 +84,21 @@ state.selectedLocation.counters.forEach(counter => {
         });
     }
 
+
+
+// Date selector
+const selectedDate = state.selectedDate ?? new Date().toISOString().split('T')[0];
+const dateSelectorHTML = `
+    <div>
+        <label for="inventory-date-select">Datum:</label>
+        <input
+            type="date"
+            id="inventory-date-select"
+            class="form-control form-control-sm"
+            value="${selectedDate}"
+        >
+    </div>
+`;
     // Phase Toggle
     const phaseToggleHTML = `
         <div class="flex items-center" role="group" aria-label="Inventurphase auswählen">
@@ -106,9 +122,11 @@ state.selectedLocation.counters.forEach(counter => {
             <label for="area-select-inv">Bereich:</label>
             <select id="area-select-inv" class="form-control form-control-sm" ${!state.selectedCounter ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'}>${areaOptions}</select>
         </div>
+        ${dateSelectorHTML}
         ${phaseToggleHTML}
     `;
 
+    document.getElementById('inventory-date-select')?.addEventListener('change', handleDateChange);
     document.getElementById('location-select-inv')?.addEventListener('change', handleLocationChange);
     document.getElementById('counter-select-inv')?.addEventListener('change', handleCounterChange);
     document.getElementById('area-select-inv')?.addEventListener('change', handleAreaChange);
@@ -148,6 +166,15 @@ function switchInventoryPhase(phase: InventoryPhase): void {
  *
  * Aktualisiert die ausgewählte Location entsprechend der Benutzerauswahl, setzt Tresen und Bereich auf null, rendert die Auswahlleiste neu und leert die Inventartabelle sowie die Aktionsleiste.
  */
+async function handleDateChange(event: Event): Promise<void> {
+    const value = (event.target as HTMLInputElement).value;
+    state.selectedDate = value;
+    if (state.selectedArea) {
+        renderInventoryTable();
+        renderInventoryActions();
+    }
+}
+
 async function handleLocationChange(event: Event): Promise<void> {
     const locationId = (event.target as HTMLSelectElement).value;
     state.selectedLocation = state.loadedLocations.find(loc => loc.id === locationId) || null;
@@ -207,12 +234,12 @@ function renderInventoryTable(): void {
     }
 
     // Ensure all products in the catalog are represented in the current area's inventory list
-    prepareInventoryItemsForArea();
+    const inventoryEntries = prepareInventoryRecordForArea();
 
     if (state.currentPhase === 'consumption') {
-        renderConsumptionView(tableContainer, state.selectedArea);
+        renderConsumptionView(tableContainer, state.selectedArea, inventoryEntries);
     } else {
-        renderEditableInventoryTable(tableContainer, state.selectedArea);
+        renderEditableInventoryTable(tableContainer, state.selectedArea, inventoryEntries);
     }
 }
 
@@ -221,19 +248,34 @@ function renderInventoryTable(): void {
  *
  * Für jedes geladene Produkt wird ein Inventareintrag im aktuellen Bereich angelegt, falls dieser noch nicht existiert. Fehlende Einträge werden mit Nullwerten initialisiert. Anschließend werden alle Inventarpositionen nach Kategorie und Name sortiert.
  */
-function prepareInventoryItemsForArea(): void {
-    if (!state.selectedArea || !state.loadedProducts) return;
+function prepareInventoryRecordForArea(): InventoryEntry[] {
+    if (!state.selectedArea || !state.loadedProducts) return [];
+
+    const datePicker = document.getElementById('inventory-date-select') as HTMLInputElement;
+    const selectedDate = datePicker ? new Date(datePicker.value) : new Date();
+    selectedDate.setHours(0, 0, 0, 0);
+
+    let record = state.selectedArea.inventoryRecords.find(r => {
+        const recordDate = new Date(r.date);
+        recordDate.setHours(0, 0, 0, 0);
+        return recordDate.getTime() === selectedDate.getTime();
+    });
+
+    if (!record) {
+        record = { date: selectedDate, entries: [] };
+        state.selectedArea.inventoryRecords.push(record);
+    }
 
     state.loadedProducts.forEach(product => {
-        if (!state.selectedArea!.inventoryItems.find(item => item.productId === product.id)) {
-            state.selectedArea!.inventoryItems.push({
+        if (!record!.entries.find(item => item.productId === product.id)) {
+            record!.entries.push({
                 productId: product.id,
                 startCrates: 0, startBottles: 0, startOpenVolumeMl: 0,
                 endCrates: 0, endBottles: 0, endOpenVolumeMl: 0,
             });
         }
     });
-    state.selectedArea.inventoryItems.sort((a, b) => {
+    record.entries.sort((a, b) => {
         const productA = state.loadedProducts.find(p => p.id === a.productId);
         const productB = state.loadedProducts.find(p => p.id === b.productId);
         if (!productA || !productB) return 0;
@@ -241,6 +283,8 @@ function prepareInventoryItemsForArea(): void {
         if (productA.category.toLowerCase() > productB.category.toLowerCase()) return 1;
         return productA.name.toLowerCase() < productB.name.toLowerCase() ? -1 : 1;
     });
+
+    return record.entries;
 }
 
 /**
@@ -251,7 +295,7 @@ function prepareInventoryItemsForArea(): void {
      * @param tableContainer - Das HTML-Element, in dem die Tabelle angezeigt wird
      * @param area - Der aktuell ausgewählte Bereich, dessen Inventurdaten bearbeitet werden
      */
-    function renderEditableInventoryTable(tableContainer: HTMLElement, area: Area): void {
+    function renderEditableInventoryTable(tableContainer: HTMLElement, area: Area, inventoryEntries: InventoryEntry[]): void {
     const phaseName = state.currentPhase === 'start' ? 'Schichtanfang' : 'Schichtende';
     const tableId = `inventory-table-${area.id.replace(/[^a-zA-Z0-9]/g, '')}`; // Create a unique ID for the table
     let tableHTML = `
@@ -259,16 +303,17 @@ function prepareInventoryItemsForArea(): void {
         <table id="${tableId}" class="table-fixed w-full inventory-table" aria-labelledby="inventory-table-title">
             <thead>
                 <tr>
+                    <th scope="col" class="w-1/12"></th>
                     <th scope="col" class="w-2/5">Produkt</th>
                     <th scope="col" class="w-1/5 text-center">Kästen</th>
                     <th scope="col" class="w-1/5 text-center">Flaschen (einzeln)</th>
                     <th scope="col" class="w-1/5 text-center">Offen (ml)</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="inventory-list-body-${area.id.replace(/[^a-zA-Z0-9]/g, '')}">
     `;
 
-    area.inventoryItems.forEach((item, index) => {
+    inventoryEntries.forEach((item, index) => {
         const product = state.loadedProducts.find(p => p.id === item.productId);
         if (!product) return;
 
@@ -283,6 +328,7 @@ function prepareInventoryItemsForArea(): void {
 
         tableHTML += `
     <tr class="border-b inventory-item-row" data-product-id="${product.id}">
+        <td class="px-2 py-2 drag-handle cursor-move" role="button" aria-label="Reihenfolge von ${escapeHtml(product.name)} ändern"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-gray-400"><path fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v12.5a.75.75 0 01-1.5 0V3.75A.75.75 0 0110 3zM3.75 10a.75.75 0 010-1.5h12.5a.75.75 0 010 1.5H3.75z" clip-rule="evenodd" /></svg></td>
         <td class="px-4 py-2" role="rowheader">
             <span class="font-semibold">${escapeHtml(product.name)}</span><br>
             <small class="text-gray-600">${escapeHtml(product.category)} - ${product.volume}ml</small>
@@ -306,10 +352,39 @@ function prepareInventoryItemsForArea(): void {
     tableHTML += `</tbody></table>`;
     tableContainer.innerHTML = tableHTML;
     addInputEventListeners();
+    const drake = dragula([tableContainer.querySelector('tbody')!], {
+        moves: function (el, source, handle, sibling) {
+            return handle?.classList.contains('drag-handle') ?? false;
+        },
+    });
+
+    drake.on('drop', (el, target, source, sibling) => {
+        const productId = el.getAttribute('data-product-id');
+        if (!productId || !state.selectedArea) return;
+
+        const inventoryEntries = prepareInventoryRecordForArea();
+
+        const newIndex = Array.from(target.children).indexOf(el);
+        const item = inventoryEntries.find(i => i.productId === productId);
+        if (!item) return;
+
+        const oldIndex = inventoryEntries.indexOf(item);
+        if (oldIndex !== -1) {
+            inventoryEntries.splice(oldIndex, 1);
+        }
+
+        inventoryEntries.splice(newIndex, 0, item);
+       saveCurrentInventory().catch(error => {
+           console.error('Fehler beim Speichern der Reihenfolge:', error);
+           showToast('Fehler beim Speichern der neuen Reihenfolge.', 'error');
+           // Optional: Reihenfolge zurücksetzen
+           renderInventoryTable();
+       });
+    });
 }
 
-function renderConsumptionView(tableContainer: HTMLElement, area: Area): void {
-    const consumptionData = calculateAreaConsumption(area.inventoryItems, state.loadedProducts);
+function renderConsumptionView(tableContainer: HTMLElement, area: Area, inventoryEntries: InventoryEntry[]): void {
+    const consumptionData = calculateAreaConsumption(inventoryEntries, state.loadedProducts);
     let totalCost = 0;
 
     let tableHTML = `
@@ -410,9 +485,11 @@ function renderInventoryActions(): void {
         actionsContainer.innerHTML = `
             <button id="save-inventory-btn" class="btn btn-success">Inventur Speichern</button>
             <button id="fill-defaults-btn" class="btn btn-info ml-2">Alles voll (Standardwerte)</button>
+            <button id="export-inventory-btn" class="btn btn-secondary ml-2">Inventur Exportieren (CSV)</button>
         `;
         document.getElementById('save-inventory-btn')?.addEventListener('click', saveCurrentInventory);
         document.getElementById('fill-defaults-btn')?.addEventListener('click', fillDefaultValues);
+        document.getElementById('export-inventory-btn')?.addEventListener('click', handleExportInventoryCsv);
     } else {
         // Consumption view might have different actions, like export
         actionsContainer.innerHTML = `<button id="export-consumption-btn" class="btn btn-secondary">Verbrauchsdaten Exportieren (CSV)</button>`;
@@ -425,13 +502,15 @@ function handleExportConsumptionCsv(): void {
         showToast("Kein Bereich ausgewählt für den Export.", "warning");
         return;
     }
-    if (state.selectedArea.inventoryItems.length === 0) {
+    const inventoryEntries = prepareInventoryRecordForArea();
+    if (inventoryEntries.length === 0) {
         showToast("Keine Inventurdaten in diesem Bereich zum Exportieren.", "info");
         return;
     }
     try {
+        const areaForExport = { ...state.selectedArea, inventoryItems: inventoryEntries };
         exportService.exportAreaInventoryToCsv(
-            state.selectedArea,
+            areaForExport,
             state.selectedLocation.name,
             state.selectedCounter.name,
             state.loadedProducts,
@@ -441,6 +520,32 @@ function handleExportConsumptionCsv(): void {
     } catch (error) {
         console.error("Fehler beim Exportieren der Verbrauchsdaten:", error);
         showToast("Fehler beim CSV-Export der Verbrauchsdaten.", "error");
+    }
+}
+
+function handleExportInventoryCsv(): void {
+    if (!state.selectedArea || !state.selectedLocation || !state.selectedCounter) {
+        showToast("Kein Bereich ausgewählt für den Export.", "warning");
+        return;
+    }
+    const inventoryEntries = prepareInventoryRecordForArea();
+    if (inventoryEntries.length === 0) {
+        showToast("Keine Inventurdaten in diesem Bereich zum Exportieren.", "info");
+        return;
+    }
+    try {
+        const areaForExport = { ...state.selectedArea, inventoryItems: inventoryEntries };
+        exportService.exportAreaInventoryToCsv(
+            areaForExport,
+            state.selectedLocation.name,
+            state.selectedCounter.name,
+            state.loadedProducts,
+            false // includeConsumption is false
+        );
+        showToast("Inventurdaten erfolgreich als CSV exportiert.", "success");
+    } catch (error) {
+        console.error("Fehler beim Exportieren der Inventurdaten:", error);
+        showToast("Fehler beim CSV-Export der Inventurdaten.", "error");
     }
 }
 
@@ -455,7 +560,8 @@ function fillDefaultValues(): void {
         return;
     }
 
-    state.selectedArea.inventoryItems.forEach(item => {
+    const inventoryEntries = prepareInventoryRecordForArea();
+    inventoryEntries.forEach(item => {
         const product = state.loadedProducts.find(p => p.id === item.productId);
         if (!product) return;
 
@@ -497,7 +603,8 @@ function handleInventoryInputChange(event: Event): void {
 
     if (!state.selectedArea || !productId || !field) return;
 
-    const inventoryItem = state.selectedArea.inventoryItems.find(item => item.productId === productId);
+    const inventoryEntries = prepareInventoryRecordForArea();
+    const inventoryItem = inventoryEntries.find(item => item.productId === productId);
     if (inventoryItem) {
         // Ensure field is a numeric field before assignment
         if (field in inventoryItem && typeof inventoryItem[field] === 'number') {
@@ -507,6 +614,7 @@ function handleInventoryInputChange(event: Event): void {
         // but seemed misplaced due to the syntax error.
         // Proper unsaved changes tracking should be implemented if needed.
     }
+
 }
 
 /**

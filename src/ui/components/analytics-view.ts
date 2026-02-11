@@ -12,6 +12,7 @@ let loadedProducts: Product[] = [];
 
 let consumptionChart: Chart | null = null;
 let costChart: Chart | null = null;
+let consumptionByCategoryChart: Chart | null = null;
 
 /**
  * Initialisiert die Analytics-Ansicht im angegebenen Container für interaktive Verbrauchs- und Kostenberichte.
@@ -48,6 +49,11 @@ export async function initAnalyticsView(container: HTMLElement): Promise<void> {
                     <canvas id="cost-chart"></canvas>
                     <button id="export-cost-chart-btn" class="btn btn-secondary btn-sm mt-2">Kostendiagramm exportieren (PNG)</button>
                 </div>
+                <div>
+                    <h3 class="panel-subtitle">Verbrauch nach Kategorie (Volumen ml)</h3>
+                    <canvas id="consumption-by-category-chart"></canvas>
+                    <button id="export-consumption-by-category-chart-btn" class="btn btn-secondary btn-sm mt-2">Kategoriediagramm exportieren (PNG)</button>
+                </div>
             </div>
             <div id="report-summary" class="mt-4"></div>
         </div>
@@ -69,6 +75,10 @@ export async function initAnalyticsView(container: HTMLElement): Promise<void> {
     });
     document.getElementById('export-cost-chart-btn')?.addEventListener('click', () => {
         exportChartToPNG(costChart, 'cost-chart.png', 'Kostendiagramm');
+    });
+
+    document.getElementById('export-consumption-by-category-chart-btn')?.addEventListener('click', () => {
+        exportChartToPNG(consumptionByCategoryChart, 'consumption-by-category-chart.png', 'Kategoriediagramm');
     });
 
     // Initialize charts with empty data
@@ -193,8 +203,10 @@ function handleAreaSelectionForAnalytics(): void {
 function clearReportAndCharts(): void {
     if (consumptionChart) consumptionChart.destroy();
     if (costChart) costChart.destroy();
+    if (consumptionByCategoryChart) consumptionByCategoryChart.destroy();
     consumptionChart = null;
     costChart = null;
+    consumptionByCategoryChart = null;
 
     // Instead of replacing innerHTML, which removes buttons,
     // charts will be re-created on existing canvas elements by renderCharts.
@@ -265,7 +277,7 @@ function _aggregateInventoryData(location: Location, counterId?: string, areaId?
  * @param products Eine Liste aller geladenen Produkte.
  * @returns Ein Objekt mit Produktnamen, Verbrauchswerten, Kostenwerten und dem detaillierten Verbrauchsbericht.
  */
-function _calculateConsumptionData(items: InventoryEntry[], products: Product[]): { productNames: string[], consumptionValuesMl: number[], costValues: number[], consumptionReport: any[] } {
+function _calculateConsumptionData(items: InventoryEntry[], products: Product[]): { productNames: string[], consumptionValuesMl: number[], costValues: number[], consumptionReport: any[], consumptionByCategory: { [category: string]: number } } {
     const consumptionReport = calculateAreaConsumption(items, products);
 
     // Filter out items with zero or negative consumption for charts to make them cleaner
@@ -275,7 +287,16 @@ function _calculateConsumptionData(items: InventoryEntry[], products: Product[])
     const consumptionValuesMl = consumedItemsForChart.map(c => c.consumedVolumeMl || 0);
     const costValues = consumedItemsForChart.map(c => c.costOfConsumption);
 
-    return { productNames, consumptionValuesMl, costValues, consumptionReport };
+    const productMap = new Map(products.map(p => [p.id, p]));
+    const consumptionByCategory: { [category: string]: number } = {};
+    consumedItemsForChart.forEach(c => {
+        const product = productMap.get(c.productId);
+        if (product) {
+            consumptionByCategory[product.category] = (consumptionByCategory[product.category] || 0) + (c.consumedVolumeMl || 0);
+        }
+    });
+
+    return { productNames, consumptionValuesMl, costValues, consumptionReport, consumptionByCategory };
 }
 
 /**
@@ -288,11 +309,12 @@ function _updateReportUI(
         productNames: string[],
         consumptionValuesMl: number[],
         costValues: number[],
-        consumptionReport: any[]
+        consumptionReport: any[],
+        consumptionByCategory: { [category: string]: number }
     },
     scopeName: string
 ): void {
-    renderCharts(consumptionData.productNames, consumptionData.consumptionValuesMl, consumptionData.costValues);
+    renderCharts(consumptionData.productNames, consumptionData.consumptionValuesMl, consumptionData.costValues, consumptionData.consumptionByCategory);
 
     const summaryContainer = document.getElementById('report-summary')!;
     const totalConsumedItemsCount = consumptionData.consumptionReport.reduce((sum, item) => sum + (item.consumedUnits > 0 ? 1 : 0), 0);
@@ -358,11 +380,12 @@ async function generateReport(): Promise<void> {
  * @param consumptionValuesMl - Verbrauchswerte der Produkte in Millilitern
  * @param costValues - (Optional) Kostenwerte der Produkte in Euro für das Tortendiagramm
  */
-function renderCharts(productNames: string[], consumptionValuesMl: number[], costValues?: number[]): void {
+function renderCharts(productNames: string[], consumptionValuesMl: number[], costValues?: number[], consumptionByCategory?: { [category: string]: number }): void {
     const consumptionCtx = document.getElementById('consumption-chart') as HTMLCanvasElement;
     const costCtx = document.getElementById('cost-chart') as HTMLCanvasElement;
+    const consumptionByCategoryCtx = document.getElementById('consumption-by-category-chart') as HTMLCanvasElement;
 
-    if (!consumptionCtx || !costCtx) {
+    if (!consumptionCtx || !costCtx || !consumptionByCategoryCtx) {
         console.error("Canvas elements for charts not found.");
         return;
     }
@@ -372,6 +395,9 @@ function renderCharts(productNames: string[], consumptionValuesMl: number[], cos
     }
     if (costChart) {
         costChart.destroy();
+    }
+    if (consumptionByCategoryChart) {
+        consumptionByCategoryChart.destroy();
     }
 
     consumptionChart = new Chart(consumptionCtx, {
@@ -408,6 +434,32 @@ function renderCharts(productNames: string[], consumptionValuesMl: number[], cos
                         'rgba(201, 203, 207, 0.6)', // Grey
                         'rgba(153, 102, 255, 0.6)', // Purple
                         'rgba(255, 159, 64, 0.6)'   // Orange
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+            }
+        });
+    }
+
+    if (consumptionByCategory) {
+        consumptionByCategoryChart = new Chart(consumptionByCategoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(consumptionByCategory),
+                datasets: [{
+                    label: 'Verbrauch nach Kategorie (ml)',
+                    data: Object.values(consumptionByCategory),
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(153, 102, 255, 0.6)',
+                        'rgba(255, 159, 64, 0.6)'
                     ],
                     hoverOffset: 4
                 }]
