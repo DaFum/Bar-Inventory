@@ -235,7 +235,8 @@ class LocationStore {
     const newArea: Area = {
       id: generateId('area'),
       name: areaData.name.trim(),
-      inventoryItems: [],
+      inventoryRecords: [],
+
     };
     if (areaData.description !== undefined) {
       newArea.description = areaData.description;
