@@ -1641,10 +1641,10 @@ describe('LocationStore', () => {
       
       // Multiple operations with intermittent failures
       const operations = [
-        locationStore.addLocation({ name: 'Location 1' }).catch(() => null),
-        locationStore.addLocation({ name: 'Location 2' }).catch(() => null),
-        locationStore.addLocation({ name: 'Location 3' }).catch(() => null),
-        locationStore.addLocation({ name: 'Location 4' }).catch(() => null)
+        locationStore.addLocation({ name: 'Location 1' }),
+        locationStore.addLocation({ name: 'Location 2' }),
+        locationStore.addLocation({ name: 'Location 3' }),
+        locationStore.addLocation({ name: 'Location 4' })
       ];
       
       const results = await Promise.allSettled(operations);
