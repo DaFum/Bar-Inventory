@@ -252,8 +252,6 @@ describe('CounterListItemComponent', () => {
   test('getCounterId should return the correct counter ID', () => {
     expect(component.getCounterId()).toBe(mockCounter.id);
   });
-});
-
   describe('Error Handling and Edge Cases', () => {
     test('should handle null/undefined location gracefully', () => {
       expect(() => {
