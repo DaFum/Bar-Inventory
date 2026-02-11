@@ -34,7 +34,8 @@ describe('ProductListItemComponent', () => {
       name: 'Test Product',
       category: 'Test Category',
       volume: 750,
-      pricePerBottle: 19.99
+      pricePerBottle: 19.99,
+      lastUpdated: new Date()
     };
     mockCallbacks = {
       onEdit: jest.fn(),

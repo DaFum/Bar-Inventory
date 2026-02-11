@@ -178,7 +178,7 @@ export class ExportService {
 
     const csvData = arrayToCsv(flatData as unknown as Array<Record<string, unknown>>, columns);
     // Better sanitize user input for file names
-    const sanitize = (str: string) => str.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
+    const sanitize = (str: string): string => str.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
     const fileName = `inventur_${sanitize(locationName)}_${sanitize(
       counterName
     )}_${sanitize(area.name)}.csv`;
