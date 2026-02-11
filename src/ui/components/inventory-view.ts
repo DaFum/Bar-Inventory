@@ -161,6 +161,8 @@ function switchInventoryPhase(phase: InventoryPhase): void {
  * Aktualisiert die ausgewählte Location entsprechend der Benutzerauswahl, setzt Tresen und Bereich auf null, rendert die Auswahlleiste neu und leert die Inventartabelle sowie die Aktionsleiste.
  */
 async function handleDateChange(event: Event): Promise<void> {
+    const value = (event.target as HTMLInputElement).value;
+    state.selectedDate = value;
     if (state.selectedArea) {
         renderInventoryTable();
         renderInventoryActions();
