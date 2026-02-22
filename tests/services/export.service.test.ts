@@ -491,6 +491,7 @@ describe('ExportService', () => {
       ]);
     });
   });
+}); // Closes the main ExportService describe block
 
   describe('Advanced Data Validation and Edge Cases', () => {
     it('should handle products with extremely long field values', () => {
@@ -918,8 +919,8 @@ describe('ExportService', () => {
       const jsonData = JSON.parse(jsonContent);
       
       // Verify that core data matches between formats
-      expect(csvContent).toContain(mockArea.inventoryItems![0]!.productId);
-      expect(jsonData.counters[0].areas[0].inventoryItems[0].productId).toBe(mockArea.inventoryItems![0]!.productId);
+      expect(csvContent).toContain(mockArea.inventoryItems[0]!.productId);
+      expect(jsonData.counters[0].areas[0].inventoryItems[0].productId).toBe(mockArea.inventoryItems[0]!.productId);
     });
   });
 
@@ -978,4 +979,3 @@ describe('ExportService', () => {
       );
     });
   });
-}); // Closes the main ExportService describe block
