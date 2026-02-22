@@ -76,7 +76,7 @@ jest.mock('../../src/ui/components/toast-notifications', () => ({
 
 
 // Use instances from mock-helpers or define locally if variations needed per test suite
-const mockProduct: Product = { id: 'prod1', name: 'Test Product', category: 'Test Category', itemsPerCrate: 10, pricePer100ml: 1, pricePerBottle: 10, volume: 750 };
+const mockProduct: Product = { id: 'prod1', name: 'Test Product', category: 'Test Category', itemsPerCrate: 10, pricePer100ml: 1, pricePerBottle: 10, volume: 750, lastUpdated: new Date() };
 const mockLocation: Location = { id: 'loc1', name: 'Test Location', counters: [] };
 const mockInventoryState: InventoryState = {
     locations: [],
@@ -127,8 +127,9 @@ describe('IndexedDBService', () => {
         dbService = new IndexedDBService(); // Create instance for most tests
         // Wait for openDB to resolve as it's async and might trigger upgrade
         const lastOpenDBCall = mockHelperOpenDB.mock.calls.length - 1;
-        if (lastOpenDBCall >= 0 && mockHelperOpenDB.mock.results[lastOpenDBCall]) {
-            await mockHelperOpenDB.mock.results[lastOpenDBCall].value;
+        const result = mockHelperOpenDB.mock.results[lastOpenDBCall];
+        if (lastOpenDBCall >= 0 && result) {
+            await result.value;
         }
     });
 
@@ -233,8 +234,9 @@ describe('IndexedDBService', () => {
             const { IndexedDBService } = await import('../../src/services/indexeddb.service');
             dbService = new IndexedDBService();
             const lastOpenDBCall = mockHelperOpenDB.mock.calls.length - 1;
-            if (lastOpenDBCall >= 0 && mockHelperOpenDB.mock.results[lastOpenDBCall]) {
-                await mockHelperOpenDB.mock.results[lastOpenDBCall].value;
+            const result = mockHelperOpenDB.mock.results[lastOpenDBCall];
+            if (lastOpenDBCall >= 0 && result) {
+                await result.value;
             }
         });
         // Re-assign store mocks after service re-initialization as they might be new instances
@@ -265,8 +267,9 @@ describe('IndexedDBService', () => {
             const { IndexedDBService } = await import('../../src/services/indexeddb.service');
             dbService = new IndexedDBService(); // This will call openDB
             const lastOpenDBCall = mockHelperOpenDB.mock.calls.length - 1;
-            if (lastOpenDBCall >= 0 && mockHelperOpenDB.mock.results[lastOpenDBCall]) {
-                await mockHelperOpenDB.mock.results[lastOpenDBCall].value; // Wait for openDB to complete
+            const result = mockHelperOpenDB.mock.results[lastOpenDBCall];
+            if (lastOpenDBCall >= 0 && result) {
+                await result.value; // Wait for openDB to complete
             }
         });
 
@@ -289,8 +292,9 @@ describe('IndexedDBService', () => {
           const serviceForThisTest = new IndexedDBService(); // Call openDB with current mockDb state
           // Wait for openDB to resolve
           const lastOpenDBCall = mockHelperOpenDB.mock.calls.length - 1;
-          if (lastOpenDBCall >= 0 && mockHelperOpenDB.mock.results[lastOpenDBCall]) {
-              await mockHelperOpenDB.mock.results[lastOpenDBCall].value;
+          const result = mockHelperOpenDB.mock.results[lastOpenDBCall];
+          if (lastOpenDBCall >= 0 && result) {
+              await result.value;
           }
       });
       expect(mockHelperDBCallbacks.upgrade).toBeDefined();
@@ -299,10 +303,10 @@ describe('IndexedDBService', () => {
 
       if (mockHelperDBCallbacks.upgrade) {
         // Create a mock transaction for the upgrade
-        const mockUpgradeTx = mockDb.transaction(['products', 'locations', 'inventoryState'], 'versionchange' as any) as IDBPTransaction<BarInventoryDBSchemaType,any,'versionchange'>;
+        const mockUpgradeTx = mockDb.transaction(['products', 'locations', 'inventoryState'], 'versionchange' as any) as unknown as IDBPTransaction<BarInventoryDBSchemaType,any,'versionchange'>;
 
         await mockHelperDBCallbacks.upgrade(
-          mockDb, 1, 2,
+          mockDb as unknown as IDBPDatabase<BarInventoryDBSchemaType>, 1, 2,
           mockUpgradeTx, // Pass the created mock transaction
           { oldVersion: 1, newVersion: 2 } as unknown as IDBVersionChangeEvent
         );
@@ -457,9 +461,9 @@ describe('IndexedDBService', () => {
   });
 
   describe('Complex Data Operations (saveAllApplicationData / loadAllApplicationData)', () => {
-    const product1: Product = { id: 'p1', name: 'Product 1', category: 'Cat A', itemsPerCrate: 10, pricePer100ml:1, pricePerBottle:10, volume:700 };
-    const product2: Product = { id: 'p2', name: 'Product 2', category: 'Cat B', itemsPerCrate: 12, pricePer100ml:2, pricePerBottle:12, volume:750 };
-    const product3: Product = { id: 'p3', name: 'Product 3', category: 'Cat A', itemsPerCrate: 6, pricePer100ml:3, pricePerBottle:15, volume:1000 };
+    const product1: Product = { id: 'p1', name: 'Product 1', category: 'Cat A', itemsPerCrate: 10, pricePer100ml:1, pricePerBottle:10, volume:700, lastUpdated: new Date() };
+    const product2: Product = { id: 'p2', name: 'Product 2', category: 'Cat B', itemsPerCrate: 12, pricePer100ml:2, pricePerBottle:12, volume:750, lastUpdated: new Date() };
+    const product3: Product = { id: 'p3', name: 'Product 3', category: 'Cat A', itemsPerCrate: 6, pricePer100ml:3, pricePerBottle:15, volume:1000, lastUpdated: new Date() };
 
     const location1: Location = { id: 'l1', name: 'Location 1', counters: [] };
     const location2: Location = { id: 'l2', name: 'Location 2', counters: [] };
@@ -639,11 +643,11 @@ describe('IndexedDBService', () => {
   });
 
   describe('Concurrency Tests', () => {
-    const product1: Product = { id: 'p1', name: 'Product 1', category: 'Cat A', itemsPerCrate: 10, pricePer100ml:1, pricePerBottle:10, volume:700 };
+    const product1: Product = { id: 'p1', name: 'Product 1', category: 'Cat A', itemsPerCrate: 10, pricePer100ml:1, pricePerBottle:10, volume:700, lastUpdated: new Date() };
     const location1: Location = { id: 'l1', name: 'Location 1', counters: [] };
     const inventoryState1: InventoryState = { products: [product1], locations: [location1], unsyncedChanges: false };
 
-    const product2: Product = { id: 'p2', name: 'Product 2', category: 'Cat B', itemsPerCrate: 12, pricePer100ml:2, pricePerBottle:12, volume:750 };
+    const product2: Product = { id: 'p2', name: 'Product 2', category: 'Cat B', itemsPerCrate: 12, pricePer100ml:2, pricePerBottle:12, volume:750, lastUpdated: new Date() };
     const location2: Location = { id: 'l2', name: 'Location 2', counters: [] };
     const inventoryState2: InventoryState = { products: [product2], locations: [location2], unsyncedChanges: true };
 
@@ -874,6 +878,7 @@ describe('IndexedDBService', () => {
       pricePer100ml: 1 + (i % 100) / 100,
       pricePerBottle: 10 + (i % 10),
       volume: 700 + (i % 50),
+      lastUpdated: new Date(),
     }));
 
     const largeLocationArray = createLargeArray(500, i => ({
@@ -999,7 +1004,7 @@ describe('IndexedDBService', () => {
   });
 
   describe('Invalid Input Tests', () => {
-    const product1: Product = { id: 'p1', name: 'Product 1', category: 'Cat A', itemsPerCrate: 10, pricePer100ml:1, pricePerBottle:10, volume:700 };
+    const product1: Product = { id: 'p1', name: 'Product 1', category: 'Cat A', itemsPerCrate: 10, pricePer100ml:1, pricePerBottle:10, volume:700, lastUpdated: new Date() };
     const location1: Location = { id: 'l1', name: 'Location 1', counters: [] };
 
     beforeEach(() => {
@@ -1055,7 +1060,7 @@ describe('IndexedDBService', () => {
 
       test('should skip malformed product or location objects but continue processing valid ones', async () => {
         const malformedProduct = { name: 'Malformed Product' } as any; // Missing id, etc.
-        const validProduct = { id: 'vp1', name: 'Valid Product', category: 'Valid', itemsPerCrate: 1, pricePer100ml:1, pricePerBottle:1, volume:100 };
+        const validProduct = { id: 'vp1', name: 'Valid Product', category: 'Valid', itemsPerCrate: 1, pricePer100ml:1, pricePerBottle:1, volume:100, lastUpdated: new Date() };
         const malformedLocation = { name: 'Malformed Location' } as any; // Missing id
         const validLocation = { id: 'vl1', name: 'Valid Location', counters: [] };
 
@@ -1145,8 +1150,8 @@ describe('IndexedDBService', () => {
   });
 
   describe('Transaction Failure Scenario Tests (saveAllApplicationData)', () => {
-    const product1: Product = { id: 'p1', name: 'P1', category: 'C1', itemsPerCrate: 1, pricePer100ml:1, pricePerBottle:1, volume:100 };
-    const product2: Product = { id: 'p2', name: 'P2', category: 'C2', itemsPerCrate: 1, pricePer100ml:1, pricePerBottle:1, volume:100 };
+    const product1: Product = { id: 'p1', name: 'P1', category: 'C1', itemsPerCrate: 1, pricePer100ml:1, pricePerBottle:1, volume:100, lastUpdated: new Date() };
+    const product2: Product = { id: 'p2', name: 'P2', category: 'C2', itemsPerCrate: 1, pricePer100ml:1, pricePerBottle:1, volume:100, lastUpdated: new Date() };
     const location1: Location = { id: 'l1', name: 'L1', counters: [] };
     const location2: Location = { id: 'l2', name: 'L2', counters: [] };
     const state: InventoryState = { products: [], locations: [], unsyncedChanges: false };
@@ -1175,7 +1180,7 @@ describe('IndexedDBService', () => {
     const setupFailingTransaction = (error: Error, specificMock?: jest.SpyInstance) => {
         const transactionSpy = specificMock || jest.spyOn(mockDb, 'transaction');
         transactionSpy.mockImplementation((storeNames, mode) => {
-            const tx = createMockTransaction(storeNames as any, mode as any, mockDb);
+            const tx = createMockTransaction(storeNames as any, mode as any, mockDb as unknown as IDBPDatabase<BarInventoryDBSchemaType>);
             tx.done = Promise.reject(error); // Make this transaction's done promise reject
             // Simulate that individual operations might still appear to succeed before 'done' rejects
             currentMockProductStore.put.mockResolvedValue('key');
@@ -1194,7 +1199,7 @@ describe('IndexedDBService', () => {
 
       const transactionSpy = jest.spyOn(mockDb, 'transaction');
       transactionSpy.mockImplementationOnce((storeNames, mode) => {
-          const txInternal = createMockTransaction(storeNames as any, mode as any, mockDb);
+          const txInternal = createMockTransaction(storeNames as any, mode as any, mockDb as unknown as IDBPDatabase<BarInventoryDBSchemaType>);
           txInternal.done = Promise.reject(error); // Simulate tx abort due to operation failure
           return txInternal as any;
       });
@@ -1338,14 +1343,14 @@ describe('IndexedDBService', () => {
 
   describe('Data Integrity Tests', () => {
     const initialInventoryEntry: InventoryEntry = { productId: 'prod1', startBottles: 10, startOpenVolumeMl: 500 };
-    const initialArea: Area = { id: 'area1', name: 'Main Shelf', inventoryItems: [initialInventoryEntry] };
+    const initialArea: Area = { id: 'area1', name: 'Main Shelf', inventoryItems: [initialInventoryEntry], inventoryRecords: [] };
     const initialCounter: Counter = { id: 'counter1', name: 'Main Bar', areas: [initialArea] };
     let initialLocation: Location = {
       id: 'loc1',
       name: 'Test Bar',
       counters: [initialCounter],
     };
-    const initialProduct: Product = { id: 'prod1', name: 'Test Product', category: 'Test', volume: 700, pricePerBottle: 20 };
+    const initialProduct: Product = { id: 'prod1', name: 'Test Product', category: 'Test', volume: 700, pricePerBottle: 20, lastUpdated: new Date() };
     const initialState: InventoryState = {
         products: [initialProduct],
         locations: [initialLocation],
@@ -1378,6 +1383,7 @@ describe('IndexedDBService', () => {
             id: 'area1',
             name: 'Main Shelf',
             inventoryItems: [{ productId: 'prod1', startBottles: 10, startOpenVolumeMl: 500 }],
+            inventoryRecords: []
           }],
         }],
       }));

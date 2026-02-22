@@ -67,6 +67,7 @@ describe('ProductFormComponent', () => {
       supplier: 'Fine Spirits Co.',
       imageUrl: 'http://example.com/vodka.png',
       notes: 'Premium quality',
+      lastUpdated: new Date(),
     };
     options = { onSubmit: mockOnSubmit, onCancel: mockOnCancel };
     component = new ProductFormComponent(options);

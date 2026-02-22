@@ -5,9 +5,11 @@ import { initializeApp } from "./ui/ui-manager";
 import { storageService } from './services/storage.service';
 import { AppState } from './state/app-state';
 
-class Application {
+export class Application {
+  public initPromise: Promise<void>;
+
   constructor() {
-    this.initialize();
+    this.initPromise = this.initialize();
   }
 
   private async initialize(): Promise<void> {
@@ -42,6 +44,8 @@ class Application {
 }
 
 // Instantiate the application to start it
-new Application();
+if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
+  new Application();
+}
 
 console.log("App module (app.ts) loaded and application instantiated.");

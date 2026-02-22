@@ -1,104 +1,92 @@
-// Mock ui-manager (must be at the very top before any imports that might use it)
+// Mock ui-manager
 jest.mock('../src/ui/ui-manager', () => ({
   initializeApp: jest.fn(),
 }));
-// No top-level import of initializeApp from '../src/ui/ui-manager' here
+
+// Mock storage service
+jest.mock('../src/services/storage.service', () => ({
+  storageService: {
+    loadState: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
+// Mock AppState
+jest.mock('../src/state/app-state', () => ({
+  AppState: {
+    getInstance: jest.fn().mockReturnValue({}),
+  },
+}));
+
+import { Application } from '../src/main';
+import { initializeApp } from '../src/ui/ui-manager';
+import { storageService } from '../src/services/storage.service';
 
 describe('Application Initialization (app.ts)', () => {
-  let appContainerElement: HTMLElement; // Renamed to avoid confusion with module-level vars
-  let originalDocumentReadyState: DocumentReadyState;
-  let domContentLoadedListeners: EventListenerOrEventListenerObject[] = [];
+  let appContainerElement: HTMLElement;
   let consoleLogSpy: jest.SpyInstance;
   let consoleErrorSpy: jest.SpyInstance;
-  let initializeAppMock: jest.Mock; // To hold the specific mock instance
 
   beforeEach(() => {
-    jest.resetModules(); // Crucial: Reset module cache before each test
-
-    // Re-require ./ui/ui-manager to get the fresh mock after resetModules.
-    // This ensures initializeAppMock is the mock that main.ts will get when it's required.
-    initializeAppMock = require('../src/ui/ui-manager').initializeApp;
-    initializeAppMock.mockClear(); // Clear calls from previous tests if any leakage
-
-    // Create a mock app container
+    jest.clearAllMocks();
+    document.body.innerHTML = '';
     appContainerElement = document.createElement('div');
     appContainerElement.id = 'app-container';
-    // Appending to body only if not the "container not found" test
 
-    // Mock document.readyState and addEventListener
-    originalDocumentReadyState = document.readyState;
-    domContentLoadedListeners = []; // Reset listeners
-    Object.defineProperty(document, 'readyState', {
-      writable: true,
-      configurable: true, // Ensure it can be reconfigured
-    });
-    jest.spyOn(document, 'addEventListener').mockImplementation((event, listener) => {
-      if (event === 'DOMContentLoaded') {
-        domContentLoadedListeners.push(listener);
-      }
-    });
-    jest.spyOn(document, 'removeEventListener');
-
-    // Spy on console methods BEFORE main.ts is required
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterEach(() => {
-    if (appContainerElement.parentNode === document.body) {
-      document.body.removeChild(appContainerElement);
-    }
-    Object.defineProperty(document, 'readyState', {
-      value: originalDocumentReadyState,
-      writable: true,
-    });
-    jest.restoreAllMocks(); // This will restore console spies as well
+    jest.restoreAllMocks();
   });
 
-  const simulateDOMLoaded = () => {
-    domContentLoadedListeners.forEach(listener => {
-      if (typeof listener === 'function') {
-        listener({} as Event);
-      } else {
-        listener.handleEvent({} as Event);
+  test('should instantiate Application and call initializeApp if DOM is already loaded', async () => {
+    document.body.appendChild(appContainerElement);
+    Object.defineProperty(document, 'readyState', { value: 'complete', configurable: true });
+
+    const app = new Application();
+    await app.initPromise;
+
+    expect(storageService.loadState).toHaveBeenCalled();
+    expect(initializeApp).toHaveBeenCalledWith(appContainerElement);
+  });
+
+  test('should instantiate Application and wait for DOMContentLoaded if loading', async () => {
+    document.body.appendChild(appContainerElement);
+    Object.defineProperty(document, 'readyState', { value: 'loading', configurable: true });
+
+    // Create a way to capture the event listener
+    let domLoadedCallback: EventListener | null = null;
+    jest.spyOn(document, 'addEventListener').mockImplementation((event, callback) => {
+      if (event === 'DOMContentLoaded') {
+        domLoadedCallback = callback as EventListener;
       }
     });
-  };
 
-  test('should instantiate Application and call initializeApp if DOM is already loaded', () => {
-    document.body.appendChild(appContainerElement); // Ensure container is in DOM
-    (document.readyState as any) = 'complete';
-    require('../src/main'); // main.ts runs and should use the initializeAppMock
-    expect(consoleLogSpy).toHaveBeenCalledWith('Application initializing...');
-    // Updated log message from consolidated app.ts
-    expect(consoleLogSpy).toHaveBeenCalledWith('DOM content loaded, app container found. Initializing UI.');
-    expect(initializeAppMock).toHaveBeenCalledWith(appContainerElement);
-    expect(initializeAppMock).toHaveBeenCalledTimes(1);
+    const app = new Application();
+    await app.initPromise; // Wait for initial setup (adding listener)
+
+    expect(initializeApp).not.toHaveBeenCalled();
+    expect(domLoadedCallback).not.toBeNull();
+
+    // Trigger callback
+    if (domLoadedCallback) {
+        await (domLoadedCallback as any)(); // Execute the callback logic
+    }
+
+    expect(storageService.loadState).toHaveBeenCalled();
+    expect(initializeApp).toHaveBeenCalledWith(appContainerElement);
   });
 
-  test('should instantiate Application and call initializeApp after DOMContentLoaded event', () => {
-    document.body.appendChild(appContainerElement); // Ensure container is in DOM
-    (document.readyState as any) = 'loading';
-    require('../src/main'); // main.ts runs and should use the initializeAppMock
-    expect(consoleLogSpy).toHaveBeenCalledWith('Application initializing...');
-    expect(initializeAppMock).not.toHaveBeenCalled(); // Should not be called yet
+  test('should log error if app-container is not found', async () => {
+    Object.defineProperty(document, 'readyState', { value: 'complete', configurable: true });
+    // Don't append appContainerElement
 
-    simulateDOMLoaded(); // Simulate the DOMContentLoaded event
+    const app = new Application();
+    await app.initPromise;
 
-    // Updated log message from consolidated app.ts
-    expect(consoleLogSpy).toHaveBeenCalledWith('DOM content loaded, app container found. Initializing UI.');
-    expect(initializeAppMock).toHaveBeenCalledWith(appContainerElement);
-    expect(initializeAppMock).toHaveBeenCalledTimes(1);
-  });
-
-  test('should log an error if app-container is not found', () => {
-    // appContainerElement is NOT appended to body for this test
-    (document.readyState as any) = 'complete';
-    require('../src/main'); // main.ts runs and should use the initializeAppMock
-
-    expect(consoleLogSpy).toHaveBeenCalledWith('Application initializing...');
-    expect(initializeAppMock).not.toHaveBeenCalled();
-    // Updated error message from consolidated app.ts
-    expect(consoleErrorSpy).toHaveBeenCalledWith("App container 'app-container' not found in HTML. UI cannot be initialized.");
+    expect(storageService.loadState).toHaveBeenCalled();
+    expect(initializeApp).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("App container 'app-container' not found"));
   });
 });

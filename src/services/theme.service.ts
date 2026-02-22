@@ -68,13 +68,15 @@ export class ThemeService {
   }
 
   private applyBaseThemeStyle(): void {
+    if (typeof document === 'undefined') return;
+
     const htmlElement = document.documentElement;
     if (this.currentTheme === 'dark') {
-      document.body.classList.add(DARK_MODE_CLASS);
-      htmlElement.setAttribute('data-theme', 'dark');
+      if (document.body) document.body.classList.add(DARK_MODE_CLASS);
+      if (htmlElement) htmlElement.setAttribute('data-theme', 'dark');
     } else {
-      document.body.classList.remove(DARK_MODE_CLASS);
-      htmlElement.setAttribute('data-theme', 'light');
+      if (document.body) document.body.classList.remove(DARK_MODE_CLASS);
+      if (htmlElement) htmlElement.setAttribute('data-theme', 'light');
     }
   }
 
